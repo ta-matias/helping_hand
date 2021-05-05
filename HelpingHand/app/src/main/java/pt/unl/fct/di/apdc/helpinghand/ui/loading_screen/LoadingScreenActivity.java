@@ -1,14 +1,17 @@
 package pt.unl.fct.di.apdc.helpinghand.ui.loading_screen;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
+import pt.unl.fct.di.apdc.helpinghand.data.SessionManager;
 
 public class LoadingScreenActivity extends AppCompatActivity {
 
@@ -19,6 +22,8 @@ public class LoadingScreenActivity extends AppCompatActivity {
     private final int REQUEST_COARSE_LOCATION = 0;
     private final int REQUEST_FINE_LOCATION = 1;
 
+    private SessionManager sm;
+
     public void OnCreate( Bundle savedInstance) {
         //Checks if it exists permissions to use the device location, and storage
         verifyPermissions();
@@ -26,6 +31,11 @@ public class LoadingScreenActivity extends AppCompatActivity {
         //Inflates layout
         super.onCreate(savedInstance);
         setContentView(R.layout.activity_loading_screen);
+
+        //Creates a session manager
+        sm = new SessionManager(this.getApplicationContext());
+
+        sm.checkLogin();
 
     }
 

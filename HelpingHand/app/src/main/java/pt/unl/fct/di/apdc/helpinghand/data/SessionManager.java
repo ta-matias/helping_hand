@@ -68,7 +68,7 @@ public class SessionManager {
 
             //Start activity
             this.context.startActivity(i);
-        }
+        }//TODO: if user is already logged in session manager starts main activity
     }
 
     /**

@@ -22,6 +22,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import pt.unl.fct.di.apdc.helpinghand.LoginApp;
 import pt.unl.fct.di.apdc.helpinghand.R;
 import pt.unl.fct.di.apdc.helpinghand.data.model.LoggedInUser;
 import pt.unl.fct.di.apdc.helpinghand.ui.login.LoginViewModel;
@@ -30,13 +31,16 @@ import pt.unl.fct.di.apdc.helpinghand.ui.login.LoginViewModelFactory;
 public class LoginActivity extends AppCompatActivity {
 
     private LoginViewModel loginViewModel;
-    private LoggedInUser user = null;
+    private LoginActivity mLoginActivity;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-        loginViewModel = new ViewModelProvider(this, new LoginViewModelFactory())
+
+        mLoginActivity = this;
+
+        loginViewModel = new ViewModelProvider(this, new LoginViewModelFactory(((LoginApp) getApplication()).getExecutorService()))
                 .get(LoginViewModel.class);
 
         final EditText usernameEditText = findViewById(R.id.username);
