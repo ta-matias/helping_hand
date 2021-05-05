@@ -23,12 +23,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
+import pt.unl.fct.di.apdc.helpinghand.data.model.LoggedInUser;
 import pt.unl.fct.di.apdc.helpinghand.ui.login.LoginViewModel;
 import pt.unl.fct.di.apdc.helpinghand.ui.login.LoginViewModelFactory;
 
 public class LoginActivity extends AppCompatActivity {
 
     private LoginViewModel loginViewModel;
+    private LoggedInUser user = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
