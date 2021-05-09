@@ -7,6 +7,7 @@ import android.content.SharedPreferences.Editor;
 
 import java.util.HashMap;
 
+import pt.unl.fct.di.apdc.helpinghand.ui.home.HomePageActivity;
 import pt.unl.fct.di.apdc.helpinghand.ui.login.LoginActivity;
 
 public class SessionManager {
@@ -52,23 +53,28 @@ public class SessionManager {
 
     /**
      * Check user status, if not logged in will redirect to login activity
-     * otherwise won't do anything
+     * otherwise will redirect to HomePage
      */
     public void checkLogin(){
         //Check Login status
-        if(!this.isLoggedIn()){
+        Intent i;
+        if( !this.isLoggedIn() ) {
             //user not logged in redirect to Login activity
-            Intent i = new Intent(this.context, LoginActivity.class);
+            i = new Intent(this.context, LoginActivity.class);
 
-            //Close all activities
-            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        } else {
+            //User logged in already goes directly to home page of app
+            i = new Intent(this.context, HomePageActivity.class);
+        }
 
-            //Add new flag to start new activity
-            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        //Close all activities
+        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-            //Start activity
-            this.context.startActivity(i);
-        }//TODO: if user is already logged in session manager starts main activity
+        //Add new flag to start new activity
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        //Start activity
+        this.context.startActivity(i);
     }
 
     /**
