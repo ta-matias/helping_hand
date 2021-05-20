@@ -63,6 +63,20 @@ public class AccessControlFilter implements ContainerRequestFilter{
 				clientId,
 				tokenId));
 		
+		//check if RBAC Policy "table" is initialized
+		if(!AccessControlManager.RBACPolicyIntitalized()) {
+			//if it is not initialized
+			log.info("Initializing RBAC Policy");
+			if(!AccessControlManager.intitializeRBACPolicy()) {
+				//if it failed to initialize
+				log.info("Error initializing RBAC Policy");
+				requestContext.abortWith(Response.status(Status.INTERNAL_SERVER_ERROR).entity("RBAC Policy could not be initialized.").build());
+				return;
+			}
+			log.info("RBAC Policy initialized successfully");
+		}
+		
+		
 		
 		//if the was no token provided
 		if(allAccess)log.info("Using allHasAccess()");

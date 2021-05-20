@@ -29,7 +29,111 @@ public class AccessControlManager {
 	private static KeyFactory RBACKeyFactory = datastore.newKeyFactory().setKind("RBACPolicy");
 	
 	private static Logger log = Logger.getLogger(AccessControlManager.class.getName());
-
+	
+	/**
+	 * Checks if RBAC policy has been initialized, should be called before initilizeRBACPolicy()
+	 * @return <b>true</b> if it is initialized, <b>false</b> if it is not
+	 */
+	public static boolean RBACPolicyIntitalized() {
+		
+		Key createUserKey = RBACKeyFactory.newKey("POST_user");
+		Transaction txn = datastore.newTransaction();
+		
+		try {
+			Entity check = txn.get(createUserKey);
+			
+			txn.commit();
+			return (check != null);
+		}
+		catch(DatastoreException e) {
+			log.info(String.format("Error initializing RBAC Policy : %s", e.toString()));
+			return false;
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.info("Error initializing RBAC Policy : Transaction was active");
+				return false;
+			}
+		}
+	}
+	
+	/**
+	 * Stores initial RBAC policy in datastore if it does not exist yet
+	 * @return <b>true</b> if successfully initialized or already initialized, <b>false</b> if there was an error initializing
+	 */
+	public static boolean intitializeRBACPolicy() {
+		
+		Key createUserKey = RBACKeyFactory.newKey("POST_user");
+		Key deleteUserKey = RBACKeyFactory.newKey("DELETE_user");
+		Key loginUserKey = RBACKeyFactory.newKey("POST_user_login");
+		Key logoutUserKey = RBACKeyFactory.newKey("DELETE_user_logout");
+		Key changeUserPasswordKey = RBACKeyFactory.newKey("PUT_user_password");
+		Key getUserInfoKey = RBACKeyFactory.newKey("GET_user_info");
+		Key updateUserInfoKey = RBACKeyFactory.newKey("PUT_user_info");
+		Key getUserProfileKey = RBACKeyFactory.newKey("GET_user_profile");
+		Key updateUserProfileKey = RBACKeyFactory.newKey("PUT_user_profile");
+		Key createInstKey = RBACKeyFactory.newKey("POST_institution");
+		Key deleteInstKey = RBACKeyFactory.newKey("DELETE_institution");
+		Key loginInstKey = RBACKeyFactory.newKey("POST_institution_login");
+		Key logoutInstKey = RBACKeyFactory.newKey("DELETE_institution_logout");
+		Key changeInstPasswordKey = RBACKeyFactory.newKey("PUT_institution_password");
+		Key getInstKey = RBACKeyFactory.newKey("GET_institution");
+		Key updateInstKey = RBACKeyFactory.newKey("PUT_institution");
+		
+		Entity createUserRBAC = Entity.newBuilder(createUserKey).set("permited", ListValue.of(Role.ALL.name()) ).build();
+		Entity deleteUserRBAC = Entity.newBuilder(deleteUserKey).set("permited", ListValue.of(Role.USER.name()) ).build();
+		Entity loginUserRBAC = Entity.newBuilder(loginUserKey).set("permited", ListValue.of(Role.ALL.name()) ).build();
+		Entity logoutUserRBAC = Entity.newBuilder(logoutUserKey).set("permited", ListValue.of(Role.USER.name()) ).build();
+		Entity changUserPasswordRBAC = Entity.newBuilder(changeUserPasswordKey).set("permited", ListValue.of(Role.USER.name()) ).build();
+		Entity getUserInfoRBAC = Entity.newBuilder(getUserInfoKey).set("permited", ListValue.of(Role.USER.name()) ).build();
+		Entity updateUserInfoRBAC = Entity.newBuilder(updateUserInfoKey).set("permited", ListValue.of(Role.USER.name()) ).build();
+		Entity getUserProfileRBAC = Entity.newBuilder(getUserProfileKey).set("permited", ListValue.of(Role.USER.name()) ).build();		
+		Entity updateUserProfileRBAC = Entity.newBuilder(updateUserProfileKey).set("permited", ListValue.of(Role.USER.name()) ).build();
+		Entity createInstRBAC = Entity.newBuilder(createInstKey).set("permited", ListValue.of(Role.ALL.name()) ).build();
+		Entity deleteInstRBAC = Entity.newBuilder(deleteInstKey).set("permited", ListValue.of(Role.INSTITUTION.name()) ).build();
+		Entity loginInstRBAC = Entity.newBuilder(loginInstKey).set("permited", ListValue.of(Role.ALL.name()) ).build();
+		Entity logoutInstRBAC = Entity.newBuilder(logoutInstKey).set("permited", ListValue.of(Role.INSTITUTION.name()) ).build();
+		Entity changeInstPasswordRBAC = Entity.newBuilder(changeInstPasswordKey).set("permited", ListValue.of(Role.INSTITUTION.name()) ).build();
+		Entity getInstRBAC = Entity.newBuilder(getInstKey).set("permited", ListValue.of(Role.INSTITUTION.name()) ).build();
+		Entity updateInstRBAC = Entity.newBuilder(updateInstKey).set("permited", ListValue.of(Role.INSTITUTION.name()) ).build();
+		
+		
+		
+		
+		
+		Transaction txn = datastore.newTransaction();
+		
+		try {
+			if(txn.get(createUserKey) != null) {
+				txn.rollback();
+				return true;
+			}
+			
+			txn.add(createUserRBAC,deleteUserRBAC,loginUserRBAC,
+					logoutUserRBAC,changUserPasswordRBAC,getUserInfoRBAC,
+					updateUserInfoRBAC,getUserProfileRBAC,updateUserProfileRBAC,
+					createInstRBAC,deleteInstRBAC,loginInstRBAC,
+					logoutInstRBAC,changeInstPasswordRBAC,getInstRBAC,
+					updateInstRBAC);
+			
+			txn.commit();
+			return true;
+		}
+		catch(DatastoreException e) {
+			log.info(String.format("Error initializing RBAC Policy : %s", e.toString()));
+			return false;
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.info("Error initializing RBAC Policy : Transaction was active");
+				return false;
+			}
+		}
+		
+	}
+	
 	/**
 	 * Starts a session for a user
 	 * @param userId - id of the user starting a session

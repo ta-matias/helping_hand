@@ -1,7 +1,7 @@
 package helpinghand.accesscontrol;
 
 public enum Role {
-	
+	ALL(-1),
 	USER(0),
 	INSTITUTION(0),
 	GBO(1),
