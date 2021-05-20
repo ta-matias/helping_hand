@@ -1,7 +1,8 @@
 /**
  * @author PogChamp Software
  *
- */   
+ */
+
 package helpinghand.resources;
 
 import java.util.logging.Logger;
@@ -28,6 +29,7 @@ import helpinghand.util.user.*;
 @Path(UserResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class UserResource {
+	
 	//Constants
 	private static final String USER_INFO_FORMAT = "%s_info"; // used in checksum for authentication token
 	private static final String USER_PROFILE_FORMAT = "%s_profile"; // used in checksum for authentication token
@@ -57,11 +59,9 @@ public class UserResource {
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
 	private final Gson g = new Gson();
 
-	public UserResource() {
-		// nothing to be done here
-	}
+	public UserResource() {}
 	
-	/**
+	/*
 	 * Creates a new user.
 	 * @param data - The registration data that contains userId, email, password and the confirmation of the password.
 	 * @return 200, if the registration was successful.
@@ -191,6 +191,7 @@ public class UserResource {
 		return Response.ok().build();
 	}
 	
+	/**
 	 * Deletes the user given its identification and the authentication token.
 	 * @param userId - The user who is going to be deleted.
 	 * @param tokenId - The authentication token from user that is going to be deleted.
