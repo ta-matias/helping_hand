@@ -1,6 +1,9 @@
+/**
+ * @author PogChamp Software
+ *
+ */
+ 
 package helpinghand.resources;
-
-//change this package
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +77,15 @@ public class InstitutionResource {
 	public InstitutionResource() {}
 	
 	
+	/**
+	 * Creates a new institution.
+	 * @param data - The institution data that contains the name, the initials, the instId,
+	 * 		  the email, the password and the confirmation of the password.
+	 * @return 200, if the registration was successful.
+	 * 		   400, if the institution data has invalid attributes.
+	 * 		   409, if the institution already exists.
+	 * 		   500, otherwise.
+	 */
 	@POST
 	@Path(CREATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -125,6 +137,14 @@ public class InstitutionResource {
 		}
 	}
 	
+	/**
+	 * A institution login is performed.
+	 * @param instId - The institution id that is going to login.
+	 * @param data - The login data of the institution.
+	 * @return 200, if the login was successful.
+	 * 		   400, if the login is invalid.
+	 * 		   403, if the login was failed.
+	 */
 	@POST
 	@Path(LOGIN_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -142,6 +162,13 @@ public class InstitutionResource {
 		return Response.ok(token).build();
 	}
 	
+	/**
+	 * A institution logout is performed.
+	 * @param instId - The institution id that is going to logout.
+	 * @param tokenId - The token id of the session of this institution.
+	 * @return 200, if the logout was successful.
+	 * 		   403, if the logout was failed.
+	 */
 	@DELETE
 	@Path(LOGOUT_PATH)
 	public Response logoutInst(@PathParam("instId")String instId,@QueryParam("tokenId")String tokenId) {
@@ -153,6 +180,14 @@ public class InstitutionResource {
 		return Response.ok().build();
 	}
 	
+	/**
+	 * Deletes an institution given its institution identification and the token identification.
+	 * @param instId - The institution identification that is going to be deleted.
+	 * @param tokenId - The token identification from this institution.
+	 * @return 200, if the deletion was successful.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
 	@DELETE
 	@Path(DELETE_PATH)
 	public Response deleteInst(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId) {
@@ -193,7 +228,15 @@ public class InstitutionResource {
 		}
 	}
 	
-	
+	/**
+	 * Updates the institution data of the instId.
+	 * @param instId - The institution identification.
+	 * @param tokenId - The token identification from this institution.
+	 * @param data - The updated data for this institution.
+	 * @return 200, if the institution has successfully updated its data.
+	 * 		   400, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
 	@PUT
 	@Path(UPDATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -244,7 +287,14 @@ public class InstitutionResource {
 		}		
 	}
 	
-	
+	/**
+	 * Obtains the institution data.
+	 * @param instId - The institution id that is going to be used to obtain its data.
+	 * @param tokenId - The token id from this institution.
+	 * @return 200, if the operation was successful.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(GET_PATH)
 	@Produces(MediaType.APPLICATION_JSON)
@@ -295,7 +345,17 @@ public class InstitutionResource {
 		}
 	}
 	
-	
+	/**
+	 * Changes the password of the institution.
+	 * @param instId - The institution id that is going to change the password.
+	 * @param tokenId - The token id from this institution.
+	 * @param data - The new password data for this institution.
+	 * @return 200, if the institution has successfully changed the password.
+	 * 		   400, if the data to change password is invalid.
+	 * 		   403, if the password is not the same.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
 	@PUT
 	@Path(CHANGE_PASSWORD_PATH)
 	public Response changeInstPassword(@PathParam("instId") String instId,@QueryParam("tokenId")String tokenId,ChangePass data) {
@@ -348,7 +408,15 @@ public class InstitutionResource {
 			}
 		}
 	}
-	
+	/**
+	 * Adds a new user to the institution.
+	 * @param instId - The institution id where the user is going to subscribe.
+	 * @param subscriberId - The user id who is going to subscribe to the institution.
+	 * @param tokenId - The token id of the user who is going to subscribe to the institution.
+	 * @return 200, if the subscription was successful.
+	 * 		   404, if the institution does not exist or the subscription already exists.
+	 * 		   500, otherwise.
+	 */
 	//maybe should be in UserResource?
 	@POST 
 	@Path(ADD_SUBSCRIBER_PATH)
@@ -394,7 +462,15 @@ public class InstitutionResource {
 		}
 		
 	} 
-	
+	/**
+	 * Removes an user from the institution.
+	 * @param instId - The institution id where the user is subscribed.
+	 * @param subscriberId - The user id who is going to be removed from the institution.
+	 * @param tokenId - The token id of the user who is going to be removed from the institution.
+	 * @return 200, if the unsubscription was successful.
+	 * 		   404, if the institution does not exist or the subscription does not exist.
+	 * 		   500, otherwise.
+	 */
 	//maybe should be in UserResource?
 	@DELETE
 	@Path(REMOVE_SUBSCRIBER_PATH)
@@ -440,6 +516,14 @@ public class InstitutionResource {
 		
 	}
 	
+	/**
+	 * Obtains the list of subscribers given the institution id.
+	 * @param instId - The institution id which is going to be used to obtain the users.
+	 * @param tokenId - The token id to see if it has privilege to execute this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   404, if the institution does not exist or the institution does not have users.
+	 * 		   500, otherwise.
+	 */
 	//should a token be necessary?
 	@GET
 	@Path(GET_SUBSCRIBERS_PATH)

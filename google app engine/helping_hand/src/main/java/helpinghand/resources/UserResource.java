@@ -1,3 +1,7 @@
+/**
+ * @author PogChamp Software
+ *
+ */   
 package helpinghand.resources;
 
 import java.util.logging.Logger;
@@ -57,6 +61,14 @@ public class UserResource {
 		// nothing to be done here
 	}
 	
+	/**
+	 * Creates a new user.
+	 * @param data - The registration data that contains userId, email, password and the confirmation of the password.
+	 * @return 200, if the registration was successful.
+	 * 		   400, if one of the registration parameters is invalid.
+	 * 		   409, if the user already exists.
+	 * 		   500, otherwise.
+	 */
 	@POST
 	@Path(CREATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -132,6 +144,14 @@ public class UserResource {
 		}
 	}
 	
+   /**
+	 * A user login is performed.
+	 * @param userId - The user who is going to login.
+	 * @param data - The login data that contains the clientId and password.
+	 * @return 200, if the login was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the login was failed.
+	 */
 	@POST
 	@Path(LOGIN_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -154,6 +174,13 @@ public class UserResource {
 		
 	}
 	
+	/**
+	 * A user logout is performed.
+	 * @param userId - The user who is going to logout.
+	 * @param tokenId - The authentication token from user that was logged in.
+	 * @return 200, if the logout was successful.
+	 * 		   403, if the logout was failed.
+	 */
 	@DELETE
 	@Path(LOGOUT_PATH)
 	public Response logoutUser(@PathParam("userId")String userId, @QueryParam("tokenId") String tokenId) {
@@ -164,6 +191,13 @@ public class UserResource {
 		return Response.ok().build();
 	}
 	
+	 * Deletes the user given its identification and the authentication token.
+	 * @param userId - The user who is going to be deleted.
+	 * @param tokenId - The authentication token from user that is going to be deleted.
+	 * @return 200, if the deletion was successful.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
 	@DELETE
 	@Path(DELETE_PATH)
 	public Response deleteUser(@PathParam("userId")String userId,@QueryParam("tokenId")String tokenId) {
@@ -211,7 +245,17 @@ public class UserResource {
 		}
 	}
 	
-	
+	/**
+	 * Changes the password of the user.
+	 * @param userId - The user who is going to change the password.
+	 * @param tokenId - The authentication token from user that is going to change the password.
+	 * @param data - The new password data.
+	 * @return 200, if the change of password was successful.
+	 * 		   400, if the password data is invalid.
+	 * 		   403, if the password is not the same.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
 	@PUT
 	@Path(CHANGE_PASSWORD_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -264,6 +308,14 @@ public class UserResource {
 		}
 	}
 	
+	/**
+	 * Obtains the information of the user.
+	 * @param userId - The user who has information.
+	 * @param tokenId - The authentication token of this user.
+	 * @return 200, if the operation was successful.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(GET_INFO_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -318,6 +370,16 @@ public class UserResource {
 		}
 	}
 	
+	/**
+	 * Updates the information of the user.
+	 * @param userId - The user who is going to update the information.
+	 * @param tokenId - The authentication token of the user who is going to update the information.
+	 * @param data - The updated information of the user.
+	 * @return 200, if the update was successful.
+	 * 		   400, if the new information of the user is invalid.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
 	@PUT
 	@Path(UPDATE_INFO_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -381,6 +443,15 @@ public class UserResource {
 		}
 	}
 	
+	/**
+	 * Obtains the profile of the user.
+	 * @param userId - The user who has the profile.
+	 * @param tokenId - The authentication token from user.
+	 * @return 200, if the operation was successful.
+	 * 		   403, if the user has a private profile.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(GET_PROFILE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -440,6 +511,16 @@ public class UserResource {
 		}
 	}
 	
+	/**
+	 * Updates the profile of the user.
+	 * @param userId - The user who is going to update the profile.
+	 * @param tokenId - The authentication token of the user.
+	 * @param data - The updated profile of the user.
+	 * @return 200, if the update was successful.
+	 * 		   400, if the updated profile is invalid.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
 	@PUT
 	@Path(UPDATE_PROFILE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
