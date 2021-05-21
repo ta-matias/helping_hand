@@ -23,11 +23,14 @@ public class AccessControlFilter implements ContainerRequestFilter{
 	
 	@Override
 	public void filter(ContainerRequestContext requestContext) throws IOException {
-		
+		log.info("Entetred Access control filter");
 		boolean allAccess = false; //true if request was done without a token
 		boolean hasClient = false; //true if the request sent along the id of the client and needs it to be the owner of the token
 		
+		
 		String method = requestContext.getMethod();
+		if(method.equals("OPTIONS")) return;//to allow CORS
+		
 		UriInfo requestUriInfo = requestContext.getUriInfo();
 		List<String> tokenList = requestUriInfo.getQueryParameters().get("tokenId");
 		String tokenId = "";
