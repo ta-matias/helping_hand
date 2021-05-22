@@ -117,7 +117,7 @@ public class InstitutionResource {
 					.set("addressComp", "")
 					.set("location", "")
 					.set("phone", "")
-					.set("status", false)//inactive, pending verification
+					.set("status", true)//inactive, pending verification(only in BETA)
 					.build();
 			txn.add(inst);
 			LOG.info("Institution " + data.instId + " has been successfully registered!");
