@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import Logo from "C:/Users/a_men/helpinghand/src/helpinghand.png";
+import Logo from "../../../src/helpinghand.png";
 
 
 class Home extends Component {
