@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    >
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Spinner
+            android:id="@+id/user_type"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:id="@+id/txt_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/name"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:textSize="20sp"
+            android:visibility="invisible"
+            />
+
+        <EditText
+            android:id="@+id/et_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textNoSuggestions"
+            android:hint="@string/name"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            android:imeOptions="actionNext"
+            />
+
+
+        <TextView
+            android:id="@+id/username_txt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            />
+
+        <EditText
+            android:id="@+id/et_username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:hint="@string/username"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            android:imeOptions="actionNext"
+            />
+
+        <TextView
+            android:id="@+id/txt_initials"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/initials"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            />
+
+        <EditText
+            android:id="@+id/et_initials"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:hint="@string/initials"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            android:imeOptions="actionNext"
+            />
+
+        <TextView
+            android:id="@+id/txt_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:text="@string/prompt_email"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            />
+
+        <EditText
+            android:id="@+id/et_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textEmailAddress|textNoSuggestions"
+            android:hint="@string/prompt_email"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            android:imeOptions="actionNext"
+            />
+
+        <TextView
+            android:id="@+id/et_email_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:text="@string/invalid_email"
+            />
+
+        <TextView
+            android:id="@+id/txt_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prompt_password"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            />
+
+        <EditText
+            android:id="@+id/et_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/prompt_password"
+            android:inputType="textPassword"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            android:imeOptions="actionNext"
+            />
+            <TextView
+                android:id="@+id/et_pass_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:text="@string/invalid_password_info"
+                />
+
+        <TextView
+            android:id="@+id/txt_confirm_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prompt_confirm_password"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            />
+
+        <EditText
+            android:id="@+id/et_confirm_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/prompt_password"
+            android:inputType="textPassword"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:visibility="invisible"
+            />
+
+        <TextView
+            android:id="@+id/et_confirm_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:text="@string/invalid_confirm"
+            />
+
+        <Button
+            android:id="@+id/btn_register"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/register"
+            android:layout_gravity="center_horizontal"
+            android:visibility="invisible"
+            />
+
+    </LinearLayout>
+
+</ScrollView>

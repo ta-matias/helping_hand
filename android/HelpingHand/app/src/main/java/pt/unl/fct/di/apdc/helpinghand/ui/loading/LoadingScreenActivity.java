@@ -41,8 +41,8 @@ public class LoadingScreenActivity extends AppCompatActivity {
         }
 
         new Handler().postDelayed(() ->{
-            Intent login = new Intent(LoadingScreenActivity.this, LoginActivity.class);
-            startActivity(login);
+            Intent start = new Intent(LoadingScreenActivity.this, StartUserActivity.class);
+            startActivity(start);
             finish();
         }, SPLASH_TIMEOUT);
 

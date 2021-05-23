@@ -10,4 +10,27 @@
     <string name="invalid_username">Not a valid username</string>
     <string name="invalid_password">Password must be >5 characters</string>
     <string name="login_failed">"Login failed"</string>
+    <string name="register">Registo</string>
+    <string name="about">Sobre</string>
+    <string name="login">Login</string>
+
+    <!-- register strings -->
+    <string name="username">Username</string>
+    <string name="prompt_confirm_password">Confirme Password</string>
+    <string name="name">Nome da instituição</string>
+    <string name="initials">Sigla</string>
+    <string name="token_id">TOKEN_ID</string>
+    <string name="user_username">USER_USERNAME</string>
+    <string name="role">ROLE</string>
+    <string name="creation_date">CREATION_DATE</string>
+    <string name="invalid_email">O seu email está inválido</string>
+    <string name="refresh_token">REFRESH_TOKEN</string>
+    <string name="invalid_confirm">A confirmação não é igual à password.</string>
+    <string name="invalid_password_info">A password deve conter pelo menos 1 minúscula, 1 maiúscula, 1 número 1 caractér especial e pelo menos 8 caractéres.</string>
+
+    <string-array name="usertype">
+        <item>-nenhum-</item>
+        <item>Utilizador</item>
+        <item>Instituição</item>
+    </string-array>
 </resources>
