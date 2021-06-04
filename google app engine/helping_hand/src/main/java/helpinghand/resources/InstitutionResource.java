@@ -61,6 +61,9 @@ public class InstitutionResource {
 	private static final String REMOVE_SUBSCRIBER_PATH="/{instId}/subscribers"; //DELETE
 	private static final String GET_SUBSCRIBERS_PATH="/{instId}/subscribers"; //GET
 	private static final String GET_INSTS_PATH="/getInsts";//GET
+	private static final String CHANGE_STATUS_PATH="/{instId}/changeStatus";
+	private static final String GET_STATUS_PATH="/{instId}/getStatus";
+	private static final String DELETE_HARD_INST_PATH="/{instId}/delHard";
 
 	//Kinds
 	private static final String INSTKIND = "Inst";
@@ -609,6 +612,85 @@ public class InstitutionResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
 			}
 		}
+	}
+	
+	
+	@POST
+	@Path(CHANGE_STATUS_PATH)
+	public Response changeStatus(@QueryParam("tokenId") String tokenId, @PathParam("instId") String instId, Boolean change) {
+		LOG.fine("Changing status attempt to: " + instId);
+
+		Key instKey = instKeyFactory.newKey(instId);
+
+		Transaction txn = datastore.newTransaction();
+
+		try {
+
+			Entity inst = txn.get(instKey);
+
+			if(inst == null) {
+				txn.rollback();
+				return Response.status(Status.BAD_REQUEST).entity("The institution does not exist!").build();
+			} 
+
+			//more readable this way
+			Entity newInst = Entity.newBuilder(inst)
+					.set("status",change)
+					.build();
+
+			txn.update(newInst);//update fails if there is nothing to update, more secure
+
+			LOG.info("The " + instId + " has successfully changed status!");
+			txn.commit();
+			return Response.ok().build();
+		}
+		catch(DatastoreException e) {
+			txn.rollback();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+			}
+		}		
+	}
+	
+	
+	
+	@GET
+	@Path(GET_STATUS_PATH)
+	public Response getStatus(@QueryParam("tokenId") String tokenId, @PathParam("instId") String instId) {
+		
+				LOG.fine("Getting status attempt to: " + instId);
+
+				Key instKey = instKeyFactory.newKey(instId);
+
+				Transaction txn = datastore.newTransaction();
+
+				try {
+					Entity inst = txn.get(instKey);
+
+					if(inst == null) {
+						txn.rollback();
+						return Response.status(Status.NOT_FOUND).entity("Inst does not exist").build();
+					}
+
+
+					LOG.info("The " + instId + " has this status!");
+					txn.commit();
+					return Response.ok(g.toJson(inst.getBoolean("status"))).build();
+				} 
+				catch(DatastoreException e) {
+					txn.rollback();
+					return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+				}
+				finally {
+					if(txn.isActive()) {
+						txn.rollback();
+						return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+					}
+				}
 	}
 	
 	
