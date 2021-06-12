@@ -5,10 +5,10 @@ import java.util.Date;
 public class TokenModel {
 
     String tokenId;
-    Date creationDate;
+    long creationDate;
     String refresh_token;
 
-    public TokenModel(String tokenId, Date creationDate, String refresh_token) {
+    public TokenModel(String tokenId, long creationDate, String refresh_token) {
         this.tokenId = tokenId;
         this.creationDate = creationDate;
         this.refresh_token = refresh_token;
@@ -18,7 +18,7 @@ public class TokenModel {
         return tokenId;
     }
 
-    public Date getCreationDate() {
+    public long getCreationDate() {
         return creationDate;
     }
 

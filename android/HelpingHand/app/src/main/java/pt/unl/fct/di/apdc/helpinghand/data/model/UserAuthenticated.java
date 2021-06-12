@@ -8,7 +8,7 @@ public class UserAuthenticated {
     TokenModel tokenID;
     String role;
 
-    public void UserAuthenticated(String username, TokenModel tokenID, String role) {
+    public UserAuthenticated(String username, TokenModel tokenID, String role) {
         this.username = username;
         this.tokenID = tokenID;
         this.role = role;
@@ -22,7 +22,7 @@ public class UserAuthenticated {
         return tokenID;
     }
 
-    public Date getCreationDate(){
+    public long getCreationDate(){
         return tokenID.getCreationDate();
     }
 

@@ -18,7 +18,7 @@
     <string name="username">Username</string>
     <string name="prompt_confirm_password">Confirme Password</string>
     <string name="name">Nome da instituição</string>
-    <string name="initials">Sigla</string>
+    <string name="initials">Sigla da Instituição</string>
     <string name="token_id">TOKEN_ID</string>
     <string name="user_username">USER_USERNAME</string>
     <string name="role">ROLE</string>
@@ -26,10 +26,16 @@
     <string name="invalid_email">O seu email está inválido</string>
     <string name="refresh_token">REFRESH_TOKEN</string>
     <string name="invalid_confirm">A confirmação não é igual à password.</string>
-    <string name="invalid_password_info">A password deve conter pelo menos 1 minúscula, 1 maiúscula, 1 número 1 caractér especial e pelo menos 8 caractéres.</string>
+    <string name="invalid_password_info">A password deve conter pelo menos 1 minúscula, 1 maiúscula, 1 número 1 carácter especial e pelo menos 8 caractéres.</string>
+    <string name="home">Inicio</string>
+    <string name="search">Pesquisa</string>
+    <string name="profile">Perfil</string>
+    <string name="logout">Logout</string>
+    <string name="bem_vindo">"Bem-Vindo, "</string>
+    <string name="maps">Mapa</string>
+    <string name="events">Eventos</string>
 
     <string-array name="usertype">
-        <item>-nenhum-</item>
         <item>Utilizador</item>
         <item>Instituição</item>
     </string-array>

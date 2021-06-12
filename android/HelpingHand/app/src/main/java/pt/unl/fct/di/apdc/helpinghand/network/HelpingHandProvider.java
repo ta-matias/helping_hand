@@ -29,6 +29,7 @@ public class HelpingHandProvider {
     private HelpingHandService mService;
     private AppPreferenceTools mAppPreferenceTools;
     private Retrofit mRetrofit;
+    private static HelpingHandProvider instance = null;
 
     public HelpingHandProvider() {
         this.mAppPreferenceTools = new AppPreferenceTools(HelpingHandApp.applicationContext);
@@ -55,6 +56,7 @@ public class HelpingHandProvider {
             }
         });
 
+
         Gson gson = new GsonBuilder()
                 .create();
 
@@ -67,11 +69,21 @@ public class HelpingHandProvider {
         mService = mRetrofit.create(HelpingHandService.class);
     }
 
+    public static HelpingHandProvider getInstance(){
+        if(instance == null)
+            instance = new HelpingHandProvider();
+        return instance;
+    }
+
     public Retrofit getMRetrofit() {
         return mRetrofit;
     }
 
     public HelpingHandService getMService() {
         return mService;
+    }
+
+    public AppPreferenceTools getmAppPreferenceTools(){
+        return mAppPreferenceTools;
     }
 }
