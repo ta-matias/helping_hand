@@ -63,7 +63,6 @@ public class InstitutionResource {
 	private static final String GET_INSTS_PATH="/getInsts";//GET
 	private static final String CHANGE_STATUS_PATH="/{instId}/changeStatus";
 	private static final String GET_STATUS_PATH="/{instId}/getStatus";
-	private static final String DELETE_HARD_INST_PATH="/{instId}/delHard";
 
 	//Kinds
 	private static final String INSTKIND = "Inst";
@@ -193,6 +192,7 @@ public class InstitutionResource {
 	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
+	// TODO: Inst  (gbo & ga se token nao pertencer a instituicao a ser apagada) 
 	@DELETE
 	@Path(DELETE_PATH)
 	public Response deleteInst(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId) {
@@ -202,7 +202,7 @@ public class InstitutionResource {
 		Key instKey = instKeyFactory.newKey(instId);
 
 		Transaction txn = datastore.newTransaction();
-
+		
 		try {
 			Entity inst = txn.get(instKey);
 
@@ -466,7 +466,7 @@ public class InstitutionResource {
 	 */
 	//maybe should be in UserResource?
 	//TODO
-	//CHANGE THIS
+	//CHANGE THIS to joinInst
 	@DELETE
 	@Path(REMOVE_SUBSCRIBER_PATH)
 	public Response unsubscribe(@PathParam("instId") String instId, @QueryParam("subscriberId") String subscriberId, @QueryParam("tokenId") String tokenId) {
@@ -547,11 +547,6 @@ public class InstitutionResource {
 				subList.add(sub.getString("userId"));
 			});
 
-			//shouldn't we just return the empty list?
-			if(subList.isEmpty()) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("No Users Subscribed!").build();
-			}
 
 			LOG.info("Successfully got users subscribed to : "+ instId);
 			txn.commit();
@@ -570,7 +565,7 @@ public class InstitutionResource {
 	}
 	
 	
-	
+	//conta com login
 	@GET
 	@Path(GET_INSTS_PATH)
 	public Response getInsts(@QueryParam("tokenId") String tokenId) {
@@ -614,7 +609,7 @@ public class InstitutionResource {
 		}
 	}
 	
-	
+	//gbo & ga
 	@POST
 	@Path(CHANGE_STATUS_PATH)
 	public Response changeStatus(@QueryParam("tokenId") String tokenId, @PathParam("instId") String instId, Boolean change) {
@@ -657,7 +652,7 @@ public class InstitutionResource {
 	}
 	
 	
-	
+	//gbo & ga
 	@GET
 	@Path(GET_STATUS_PATH)
 	public Response getStatus(@QueryParam("tokenId") String tokenId, @PathParam("instId") String instId) {
@@ -692,7 +687,6 @@ public class InstitutionResource {
 					}
 				}
 	}
-	
 	
 
 }
