@@ -163,25 +163,8 @@ public class RegisterActivity extends AppCompatActivity {
                 typeSelected = (String) parent.getItemAtPosition(position);
                 if(typeSelected.equals("Utilizador"))
                     registerUser();
-                else if(typeSelected.equals("Instituição"))
-                    registerInstitution();
                 else{
-                    txt_name.setVisibility(View.INVISIBLE);
-                    et_name.setVisibility(View.INVISIBLE);
-                    txt_username.setVisibility(View.INVISIBLE);
-                    et_username.setVisibility(View.INVISIBLE);
-                    txt_initials.setVisibility(View.INVISIBLE);
-                    et_initials.setVisibility(View.INVISIBLE);
-                    txt_email.setVisibility(View.INVISIBLE);
-                    et_email.setVisibility(View.INVISIBLE);
-                    txt_password.setVisibility(View.INVISIBLE);
-                    et_password.setVisibility(View.INVISIBLE);
-                    et_password_info.setVisibility(View.INVISIBLE);
-                    txt_confirm_password.setVisibility(View.INVISIBLE);
-                    et_confirm_password.setVisibility(View.INVISIBLE);
-                    et_confirm_info.setVisibility(View.INVISIBLE);
-                    btn_register.setVisibility(View.INVISIBLE);
-
+                    registerInstitution();
                 }
 
             }

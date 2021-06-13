@@ -31,9 +31,9 @@ public class AppPreferenceTools {
                 .putString(this.mContext.getString(R.string.user_username), userAuthenticated.getUsername())
                 .putString(this.mContext.getString(R.string.token_id), userAuthenticated.getTokenID().getTokenId())
                 .putString(this.mContext.getString(R.string.role), userAuthenticated.getRole())
-                .putString(this.mContext.getString(R.string.creation_date), userAuthenticated.getCreationDate().toString())
+                .putLong(this.mContext.getString(R.string.creation_date), userAuthenticated.getCreationDate())
                 .putString(this.mContext.getString(R.string.refresh_token), userAuthenticated.getTokenID().getRefresh_token())
-                .apply();
+                .commit();
     }
 
     public void saveUserInfo(UserAuthenticated userAuthenticated){
@@ -93,6 +93,6 @@ public class AppPreferenceTools {
      * removes prefs in logout
      */
     public void removeAllPrefs(){
-        mPreferences.edit().clear().apply();
+        mPreferences.edit().clear().commit();
     }
 }
