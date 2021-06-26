@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.ws.rs.*;
@@ -21,493 +22,179 @@ import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
+import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
-import helpinghand.util.user.StatisticsInfo;
-import helpinghand.util.user.UserBasicInfo;
-import helpinghand.util.user.UserDetails;
-import helpinghand.util.user.UserInfo;
-import helpinghand.util.user.UserProfile;
+import helpinghand.util.QueryUtils;
+
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PROPERTY;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
+import static helpinghand.resources.UserResource.USER_ID_PARAM;
+import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ROLE_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_STATUS_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_CREATION_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 
 @Path(BackOfficeResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class BackOfficeResource {
 
-	// Constants
-	private static final String USER_INFO_FORMAT = "%s_info"; // used in checksum for authentication token
-	private static final String USER_PROFILE_FORMAT = "%s_profile"; // used in checksum for authentication token
-	private static final String USER_KIND = "User";
-	private static final String USER_INFO_KIND = "UserInfo";
-	private static final String USER_PROFILE_KIND = "UserProfile";
-
+	
+	private static final String DATASTORE_EXCEPTION_ERROR = "Error in BackOfficeResource: %s";
+	private static final String TRANSACTION_ACTIVE_ERROR = "Error in BackOfficeResource: Transaction was active";
+	
+	private static final String TOKEN_JURISDICTION_ERROR = "Token [%s](access %d) cannot alter higher or same level account [%s](access %d)";
+	private static final String TOKEN_POWER_ERROR = "Token [%s](access %d) cannot change an account's role to a higher level (access %d)";
+	
+	private static final String UPDATE_ROLE_START = "Attempting to update role of user [%s] to [%s]";
+	private static final String UPDATE_ROLE_OK = "Successfulty to updated role of user [%s] to [%s]";
+	private static final String UPDATE_ROLE_BAD_DATA_ERROR = "Update role attempt failed due to bad inputs";
+	private static final String UPDATE_ROLE_UPDATE_ERROR = "Update role attempt failed while changing account's role";
+	
+	private static final String LIST_ROLE_START = "Attempting to get [%s] account with token [%s]";
+	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token [%s]";
+	private static final String LIST_ROLE_BAD_DATA_ERROR = "List accounts by role attempt failed due to bad inputs";
+	
+	private static final String DAILY_STATS_START = "Attempting to get [%s] account with token [%s]";
+	private static final String DAILY_STATS_OK = "Successfulty to got [%s] accounts with token [%s]";
+	private static final String DAILY_STATS_BAD_DATA_ERROR = "List accounts by role attempt failed due to bad inputs";
+	
+	
+	
+	private static final String USER_ROLE_PARAM = "role";
+	private static final String START_DATE_PARAM = "startDate";
+	private static final String END_DATE_PARAM = "endDate";
+	
 	// Paths
+	//TODO:fix paths
 	public static final String PATH = "/restricted";
-	private static final String DELETE_PATH = "/delete/{userId}"; // DELETE
-	private static final String DISABLE_PATH = "/disable/{userId}"; // PUT
-	private static final String CHANGE_ROLE_PATH = "/{userId}/{role}"; //PUT
-	private static final String LIST_PATH = "/list"; // GET
-	private static final String LIST_ROLE_PATH = "/role/{role}"; // GET
-	private static final String DETAILS_PATH = "/{userId}/details"; // GET
-	private static final String INFO_PATH = "/{userId}/info"; // GET
-	private static final String PROFILE_PATH = "/{userId}/profile"; // GET
+	private static final String CHANGE_ROLE_PATH = "/"+USER_ID_PARAM+"/role"; //PUT
+	private static final String LIST_ROLE_PATH = "/role"; // GET
 	private static final String DAILY_USERS_PATH = "/dailyUsers"; // GET
 	
 
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-	private KeyFactory userKeyFactory = datastore.newKeyFactory().setKind(USER_KIND);
 
 	// logger object
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
 	
 	private final Gson g = new Gson();
 
-	public BackOfficeResource() {
-	}
+	public BackOfficeResource() {}
 
-	@DELETE
-	@Path(DELETE_PATH)
-	public Response deleteAccount(@PathParam("userId") String userId, String tokenId) {
-		log.info(String.format("Attempting to delete account for user {%s}", userId));
-		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para apagar
-		
-		Key userKey = userKeyFactory.newKey(userId);
-		Key userInfoKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_INFO_KIND)
-				.newKey(String.format(USER_INFO_FORMAT, userId));
-		Key userProfileKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_PROFILE_KIND)
-				.newKey(String.format(USER_PROFILE_FORMAT, userId));
-		
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID:{%s} does not exist", userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			//TODO: Se estiver logado, terminar sessao da conta
-			
-			txn.delete(userInfoKey, userProfileKey, userKey);
-			log.info("User " + userId + " has successfully been removed!");
-			txn.commit();
-			return Response.ok().build();
-		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on deleting account: %s", e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after deleting account.");
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
-	}
-	
-	@PUT
-	@Path(DISABLE_PATH)
-	public Response disableAccount(@PathParam("userId") String userId, String tokenId) {
-		log.info(String.format("Attempting to delete account for user {%s}", userId));
-		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para dar disable
-		
-		Key userKey = userKeyFactory.newKey(userId);
-		
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID:{%s} does not exist", userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			//TODO: Se estiver logado, terminar sessao da conta
-			
-			Entity updatedUser = Entity.newBuilder(user).set("status", false).build();
-			txn.update(updatedUser);
-			
-			log.info("User " + userId + " has successfully been disabled!");
-			txn.commit();
-			return Response.ok().build();
-		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on disabling account: %s", e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after disabling account.");
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
-	}
 	
 	@PUT
 	@Path(CHANGE_ROLE_PATH)
-	public Response changeRoleAccount(@PathParam("userId") String userId, @PathParam("role") String role, String tokenId) {
-		log.info(String.format("Attempting to change role for user {%s} to role {%s}", userId, role));
+	public Response changeRoleAccount(@PathParam(USER_ID_PARAM) String id, @QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
+		log.info(String.format(UPDATE_ROLE_START, id, role));
+		Role targetRole = Role.getRole(role);
+		if(badString(id) || targetRole == null || badString(token)) {
+			log.warning(UPDATE_ROLE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}	
 		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para obter esta operacao
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+		}
 		
-		Key userKey = userKeyFactory.newKey(userId);
-		Transaction txn = datastore.newTransaction();
+		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND,TOKEN_ID_PROPERTY,token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+		}
 		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID:{%s} does not exist", userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			//TODO: Verificar se o utilizador de backoffice nao esta a tentar mudar o role de um utilizador com role igual ou superior
-			
-			String role_name = role.trim().toUpperCase();
-			Role new_role = Role.getRole(role_name);
-			
-			if(new_role == null) {
-				txn.rollback();
-				String message = String.format("Role {%s} is not valid", role);
-				log.warning(message);
-				return Response.status(Status.BAD_REQUEST).entity(message).build();
-			}
-			
-			Entity changedUser =  Entity.newBuilder(user).set("role", new_role.name()).build();
-			
-			txn.update(changedUser);
-			txn.commit();
-			log.info(String.format("Changed role of user with ID:{%s}", userId));
+		Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+		Role accountRole = Role.getRole(account.getString(ACCOUNT_ROLE_PROPERTY));
+		
+		if(tokenRole.getAccess() <= accountRole.getAccess()) {
+			log.warning(String.format(TOKEN_JURISDICTION_ERROR,token,tokenRole.getAccess(),account,accountRole.getAccess()));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(tokenRole.getAccess() < targetRole.getAccess()) {
+			log.warning(String.format(TOKEN_POWER_ERROR, token,tokenRole.getAccess(),targetRole.getAccess()));
+		}
+		
+		if(AccessControlManager.changeRole(id,targetRole)) {
+			log.info(String.format(UPDATE_ROLE_OK ,id,targetRole.name()));
 			return Response.ok().build();
 		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on changing role: %s", e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after changing role.");
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
-	}
-	
-	@GET
-	@Path(LIST_PATH)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response listAccounts(String tokenId) {
-		log.info("Attempting to get list of users.");
-		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para obter esta listagem
-		
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind("User").build();
-		List<UserBasicInfo> data = new LinkedList<UserBasicInfo>();
-		
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		
-		try {
-			
-			QueryResults<Entity> users = txn.run(query);
-			
-			while(users.hasNext()) {
-				Entity user = users.next();
-				data.add(new UserBasicInfo(user.getKey().getName(), user.getBoolean("status")));
-			}
-			
-			log.info("Got list of users.");
-			txn.commit();
-			return Response.ok(g.toJson(data)).build();
-		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on listing users: %s", e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after listing users.");
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
+		log.severe(UPDATE_ROLE_UPDATE_ERROR);
+		return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 	}
 	
 	@GET
 	@Path(LIST_ROLE_PATH)
 	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response listAccountsRole(@PathParam("role") String role, String tokenId) {
-		log.info(String.format("Attempting to get list of users of role {%s}", role));
+	public Response listAccountsByRole(@PathParam("role") String role, @QueryParam(TOKEN_ID_PARAM)String token) {
 		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para obter esta listagem
-		
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind("User").build();
-		List<UserBasicInfo> data = new LinkedList<UserBasicInfo>();
-		
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		
-		try {
-			
-			QueryResults<Entity> users = txn.run(query);
-			String role_name = role.trim().toUpperCase();
-			Role user_role = Role.getRole(role_name);
-			
-			while(users.hasNext()) {
-				Entity user = users.next();
-				String current_role_name = user.getString("role");
-				Role current_user_role = Role.getRole(current_role_name);
-				
-				if(user_role.equals(current_user_role))
-					data.add(new UserBasicInfo(user.getKey().getName(), user.getBoolean("status")));
-			}
-			
-			log.info(String.format("Got list of users for role {%s}", role));
-			txn.commit();
-			return Response.ok(g.toJson(data)).build();
+		Role roleParam = Role.getRole(role);
+		if(roleParam == null || badString(token)) {
+			log.warning(LIST_ROLE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on listing users for role {%s}: %s", role, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after listing users for role {%s}.", role);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
-	}
-	
-	@GET
-	@Path(DETAILS_PATH)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response accountDetails(@PathParam("userId") String userId, String tokenId) {
-		log.info(String.format("Attempting to get account details of user {%s}", userId));
+		log.info(String.format(LIST_ROLE_START,roleParam.name(),token));
 		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para obter esta listagem
+		List<Entity> entities = QueryUtils.getEntityListByProperty(ACCOUNT_KIND, ACCOUNT_ROLE_PROPERTY, roleParam.name());
+		List<String[]> data = entities.stream().map(entity->new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))}).collect(Collectors.toList());
 		
-		Key userKey = userKeyFactory.newKey(userId);
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID:{%s} does not exist", userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			UserDetails data = new UserDetails(user.getKey().getName(), user.getString("email"), user.getBoolean("status"), user.getString("role"),
-					user.getTimestamp("creation").toString());
-			
-			log.info("Account details of user {" + userId + "} have been successfully retrieved.");
-			txn.commit();
-			return Response.ok(g.toJson(data)).build();
-		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on getting account details for user {%s}: %s", userId, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after getting account details for user {%s}.", userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
-	}
-	
-	@GET
-	@Path(INFO_PATH)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response accountInfo(@PathParam("userId") String userId, String tokenId) {
-		log.info(String.format("Attempting to get account info of user {%s}", userId));
-		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para obter esta listagem
-		
-		Key userKey = userKeyFactory.newKey(userId);
-		
-		Key infoKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_INFO_KIND)
-				.newKey(String.format(USER_INFO_FORMAT, userId));
-		
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID:{%s} does not exist", userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			Entity info = txn.get(infoKey);
-
-			UserInfo data = new UserInfo(info.getString("phone"),
-					info.getString("address1"), 
-					info.getString("address2"), 
-					info.getString("city"),
-					info.getString("zip"));
-			
-			log.info("Account info of user {" + userId + "} has been successfully retrieved.");
-			txn.commit();
-			return Response.ok(g.toJson(data)).build();
-		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on getting account info for user {%s}: %s", userId, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after getting info details for user {%s}.", userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
-	}
-	
-	@GET
-	@Path(PROFILE_PATH)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response accountProfile(@PathParam("userId") String userId, String tokenId) {
-		log.info(String.format("Attempting to get account info of user {%s}", userId));
-		
-		//TODO: Verificar se o tokenId pertence a alguem do backoffice e se tem permissoes para obter esta listagem
-		
-		Key userKey = userKeyFactory.newKey(userId);
-		
-		Key profileKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_PROFILE_KIND)
-				.newKey(String.format(USER_PROFILE_FORMAT, userId));
-		
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID:{%s} does not exist", userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			Entity profile = txn.get(profileKey);
-
-			UserProfile data = new UserProfile(profile.getBoolean("public"),
-					profile.getString("name"),
-					profile.getString("bio"));
-			
-			log.info("Account profile of user {" + userId + "} has been successfully retrieved.");
-			txn.commit();
-			return Response.ok(g.toJson(data)).build();
-		}
-		catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("Datastore Exception on getting profile info for user {%s}: %s", userId, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after getting profile details for user {%s}.", userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
+		log.info(String.format(LIST_ROLE_OK, roleParam.name(),token));
+		return Response.ok(g.toJson(data)).build();
 	}
 
 	@GET
 	@Path(DAILY_USERS_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response dailyUsers(StatisticsInfo data) {
-		log.info(String.format("Attempting to get daily user statistics of user."));
+	public Response dailyStatistics(@QueryParam(TOKEN_ID_PARAM) String token,@QueryParam(START_DATE_PARAM)String startDate,@QueryParam(END_DATE_PARAM)String endDate) {
+		if(badString(token) || badString(startDate) || badString(endDate)) {
+			log.warning(DAILY_STATS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
 		
-		//TODO: Verificar se o data.tokenId pertence a alguem do backoffice e se tem permissoes para obter estas estatisticas
+		log.info(String.format(DAILY_STATS_START,startDate,endDate,token));
 		
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind("User").build();
 		
-		Map<LocalDate, Integer> map = this.initializeMap(data.startDate, data.endDate);
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).build();
+		
+		Map<LocalDate, Integer> map = initializeMap(startDate, endDate);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		
 		try {
-			
 			QueryResults<Entity> users = txn.run(query);
-			
+			txn.commit();
 			while(users.hasNext()) {
 				Entity user = users.next();
 				
-				String creation = user.getString("creation");
-				LocalDate creation_date = this.stampToDate(creation);
+				String creation = user.getString(ACCOUNT_CREATION_PROPERTY);
+				LocalDate creationDate = LocalDate.parse(creation);
 				
-				if(map.containsKey(creation_date)) {
-					int counter = map.get(creation_date);
+				if(map.containsKey(creationDate)) {
+					int counter = map.get(creationDate);
 					counter++;
-					map.put(creation_date, counter);
+					map.put(creationDate, counter);
 				}
 			}
 			
-			log.info(String.format("Got the mapping of users to day."));
-			txn.commit();
+			log.info(String.format(DAILY_STATS_OK));
 			return Response.ok(g.toJson(map)).build();
 		}
 		catch (DatastoreException e) {
 			txn.rollback();
-			String message = String.format("Datastore Exception on mapping day to users: %s", e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 			if (txn.isActive()) {
 				txn.rollback();
-				String message = "Transaction was active after mapping day to users.";
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
-	}
-	
-	private LocalDate stampToDate(String timestamp) {
-		String[] pre_tokens = timestamp.split("T");
-		String[] tokens = pre_tokens[0].split("-");
-		
-		LocalDate date = LocalDate.of(Integer.parseInt(tokens[0]), Integer.parseInt(tokens[1]), Integer.parseInt(tokens[2]));
-		
-		return date;
 	}
 	
 	private Map<LocalDate, Integer> initializeMap(String startDate, String endDate) {

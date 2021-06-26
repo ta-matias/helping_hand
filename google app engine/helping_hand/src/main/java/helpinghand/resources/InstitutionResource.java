@@ -3,9 +3,11 @@
  */
 package helpinghand.resources;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -22,62 +24,132 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
-import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import com.google.cloud.datastore.KeyFactory;
+import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.Value;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
-import com.google.gson.Gson;
+import com.google.datastore.v1.TransactionOptions;
+import com.google.datastore.v1.TransactionOptions.ReadOnly;
 
-import helpinghand.util.ChangePass;
-import helpinghand.util.Login;
-import helpinghand.util.inst.*;
+import helpinghand.util.QueryUtils;
+import helpinghand.util.account.*;
 import helpinghand.accesscontrol.AccessControlManager;
+import helpinghand.accesscontrol.Role;
+
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
+import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+
 /**
  * @author PogChamp Software
  *
  */
 @Path(InstitutionResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-public class InstitutionResource {
+public class InstitutionResource extends AccountUtils{
 
+	private static final String DATASTORE_EXCEPTION_ERROR = "Error in InstitutionResource: %s";
+	private static final String TRANSACTION_ACTIVE_ERROR = "Error in InstitutionResource: Transaction was active";
+	
+	private static final String GET_ALL_START ="Attempting to get all institutions with token [%s]";
+	private static final String GET_ALL_OK ="Successfuly got all institutions with token [%s]";
+	private static final String GET_ALL_BAD_DATA_ERROR = "Get all institutions attempt failed due to bad input";
+	
+	private static final String GET_MEMBERS_START ="Attempting to get all institution [%s] members with token [%s]";
+	private static final String GET_MEMBERS_OK ="Successfuly got all institution [%s] members with token [%s]";
+	private static final String GET_MEMBERS_BAD_DATA_ERROR = "Get institutions members attempt failed due to bad input";
+	
+	private static final String ADD_MEMBER_START ="Attempting to get add member [%s] to institution [%s] with token [%s]";
+	private static final String ADD_MEMBER_OK ="Successfuly added member [%s] to institution [%s] with token [%s]";
+	private static final String ADD_MEMBER_BAD_DATA_ERROR = "Add member to institution attempt failed due to bad input";
+	private static final String ADD_MEMBER_CONFLICT_ERROR = "Account [%s] is already a member of institution [%s]";
+
+	private static final String REMOVE_MEMBER_START ="Attempting to remove member [%s] from institution [%s] with token [%s]";
+	private static final String REMOVE_MEMBER_OK ="Successfuly removed member [%s] from institution [%s] with token [%s]";
+	private static final String REMOVE_MEMBER_BAD_DATA_ERROR = "Remove member from institution  attempt failed due to bad input";
+	private static final String REMOVE_MEMBER_NOT_FOUND_ERROR = "Account [%s] is not a member of institution [%s]";
+	
+	private static final String INSTITUTION_ID_PARAM = "instId";
+	private static final String INSTITUTION_MEMBER_ID_PARAM = "memberId";
+	
+	
 	//Paths
 	public static final String PATH = "/institution";
-	private static final String CREATE_PATH="/"; //POST
-	private static final String LOGIN_PATH="/{instId}/login"; //POST
-	private static final String LOGOUT_PATH="/{instId}/logout"; //POST
-	private static final String DELETE_PATH="/{instId}"; //DELETE
-	private static final String UPDATE_PATH="/{instId}"; //PUT
-	private static final String GET_PATH="/{instId}"; //GET
-	private static final String CHANGE_PASSWORD_PATH="/{instId}/password"; //PUT
-	private static final String ADD_SUBSCRIBER_PATH="/{instId}/subscribers"; //POST
-	private static final String REMOVE_SUBSCRIBER_PATH="/{instId}/subscribers"; //DELETE
-	private static final String GET_SUBSCRIBERS_PATH="/{instId}/subscribers"; //GET
-	private static final String GET_INSTS_PATH="/getInsts";//GET
-	private static final String CHANGE_STATUS_PATH="/{instId}/changeStatus";
-	private static final String GET_STATUS_PATH="/{instId}/getStatus";
+	private static final String GET_INSTS_PATH="";//GET
+	private static final String CREATE_PATH=""; //POST
+	private static final String DELETE_PATH="/{"+INSTITUTION_ID_PARAM+"}"; //DELETE
+	private static final String LOGIN_PATH="/{"+INSTITUTION_ID_PARAM+"}/login"; //POST
+	private static final String LOGOUT_PATH="/{"+INSTITUTION_ID_PARAM+"}/logout"; //POST
+	private static final String UPDATE_ID_PATH="/{"+INSTITUTION_ID_PARAM+"}/id";//PUT
+	private static final String UPDATE_PASSWORD_PATH="/{"+INSTITUTION_ID_PARAM+"}/password"; //PUT
+	private static final String UPDATE_EMAIL_PATH="/{"+INSTITUTION_ID_PARAM+"}/email"; //PUT
+	private static final String UPDATE_STATUS_PATH="/{"+INSTITUTION_ID_PARAM+"}/status"; //PUT
+	private static final String UPDATE_VISIBILITY_PATH="/{"+INSTITUTION_ID_PARAM+"}/visibility";//PUT
+	private static final String UPDATE_INFO_PATH="/{"+INSTITUTION_ID_PARAM+"}/info"; //PUT
+	private static final String GET_INFO_PATH="/{"+INSTITUTION_ID_PARAM+"}/info"; //GET
+	private static final String UPDATE_PROFILE_PATH="/{"+INSTITUTION_ID_PARAM+"}/profile"; //PUT
+	private static final String GET_PROFILE_PATH="/{"+INSTITUTION_ID_PARAM+"}/profile"; //GET
+	private static final String ADD_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //POST
+	private static final String REMOVE_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //DELETE
+	private static final String GET_MEMBERS_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //GET
 
-	//Kinds
-	private static final String INSTKIND = "Inst";
-	private static final String USERINSTKIND = "Sub";
-
-	private static final Logger LOG = Logger.getLogger(InstitutionResource.class.getName());
-	private	final	Datastore datastore	= DatastoreOptions.getDefaultInstance().getService();
-
-	//Key factories
-	private final KeyFactory instKeyFactory = datastore.newKeyFactory().setKind(INSTKIND);
-
-	private final Gson g = new Gson();
-
-	public InstitutionResource() {}
-
+	
+	private static final Logger log = Logger.getLogger(InstitutionResource.class.getName());
+	
+	public InstitutionResource() {super();}
+	
+	
+	
+	/**
+	 * Obtains a list with the id and current status of all institutions
+	 * @param token - token of the user doing this operation
+	 * @return 200, if the operation was successful.
+	 * 		   500, otherwise.
+	 */
+	@GET
+	@Path(GET_INSTS_PATH)
+	public Response getAll(@QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(token)) {
+			log.info(GET_ALL_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(GET_ALL_START, token));
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.INSTITUTION.name())).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+			QueryResults<Entity> results= txn.run(query);	
+			txn.commit();
+			List<String[]> institutions = new LinkedList<>();
+			
+			results.forEachRemaining(entity -> {
+				institutions.add(new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))});
+			});
+			
+			log.info(String.format(GET_ALL_OK,token));
+			return Response.ok(g.toJson(institutions)).build();
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
 	/**
 	 * Creates a new institution.
 	 * @param data - The institution data that contains the name, the initials, the instId,
@@ -90,56 +162,93 @@ public class InstitutionResource {
 	@POST
 	@Path(CREATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response createInst(InstData data) {
-		LOG.fine("Registering attempt by: " + data.instId);
-
-		//see if data provided is valid(non null and follows rules)
-		if(!data.validate()) 
-			return Response.status(Status.BAD_REQUEST).entity("Invalid Attributes!").build();
-
-		Key instKey = instKeyFactory.newKey(data.instId);
-
+	public Response createAccount(InstitutionCreationData data) {
+		if(data.badData()) {
+			log.warning(CREATE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(CREATE_START,data.email,Role.USER.name()));
+		
+		Entity check1 = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, data.id);
+		if(check1 != null) {
+			log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
+			return Response.status(Status.CONFLICT).build();
+		}
+		
+		Entity check2 = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_EMAIL_PROPERTY, data.email);
+		if(check2 != null) {
+			log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
+			return Response.status(Status.CONFLICT).build();
+		}
+		
+		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
+		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_INFO_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
+		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(INSTITUTION_PROFILE_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
+		
+		LocalDateTime now = LocalDateTime.now();
+		
+		Entity account = Entity.newBuilder(accountKey)
+		.set(ACCOUNT_ID_PROPERTY, data.id)
+		.set(ACCOUNT_EMAIL_PROPERTY,data.email)
+		.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(DigestUtils.sha512Hex(data.password)).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_ROLE_PROPERTY,Role.INSTITUTION.name())
+		.set(ACCOUNT_CREATION_PROPERTY, now.toString())
+		.set(ACCOUNT_STATUS_PROPERTY,ACCOUNT_STATUS_DEFAULT_INSTITUTION)
+		.set(ACCOUNT_VISIBILITY_PROPERTY, ACCOUNT_VISIBLE_DEFAULT)
+		.build();
+		
+		Entity accountInfo = Entity.newBuilder(accountInfoKey)
+		.set(ACCOUNT_INFO_PHONE_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_INFO_ADDRESS_1_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_INFO_ADDRESS_2_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_INFO_ZIPCODE_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
+		.set(ACCOUNT_INFO_CITY_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
+		.build();
+		
+		Entity institutionProfile = Entity.newBuilder(institutionProfileKey)
+		.set(PROFILE_NAME_PROPERTY, data.name)
+		.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
+		.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(INSTITUTION_PROFILE_CATEGORIES_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
+		.build();
+		
+		
 		Transaction txn = datastore.newTransaction();
-
 		try {
-
-			Entity inst = txn.get(instKey);
-
-			if(inst != null) {
-				txn.rollback();
-				return Response.status(Status.CONFLICT).entity("The institution already exists!").build();
-			}
-
-			inst = Entity.newBuilder(instKey)
-					.set("instId", data.instId)
-					.set("email", data.email)
-					.set("password",StringValue.newBuilder(DigestUtils.sha512Hex(data.password)).setExcludeFromIndexes(true).build())
-					.set("name", data.name)
-					.set("initials", data.initials)
-					.set("address", "")
-					.set("addressComp", "")
-					.set("location", "")
-					.set("phone", "")
-					.set("status", false) //inactive, pending verification
-					.build();
-			
-			txn.add(inst);
-			LOG.info("Institution " + data.instId + " has been successfully registered!");
+			txn.add(account,accountInfo,institutionProfile);
 			txn.commit();
-			return Response.ok().build();	
+			log.info(String.format(CREATE_OK,data.id,Role.USER.name()));
+			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction as active!").build();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
 	}
+	
 
+	/**
+	 * Deletes an institution given its institution identification and the token identification.
+	 * @param instId - The institution identification that is going to be deleted.
+	 * @param tokenId - The token identification from this institution.
+	 * @return 200, if the deletion was successful.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@DELETE
+	@Path(DELETE_PATH)
+	public Response deleteAccount(@PathParam(INSTITUTION_ID_PARAM) String email, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.deleteAccount(email, token);
+	}
+	
+	
 	/**
 	 * A institution login is performed.
 	 * @param instId - The institution id that is going to login.
@@ -151,20 +260,11 @@ public class InstitutionResource {
 	@POST
 	@Path(LOGIN_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response loginInst(@PathParam("instId") String instId, Login data) {
-		LOG.fine("Login attempt by: " + instId);
-
-		if(!data.validate() || !instId.equals(data.clientId)) 
-			return Response.status(Status.BAD_REQUEST).entity("Invalid Attributes!").build();
-
-		String token = AccessControlManager.startSessionInst(data.clientId, data.password);
-
-		if(token == null)
-			return Response.status(Status.FORBIDDEN).entity("Login Failed").build();
-
-		return Response.ok(token).build();
+	public Response login(Login data) {
+		return super.login(data);
 	}
 
+	
 	/**
 	 * A institution logout is performed.
 	 * @param instId - The institution id that is going to logout.
@@ -174,174 +274,27 @@ public class InstitutionResource {
 	 */
 	@DELETE
 	@Path(LOGOUT_PATH)
-	public Response logoutInst(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId) {
-		LOG.fine("Logout attempt by: " + instId);
-
-		//ends a session, deleting token
-		if(!AccessControlManager.endSession(tokenId)) 
-			return Response.status(Status.FORBIDDEN).entity("Logout failed").build();
-
-		return Response.ok().build();
+	public Response logout(@QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.logout(token);
 	}
-
+	
 	/**
-	 * Deletes an institution given its institution identification and the token identification.
-	 * @param instId - The institution identification that is going to be deleted.
-	 * @param tokenId - The token identification from this institution.
-	 * @return 200, if the deletion was successful.
+	 * Changes the id of the institution.
+	 * @param instId - The institution id that is going to change the password.
+	 * @param tokenId - The token id from this institution.
+	 * @param data - The new password data for this institution.
+	 * @return 200, if the institution has successfully changed the password.
+	 * 		   400, if the data to change password is invalid.
+	 * 		   403, if the password is not the same.
 	 * 		   404, if the institution does not exist.
-	 * 		   500, otherwise.
-	 */
-	// TODO: Inst  (gbo & ga se token nao pertencer a instituicao a ser apagada) 
-	@DELETE
-	@Path(DELETE_PATH)
-	public Response deleteInst(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId) {
-		//login token handling needed here
-		LOG.fine("Deleting attempt with token: " + tokenId);
-
-		Key instKey = instKeyFactory.newKey(instId);
-
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity inst = txn.get(instKey);
-
-			if(inst == null) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("Inst does not exist!").build();
-			}
-
-			if(!AccessControlManager.endSession(tokenId)) {
-				//Logout failed, should never happen but can if there is a datastore error or exception
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Failed to end user session!").build();
-			}
-			txn.delete(instKey);
-			LOG.info("User " + instId + " has successfully been removed!");
-			txn.commit();
-			return Response.ok().build();
-		}
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}	
-		}
-	}
-
-	/**
-	 * Updates the institution data of the instId.
-	 * @param instId - The institution identification.
-	 * @param tokenId - The token identification from this institution.
-	 * @param data - The updated data for this institution.
-	 * @return 200, if the institution has successfully updated its data.
-	 * 		   400, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
-	@Path(UPDATE_PATH)
-	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateInst(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId, InstDataPublic data) {
-		LOG.fine("Changing attributes attempt by: " + instId);
-
-		Key instKey = instKeyFactory.newKey(instId);
-
-		Transaction txn = datastore.newTransaction();
-
-		try {
-
-			Entity inst = txn.get(instKey);
-
-			if(inst == null) {
-				txn.rollback();
-				return Response.status(Status.BAD_REQUEST).entity("The institution does not exist!").build();
-			} 
-
-			//more readable this way
-			Entity newInst = Entity.newBuilder(inst)
-					.set("name", data.name)
-					.set("initials", data.initials)
-					.set("address", data.address)
-					.set("addressComp", data.addressComp)
-					.set("location", data.location)
-					.set("phone", data.phone)
-					.build();
-
-			txn.update(newInst);//update fails if there is nothing to update, more secure
-
-			LOG.info("User " + instId + " has successfully changed attributes!");
-			txn.commit();
-			return Response.ok().build();
-		}
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}
-		}		
+	@Path(UPDATE_ID_PATH)
+	public Response updateId(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeId data, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateId(id, data, token);
 	}
-
-	/**
-	 * Obtains the institution data.
-	 * @param instId - The institution id that is going to be used to obtain its data.
-	 * @param tokenId - The token id from this institution.
-	 * @return 200, if the operation was successful.
-	 * 		   404, if the institution does not exist.
-	 * 		   500, otherwise.
-	 */
-	@GET
-	@Path(GET_PATH)
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getInst(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId) {
-		//login token handling needed here, maybe verification for confirmed status
-		LOG.fine("Getting attributes attempt by: " + instId);
-
-		Key instKey = instKeyFactory.newKey(instId);
-
-		Transaction txn = datastore.newTransaction();
-
-		try {
-			Entity inst = txn.get(instKey);
-
-			if(inst == null) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("Inst does not exist").build();
-			}
-
-			//just made it like this to read more easily
-			InstDataPublic publicData = new InstDataPublic(
-					inst.getString("name"),
-					inst.getString("initials"),
-					inst.getString("address1"), 
-					inst.getString("address2"), 
-					inst.getString("city"), 
-					inst.getString("phone")
-					);
-
-			LOG.info("User " + instId + " has successfully got his own attributes!");
-			txn.commit();
-			return Response.ok(g.toJson(publicData)).build();
-		} 
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}
-		}
-	}
-
+	
 	/**
 	 * Changes the password of the institution.
 	 * @param instId - The institution id that is going to change the password.
@@ -354,159 +307,229 @@ public class InstitutionResource {
 	 * 		   500, otherwise.
 	 */
 	@PUT
-	@Path(CHANGE_PASSWORD_PATH)
-	public Response changeInstPassword(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId, ChangePass data) {
-		//login token handling needed here, maybe verification for confirmed status
-		LOG.fine("Changing password attempt by: " + instId);
+	@Path(UPDATE_PASSWORD_PATH)
+	public Response updatePassword(@PathParam(INSTITUTION_ID_PARAM) String id, ChangePassword data, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updatePassword(id, data, token);
+	}
+	
+	/**
+	 * Changes the email of the institution.
+	 * @param email - The institution that is going to change the password.
+	 * @param token - The token id of who is changing the password.
+	 * @param data - The new email data for this institution.
+	 * @return 200, if the institution has successfully changed the email.
+	 * 		   400, if the data to change email is invalid.
+	 * 		   403, if the password is not the same.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_EMAIL_PATH)
+	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeEmail data , @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateEmail(id, data, token);
+	}
+	
+	/**
+	 * Changes the status of the institution.
+	 * @param email - The institution that is going to change the password.
+	 * @param token - The token id of who is changing the password.
+	 * @param data - The new status data for this institution.
+	 * @return 200, if the institution has successfully changed the email.
+	 * 		   400, if the data to change email is invalid.
+	 * 		   403, if the password is not the same.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_STATUS_PATH)
+	public Response updateStatus( @PathParam(INSTITUTION_ID_PARAM) String id, ChangeStatus data,  @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateStatus(id, data, token);
+	}
+	
+	/**
+	 * Changes the visibility of the institution.
+	 * @param email - The institution that is going to change the password.
+	 * @param token - The token id of who is changing the password.
+	 * @param data - The new status data for this institution.
+	 * @return 200, if the institution has successfully changed the email.
+	 * 		   400, if the data to change email is invalid.
+	 * 		   403, if the password is not the same.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_VISIBILITY_PATH)
+	public Response updateVisibility( @PathParam(INSTITUTION_ID_PARAM) String id, ChangeVisibility data,  @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateVisibility(id, data, token);
+	}
+	
+	/**
+	 * Obtains the institution account info.
+	 * @param instId - The institution id that is going to be used to obtain its data.
+	 * @param tokenId - The token id from this institution.
+	 * @return 200, if the operation was successful.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@GET
+	@Path(GET_INFO_PATH)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getAccountInfo(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.getAccountInfo(id,token);
+	}
+	
+	/**
+	 * Updates the institution account info.
+	 * @param instId - The institution identification.
+	 * @param tokenId - The token identification from this institution.
+	 * @param data - The updated data for this institution.
+	 * @return 200, if the institution has successfully updated its data.
+	 * 		   400, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_INFO_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateAccountInfo(@PathParam(INSTITUTION_ID_PARAM) String id, AccountInfo data, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateAccountInfo(id, data, token);
+	}
 
-		if(!data.validate())
-			return Response.status(Status.BAD_REQUEST).entity("Invalid data!").build();
+	/**
+	 * Obtains the institution profile.
+	 * @param instId - The institution id that is going to be used to obtain its data.
+	 * @param tokenId - The token id from this institution.
+	 * @return 200, if the operation was successful.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@GET
+	@Path(GET_PROFILE_PATH)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getProfile(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(id) || badString(token)) {
+			log.warning(GET_PROFILE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
 		
-		Key instKey = instKeyFactory.newKey(instId);
-
-		Transaction txn = datastore.newTransaction();
-
-		try {
-			Entity inst = txn.get(instKey);
-
-			if(inst == null ) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("The institution does not exist!").build();
-			} 
-
-			if(!inst.getString("password").equals(DigestUtils.sha512Hex(data.oldPassword))) {
-				txn.rollback();
-				return Response.status(Status.FORBIDDEN).entity("Invalid Attributes!").build();
+		log.info(String.format(GET_PROFILE_START,token));
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if( !account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
 			}
-
-			Entity newInst = Entity.newBuilder(inst)
-					.set("password", DigestUtils.sha512Hex(data.newPassword))
-					.build();
-
-			txn.update(newInst);
-
-			LOG.info("User " + instId + " has successfully changed passwords!");
+		}
+		
+		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,INSTITUTION_PROFILE_KIND);
+		if(lst.size() > 1 || lst.isEmpty()) {
+			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		Entity instProfile = lst.get(0);
+		
+		List<Value<String>>  categoriesListValues = instProfile.getList(INSTITUTION_PROFILE_CATEGORIES_PROPERTY);
+		List<String> categoriesList = categoriesListValues.stream().map(value -> value.get()).collect(Collectors.toList());
+		String[] categories = new String[categoriesList.size()];
+		categoriesList.toArray(categories);
+		
+		
+		InstitutionProfile profile = new InstitutionProfile(
+		instProfile.getString(PROFILE_NAME_PROPERTY),
+		instProfile.getString(INSTITUTION_PROFILE_INITIALS_PROPERTY),
+		instProfile.getString(PROFILE_BIO_PROPERTY),
+		categories
+		);
+		log.info(String.format(GET_PROFILE_OK,id,token));
+		return Response.ok(g.toJson(profile)).build();
+	}
+	
+	/**
+	 * Updates the institution profile.
+	 * @param instId - The institution identification.
+	 * @param tokenId - The token identification from this institution.
+	 * @param data - The updated data for this institution.
+	 * @return 200, if the institution has successfully updated its data.
+	 * 		   400, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_PROFILE_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateProfile(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token, InstitutionProfile data) {
+		if(data.badData() || badString(token) ||badString(id)) {
+			log.warning(UPDATE_PROFILE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(UPDATE_PROFILE_START,token));
+		
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if( !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(account.getString(ACCOUNT_EMAIL_PROPERTY))) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+			}
+		}
+		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,INSTITUTION_PROFILE_KIND);
+		if(lst.size() > 1 || lst.isEmpty()) {
+			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		Entity instProfile = lst.get(0);
+		
+		ListValue.Builder listValueBuilder = ListValue.newBuilder();
+		for(String category: data.categories) {
+			listValueBuilder.addValue(category);
+		}
+		ListValue categories = listValueBuilder.build();
+		
+		Entity updatedInstProfile = Entity.newBuilder(instProfile)
+		.set(PROFILE_NAME_PROPERTY, data.name)
+		.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
+		.set(PROFILE_BIO_PROPERTY,data.bio)
+		.set(INSTITUTION_PROFILE_CATEGORIES_PROPERTY,categories)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedInstProfile);
 			txn.commit();
-			return Response.ok().build();	
-		} 
+			log.info(String.format(UPDATE_PROFILE_OK,account.getString(ACCOUNT_EMAIL_PROPERTY),token));
+			return Response.ok().build();
+		}
 		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
 	}
-
-	/**
-	 * Adds a new user to the institution.
-	 * @param instId - The institution id where the user is going to subscribe.
-	 * @param subscriberId - The user id who is going to subscribe to the institution.
-	 * @param tokenId - The token id of the user who is going to subscribe to the institution.
-	 * @return 200, if the subscription was successful.
-	 * 		   404, if the institution does not exist or the subscription already exists.
-	 * 		   500, otherwise.
-	 */
-	//maybe should be in UserResource?
-	//TODO
-	//CHANGE THIS
-	@POST 
-	@Path(ADD_SUBSCRIBER_PATH)
-	public Response subscribe(@PathParam("instId") String instId, @QueryParam("subscriberId") String subscriberId, @QueryParam("tokenId") String tokenId) {
-		LOG.fine("Attempting to subscribe " + subscriberId +  " to: " + instId);
-
-		Key instKey = instKeyFactory.newKey(instId);
-		Key subKey = datastore.newKeyFactory().addAncestors(PathElement.of(INSTKIND, instId)).setKind(USERINSTKIND).newKey(subscriberId);
-
-		Transaction txn = datastore.newTransaction();
-
-		try {
-			
-			Entity inst = txn.get(instKey);
-			Entity sub = txn.get(subKey);
-
-			if(inst == null || sub != null) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("The institution does not exist or the subscription already exists!").build();
-			}
-
-			Entity toAdd = Entity.newBuilder(subKey)
-					.set("userId", subscriberId)
-					.build();
-			txn.add(toAdd);
-
-			LOG.info("User " + subscriberId + " has been successfully benn subscribed to instituition: " + instId +"!");
-			txn.commit();
-			return Response.ok().build();	
-		} 
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}
-		}
-
-	} 
-
-	/**
-	 * Removes an user from the institution.
-	 * @param instId - The institution id where the user is subscribed.
-	 * @param subscriberId - The user id who is going to be removed from the institution.
-	 * @param tokenId - The token id of the user who is going to be removed from the institution.
-	 * @return 200, if the unsubscription was successful.
-	 * 		   404, if the institution does not exist or the subscription does not exist.
-	 * 		   500, otherwise.
-	 */
-	//maybe should be in UserResource?
-	//TODO
-	//CHANGE THIS to joinInst
-	@DELETE
-	@Path(REMOVE_SUBSCRIBER_PATH)
-	public Response unsubscribe(@PathParam("instId") String instId, @QueryParam("subscriberId") String subscriberId, @QueryParam("tokenId") String tokenId) {
-		LOG.fine("Attempting to unsubscribe "+ subscriberId +  " from: " + instId);
-
-		Key instKey = datastore.newKeyFactory().setKind(INSTKIND).newKey(instId);
-
-		Key subKey = datastore.newKeyFactory().addAncestors(PathElement.of(INSTKIND, instId)).setKind(USERINSTKIND).newKey(subscriberId);
-
-		Transaction txn = datastore.newTransaction();
-
-		try {
-
-			Entity inst = txn.get(instKey);
-			Entity sub = txn.get(subKey);
-
-			if(inst == null || sub == null) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("Inst and/or Subscriber do not exist").build();
-			}
-
-			txn.delete(subKey);
-
-			LOG.info("User " + subscriberId + " has been successfully unsubcribed from instituition: " + instId +"!");
-			txn.commit();
-			return Response.ok().build();	
-		} 
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}
-		}
-
-	}
-
+	
 	/**
 	 * Obtains the list of subscribers given the institution id.
 	 * @param instId - The institution id which is going to be used to obtain the users.
@@ -515,178 +538,183 @@ public class InstitutionResource {
 	 * 		   404, if the institution does not exist or the institution does not have users.
 	 * 		   500, otherwise.
 	 */
-	//TODO
-	//CHANGE TO INST GETTING ITS OWN SUBS
 	@GET
-	@Path(GET_SUBSCRIBERS_PATH)
-	public Response getSubscribers(@PathParam("instId") String instId, @QueryParam("tokenId") String tokenId) {
-		LOG.fine("Getting subscribers attempt with token: " + tokenId);
-
-		Key instKey = instKeyFactory.newKey(instId);
-
-		Transaction txn = datastore.newTransaction();
-
-		try {
-			Entity inst = txn.get(instKey);
-
-			if(inst == null) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("Isnt does no exist").build();
-			}
-
-			Query<Entity> query = Query.newEntityQueryBuilder()
-					.setKind(USERINSTKIND)
-					.setFilter(PropertyFilter.hasAncestor(instKey))
-					.build();
-
-			QueryResults<Entity> subs = txn.run(query);
-
-			List<String> subList = new ArrayList<String>();	
-
-			subs.forEachRemaining(sub -> {
-				subList.add(sub.getString("userId"));
-			});
-
-
-			LOG.info("Successfully got users subscribed to : "+ instId);
-			txn.commit();
-			return Response.ok(g.toJson(subList)).build();	
-		} 
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+	@Path(GET_MEMBERS_PATH)
+	public Response getMembers(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(INSTITUTION_MEMBER_ID_PARAM) String token) {
+		
+		if(badString(id) || badString(token)) {
+			log.warning(GET_MEMBERS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+		
+		log.info(String.format(GET_MEMBERS_START,id,token));
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if( !account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
 			}
 		}
+		
+		List<Entity> entityList = QueryUtils.getEntityChildrenByKind(account, INSTITUTION_MEMBERS_KIND);
+		List<String> memberList = entityList.stream().map(entity->entity.getString(INSTITUTION_MEMBERS_ID_PROPERTY)).collect(Collectors.toList());
+		
+		log.info(String.format(GET_MEMBERS_OK,id,token));
+		return Response.ok(g.toJson(memberList)).build();
 	}
 	
-	
-	//conta com login
-	@GET
-	@Path(GET_INSTS_PATH)
-	public Response getInsts(@QueryParam("tokenId") String tokenId) {
-		LOG.fine("Getting all institutions!");
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			
-			Query<Entity> query = Query.newEntityQueryBuilder()
-					.setKind(INSTKIND)
-					.build();
-
-			QueryResults<Entity> subs = txn.run(query);
-
-			List<String[]> subList = new ArrayList<String[]>();	
-		
-			
-			subs.forEachRemaining(sub -> {
-				subList.add(new String[]{sub.getString("name"),Boolean.toString(sub.getBoolean("status"))});
-			});
-			
-			
-			if(subList.isEmpty()) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("No Instituitions!").build();
-			}
-			
-			LOG.info("Successfully got all institutions!");
-			txn.commit();
-			return Response.ok(g.toJson(subList)).build();
-			
-		}catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+	/**
+	 * Adds a new user to the institution.
+	 * @param instId - The institution id where the user is going to subscribe.
+	 * @param subscriberId - The user id who is going to subscribe to the institution.
+	 * @param tokenId - The token id of the user who is going to subscribe to the institution.
+	 * @return 200, if the join was successful.
+	 * 		   404, if the institution does not exist or the subscription already exists.
+	 * 		   500, otherwise.
+	 */
+	@POST 
+	@Path(ADD_MEMBER_PATH)
+	public Response addMember(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(INSTITUTION_MEMBER_ID_PARAM) String memberId, @QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(id) || badString(memberId)||badString(token)) {
+			log.warning(ADD_MEMBER_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+		
+		log.info(String.format(ADD_MEMBER_START,memberId,id,token));
+		
+		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, memberId);
+		if(check == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Entity check2 = QueryUtils.getEntityByProperty(INSTITUTION_MEMBERS_KIND, INSTITUTION_MEMBERS_ID_PROPERTY, memberId);
+		if(check2 != null) {
+			log.severe(String.format(ADD_MEMBER_CONFLICT_ERROR, memberId,id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
 			}
 		}
-	}
+		
+		Key memberKey = datastore.allocateId(datastore.newKeyFactory().setKind(INSTITUTION_MEMBERS_KIND).newKey());
+		
+		Entity member = Entity.newBuilder(memberKey)
+		.set(INSTITUTION_MEMBERS_ID_PROPERTY,memberId)
+		.build();
 	
-	//gbo & ga
-	@POST
-	@Path(CHANGE_STATUS_PATH)
-	public Response changeStatus(@QueryParam("tokenId") String tokenId, @PathParam("instId") String instId, Boolean change) {
-		LOG.fine("Changing status attempt to: " + instId);
-
-		Key instKey = instKeyFactory.newKey(instId);
-
 		Transaction txn = datastore.newTransaction();
-
 		try {
-
-			Entity inst = txn.get(instKey);
-
-			if(inst == null) {
-				txn.rollback();
-				return Response.status(Status.BAD_REQUEST).entity("The institution does not exist!").build();
-			} 
-
-			//more readable this way
-			Entity newInst = Entity.newBuilder(inst)
-					.set("status",change)
-					.build();
-
-			txn.update(newInst);//update fails if there is nothing to update, more secure
-
-			LOG.info("The " + instId + " has successfully changed status!");
+			txn.add(member);
 			txn.commit();
+			log.info(String.format(ADD_MEMBER_OK,memberId,id,token));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-		}		
-	}
+		}
+	} 
 	
-	
-	//gbo & ga
-	@GET
-	@Path(GET_STATUS_PATH)
-	public Response getStatus(@QueryParam("tokenId") String tokenId, @PathParam("instId") String instId) {
+	/**
+	 * Removes a user from the institution.
+	 * @param instId - The institution id where the user is subscribed.
+	 * @param subscriberId - The user id who is going to be removed from the institution.
+	 * @param tokenId - The token id of the user who is going to be removed from the institution.
+	 * @return 200, if the removal was successful.
+	 * 		   404, if the institution does not exist or the subscription does not exist.
+	 * 		   500, otherwise.
+	 */
+	@DELETE
+	@Path(REMOVE_MEMBER_PATH)
+	public Response removeMember(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(INSTITUTION_MEMBER_ID_PARAM) String memberId, @QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(id) || badString(memberId)||badString(token)) {
+			log.warning(REMOVE_MEMBER_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
 		
-				LOG.fine("Getting status attempt to: " + instId);
-
-				Key instKey = instKeyFactory.newKey(instId);
-
-				Transaction txn = datastore.newTransaction();
-
-				try {
-					Entity inst = txn.get(instKey);
-
-					if(inst == null) {
-						txn.rollback();
-						return Response.status(Status.NOT_FOUND).entity("Inst does not exist").build();
-					}
-
-
-					LOG.info("The " + instId + " has this status!");
-					txn.commit();
-					return Response.ok(g.toJson(inst.getBoolean("status"))).build();
-				} 
-				catch(DatastoreException e) {
-					txn.rollback();
-					return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-				}
-				finally {
-					if(txn.isActive()) {
-						txn.rollback();
-						return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-					}
-				}
+		log.info(String.format(REMOVE_MEMBER_START,memberId,id,token));
+		
+		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, memberId);
+		if(check == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Entity check2 = QueryUtils.getEntityByProperty(INSTITUTION_MEMBERS_KIND, INSTITUTION_MEMBERS_ID_PROPERTY, memberId);
+		if(check2 == null) {
+			log.severe(String.format(REMOVE_MEMBER_NOT_FOUND_ERROR, memberId,id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+			}
+		}
+		
+		
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.delete(check2.getKey());
+			txn.commit();
+			log.info(String.format(REMOVE_MEMBER_OK,memberId,id,token));
+			return Response.ok().build();
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
 	}
 	
-
 }

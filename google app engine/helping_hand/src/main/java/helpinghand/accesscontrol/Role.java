@@ -21,10 +21,13 @@ public enum Role {
 	}
 
 	
-	public static Role getRole(String role_name) {
+	public static Role getRole(String roleName) {
+		String normalized = roleName.trim().toUpperCase();
+		
 		for(Role role: Role.values()) {
-			if(role.name().equals(role_name)) return role;
+			if(role.name().equals(normalized)) return role;
 		}
 		return null;
 	}
+	
 }

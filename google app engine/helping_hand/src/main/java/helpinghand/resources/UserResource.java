@@ -5,8 +5,6 @@
 
 package helpinghand.resources;
 
-import java.util.logging.Logger;
-
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -14,52 +12,111 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-import com.google.cloud.datastore.*;
+import com.google.cloud.datastore.DatastoreException;
+import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.ListValue;
+import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.Query;
+import com.google.cloud.datastore.QueryResults;
+import com.google.cloud.datastore.StringValue;
+import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 
-import com.google.gson.Gson;
-
 import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
+import helpinghand.util.QueryUtils;
+import helpinghand.util.account.*;
 
-import helpinghand.util.*;
-import helpinghand.util.user.*;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
+import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+
+import java.time.LocalDateTime;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.logging.Logger;
 
 @Path(UserResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-public class UserResource {
+public class UserResource extends AccountUtils{
 	
-	//Constants
-	private static final String USER_INFO_FORMAT = "%s_info"; // used in checksum for authentication token
-	private static final String USER_PROFILE_FORMAT = "%s_profile"; // used in checksum for authentication token
-	private static final String USER_KIND = "User";
-	private static final String USER_INFO_KIND = "UserInfo";
-	private static final String USER_PROFILE_KIND = "UserProfile";
+	private static final String DATASTORE_EXCEPTION_ERROR = "Error in UserResource: %s";
+	private static final String TRANSACTION_ACTIVE_ERROR = "Error in UserResource: Transaction was active";
+	
+	private static final String GET_ALL_START ="Attempting to get all users with token [%s]";
+	private static final String GET_ALL_OK ="Successfuly got all users with token [%s]";
+	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
+	
+	public static final String USER_ID_PARAM = "userId";
 	
 	
 	//Paths
 	public static final String PATH = "/user";
-	private static final String CREATE_PATH = "/";//POST
-	private static final String LOGIN_PATH = "/{userId}/login";//POST
-	private static final String LOGOUT_PATH = "/{userId}/logout";//DELETE
-	private static final String DELETE_PATH ="/{userId}";//DELETE
-	private static final String CHANGE_PASSWORD_PATH = "/{userId}/password";//PUT
-	private static final String UPDATE_INFO_PATH = "{userId}/info";//PUT
-	private static final String GET_INFO_PATH = "/{userId}/info";//GET
-	private static final String UPDATE_PROFILE_PATH ="/{userId}/profile";//PUT
-	private static final String GET_PROFILE_PATH = "/{userId}/profile";//GET
+	private static final String GET_USERS_PATH = ""; //GET
+	private static final String CREATE_PATH = "";//POST
+	private static final String LOGIN_PATH = "/{" + USER_ID_PARAM + "}/login";//POST
+	private static final String LOGOUT_PATH = "/{" + USER_ID_PARAM + "}/logout";//DELETE
+	private static final String DELETE_PATH ="/{" + USER_ID_PARAM + "}";//DELETE
+	private static final String UPDATE_ID_PATH="/{"+USER_ID_PARAM+"}/id";//PUT
+	private static final String UPDATE_PASSWORD_PATH ="/{" + USER_ID_PARAM + "}/password";//PUT
+	private static final String UPDATE_EMAIL_PATH = "/{" + USER_ID_PARAM + "}/email";//PUT
+	private static final String UPDATE_STATUS_PATH="/{"+USER_ID_PARAM+"}/status";//PUT
+	private static final String UPDATE_VISIBILITY_PATH="/{"+USER_ID_PARAM+"}/visibility";//PUT
+	private static final String UPDATE_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//PUT
+	private static final String GET_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//GET
+	private static final String UPDATE_PROFILE_PATH ="/{" + USER_ID_PARAM + "}/profile";//PUT
+	private static final String GET_PROFILE_PATH = "/{" + USER_ID_PARAM + "}/profile";//GET
 	
 	
-	
-	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-	private KeyFactory userKeyFactory = datastore.newKeyFactory().setKind(USER_KIND);
-	
-	// logger object
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
-	private final Gson g = new Gson();
 
-	public UserResource() {}
+	public UserResource() {super();}
+	
+	/**
+	 * Obtains a list with the id and current status of all users
+	 * @param token - token of the user doing this operation
+	 * @return 200, if the operation was successful.
+	 * 		   500, otherwise.
+	 */
+	@GET
+	@Path(GET_USERS_PATH)
+	public Response getAll(@QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(token)) {
+			log.info(GET_ALL_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(GET_ALL_START, token));
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.USER.name())).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+			QueryResults<Entity> results= txn.run(query);	
+			txn.commit();
+			List<String[]> institutions = new LinkedList<>();
+			
+			results.forEachRemaining(entity -> {
+				institutions.add(new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))});
+			});
+			
+			log.info(String.format(GET_ALL_OK,token));
+			return Response.ok(g.toJson(institutions)).build();
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
 	
 	/*
 	 * Creates a new user.
@@ -72,76 +129,91 @@ public class UserResource {
 	@POST
 	@Path(CREATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response createUser(UserRegister data) {
-		log.info(String.format("Attempting to create user with ID: {%s}", data.userId));
-
-		if (!data.validate()) {
-			String message = String.format("Data invalid to register user with ID: {%s}", data.userId);
-			log.warning(message);
-			return Response.status(Status.BAD_REQUEST).entity(String.format(message)).build();
+	public Response createAccount(UserCreationData data) {
+		if(data.badData()) {
+			log.warning(CREATE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-
-		Key userKey = userKeyFactory.newKey(data.userId);
-		Entity newUser = Entity.newBuilder(userKey)
-				.set("password",StringValue.newBuilder(DigestUtils.sha512Hex(data.password)).setExcludeFromIndexes(true).build())
-				.set("email", data.email)
-				.set("status", true)//active
-				.set("role", Role.USER.name())
-				.build();
-
-		Key infoKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", data.userId))
-				.setKind(USER_INFO_KIND)
-				.newKey(String.format(USER_INFO_FORMAT, data.userId));
 		
-		Entity userInfo = Entity.newBuilder(infoKey)
-				.set("phone", "")
-				.set("address1", "")
-				.set("address2", "")
-				.set("city", "")
-				.set("zip", "")
-				.build();
-
-		Key profileKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", data.userId))
-				.setKind(USER_PROFILE_KIND)
-				.newKey(String.format(USER_PROFILE_FORMAT, data.userId));
+		log.info(String.format(CREATE_START,data.email,Role.USER.name()));
 		
-		Entity userProfile = Entity.newBuilder(profileKey)
-				.set("public", true)//public profile by default
-				.set("name", "")
-				.set("bio", "")
-				.build();
-
+		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, data.id);
+		Entity check2 = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_EMAIL_PROPERTY, data.email);
+		if(check != null) {
+			log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
+			return Response.status(Status.CONFLICT).build();
+		} 
+		if(check2 != null) {
+			log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
+			return Response.status(Status.CONFLICT).build();
+		}
+		
+		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
+		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_INFO_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
+		Key userProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(USER_PROFILE_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey());
+		Key userFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(USER_FEED_KIND, accountKey.getId())).setKind(USER_FEED_KIND).newKey());
+		
+		LocalDateTime now = LocalDateTime.now();
+		
+		Entity account = Entity.newBuilder(accountKey)
+		.set(ACCOUNT_ID_PROPERTY, data.id)
+		.set(ACCOUNT_EMAIL_PROPERTY,data.email)
+		.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(DigestUtils.sha512Hex(data.password)).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
+		.set(ACCOUNT_CREATION_PROPERTY,now.toString())
+		.set(ACCOUNT_STATUS_PROPERTY,ACCOUNT_STATUS_DEFAULT_USER)
+		.set(ACCOUNT_VISIBILITY_PROPERTY, ACCOUNT_VISIBLE_DEFAULT)
+		.build();
+		
+		Entity accountInfo = Entity.newBuilder(accountInfoKey)
+		.set(ACCOUNT_INFO_PHONE_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_INFO_ADDRESS_1_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_INFO_ADDRESS_2_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.set(ACCOUNT_INFO_ZIPCODE_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
+		.set(ACCOUNT_INFO_CITY_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
+		.build();
+		
+		Entity userProfile = Entity.newBuilder(userProfileKey)
+		.set(PROFILE_NAME_PROPERTY, DEFAULT_PROPERTY_VALUE_STRING)
+		.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+		.build();
+		
+		Entity userFeed = Entity.newBuilder(userFeedKey)
+		.set(USER_FEED_NOTIFICATIONS_PROPERTY, ListValue.newBuilder().setExcludeFromIndexes(true).build())
+		.build();
+		
 		Transaction txn = datastore.newTransaction();
-
 		try {
-
-			if (txn.get(userKey) != null) {
-				txn.rollback();
-				String message = String.format("User with ID: {%s} already exists.", data.userId);
-				log.warning(message);
-				return Response.status(Status.CONFLICT).entity(message).build(); // User already exists
-			}
-
-			txn.add(newUser, userInfo, userProfile);
+			txn.add(account,accountInfo,userProfile,userFeed);
 			txn.commit();
-			log.info(String.format("Created user with ID: {%s} and password: {%s}", data.userId,data.password));
-			return Response.ok("Registration done.").build();
-			
-		} catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("DatastoreException on registering user with ID: {%s}\n%s", data.userId,e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after resgistering user with ID: {%s}",data.userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
+			log.info(String.format(CREATE_OK,data.id,Role.USER.name()));
+			return Response.ok().build();
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
+	}
+	
+	/**
+	 * Deletes the user given its identification and the authentication token.
+	 * @param userId - The user who is going to be deleted.
+	 * @param tokenId - The authentication token from user that is going to be deleted.
+	 * @return 200, if the deletion was successful.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
+	@DELETE
+	@Path(DELETE_PATH)
+	public Response deleteAccount(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.deleteAccount(id,token);
 	}
 	
    /**
@@ -155,22 +227,8 @@ public class UserResource {
 	@POST
 	@Path(LOGIN_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response loginUser(@PathParam("userId") String userId, Login data) {
-		log.info(String.format("Attempting to login user with ID: [%s]", data.clientId));
-
-		if (!data.validate()) {
-			String message = String.format("Data invalid to login user with ID: {%s}", data.clientId);
-			log.warning(message);
-			return Response.status(Status.BAD_REQUEST).entity(message).build(); // Data invalid
-		}
-
-		String token = AccessControlManager.startSessionUser(data.clientId, data.password);
-		
-		if(token == null) {
-			return Response.status(Status.FORBIDDEN).entity("Login Failed").build();
-		}
-		
-		return Response.ok(token).build();
+	public Response login(Login data) {
+		return super.login(data);
 		
 	}
 	
@@ -183,67 +241,26 @@ public class UserResource {
 	 */
 	@DELETE
 	@Path(LOGOUT_PATH)
-	public Response logoutUser(@PathParam("userId")String userId, @QueryParam("tokenId") String tokenId) {
-		log.info(String.format("Attempting to logout user with ID: [%s]", userId));
-
-		//ends a session, deleting token
-		if(!AccessControlManager.endSession(tokenId)) return Response.status(Status.FORBIDDEN).entity("Logout failed").build();
-		return Response.ok().build();
+	public Response logout(@QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.logout(token);
 	}
 	
 	/**
-	 * Deletes the user given its identification and the authentication token.
-	 * @param userId - The user who is going to be deleted.
-	 * @param tokenId - The authentication token from user that is going to be deleted.
-	 * @return 200, if the deletion was successful.
+	 * Changes the id of the user.
+	 * @param userId - The user who is going to change the password.
+	 * @param tokenId - The authentication token from user that is going to change the password.
+	 * @param data - The new password data.
+	 * @return 200, if the change of password was successful.
+	 * 		   400, if the password data is invalid.
+	 * 		   403, if the password is not the same.
 	 * 		   404, if the user does not exist.
 	 * 		   500, otherwise.
 	 */
-	@DELETE
-	@Path(DELETE_PATH)
-	public Response deleteUser(@PathParam("userId")String userId,@QueryParam("tokenId")String tokenId) {
-		log.info(String.format("Attempting to delete account for user [%s]", userId));
-		
-		Key userKey = userKeyFactory.newKey(userId);
-		Key userInfoKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_INFO_KIND)
-				.newKey(String.format(USER_INFO_FORMAT, userId));
-		Key userProfileKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_PROFILE_KIND)
-				.newKey(String.format(USER_PROFILE_FORMAT, userId));
-		
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			Entity user = txn.get(userKey);
-			
-			if(user == null) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("User does not exist").build();
-			}
-			//TODO:change to endAllSessions(tokenId) in BETA
-			if(!AccessControlManager.endSession(tokenId)) {
-				//Logout failed, should never happen but can if there is an error in the datastore 
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Failed to end user session!").build();
-			}
-			txn.delete(userInfoKey,userProfileKey,userKey);
-			log.info("User " + userId + " has successfully been removed!");
-			txn.commit();
-			return Response.ok().build();
-		}
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}	
-		}
+	@PUT
+	@Path(UPDATE_ID_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateId(@PathParam(USER_ID_PARAM)String id, ChangeId data,  @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.updateId(id, data, token);
 	}
 	
 	/**
@@ -258,55 +275,62 @@ public class UserResource {
 	 * 		   500, otherwise.
 	 */
 	@PUT
-	@Path(CHANGE_PASSWORD_PATH)
+	@Path(UPDATE_PASSWORD_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response changeUserPassword(@PathParam("userID")String userId, @QueryParam("tokenId")String tokenId , ChangePass data) {
-		log.info(String.format("Attempting to change password of user with ID: {%s}", userId));
-
-		
-		if(!data.validate()) {
-			return Response.status(Status.BAD_REQUEST).entity("Invalid data!").build();
-		}
-		Key userKey = userKeyFactory.newKey(userId);
-		
-		Transaction txn = datastore.newTransaction();
-		
-		
-		try {
-			
-			Entity user = txn.get(userKey);
-			
-			if(user == null ) {
-				txn.rollback();
-				return Response.status(Status.NOT_FOUND).entity("User does not exist").build();
-			} 
-				
-				if(!user.getString("password").equals(DigestUtils.sha512Hex(data.oldPassword))) {
-					txn.rollback();
-					return Response.status(Status.FORBIDDEN).entity("Invalid Attributes!").build();
-				}
-					
-				Entity newUser = Entity.newBuilder(user)
-						.set("password", DigestUtils.sha512Hex(data.newPassword))
-						.build();
-				
-				txn.update(newUser);
-					
-				log.info("User " + userId + " has successfully changed passwords!");
-				txn.commit();
-				return Response.ok().build();	
-			
-		} 
-		catch(DatastoreException e) {
-			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
-			}
-		}
+	public Response updatePassword(@PathParam(USER_ID_PARAM)String id, ChangePassword data,  @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.updatePassword(id, data, token);
+	}
+	
+	/**
+	 * Changes the email of the user.
+	 * @param userId - The user who is going to change the email.
+	 * @param tokenId - The authentication token from user that is going to change the email.
+	 * @param data - The new email data.
+	 * @return 200, if the change of email was successful.
+	 * 		   400, if the email data is invalid.
+	 * 		   403, if the email is not the same.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_EMAIL_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateEmail(@PathParam(USER_ID_PARAM)String id, ChangeEmail data, @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.updateEmail(id,data, token);
+	}
+	
+	/**
+	 * Changes the status of the user.
+	 * @param userId - The user who is going to change the email.
+	 * @param tokenId - The authentication token from user that is going to change the email.
+	 * @param data - The new status data.
+	 * @return 200, if the change of email was successful.
+	 * 		   400, if the email data is invalid.
+	 * 		   403, if the email is not the same.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_STATUS_PATH)
+	public Response updateStatus(@PathParam(USER_ID_PARAM) String id, ChangeStatus data, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateStatus(id, data, token);
+	}
+	
+	/**
+	 * Changes the visibility of the user.
+	 * @param userId - The user who is going to change the email.
+	 * @param tokenId - The authentication token from user that is going to change the email.
+	 * @param data - The new status data.
+	 * @return 200, if the change of email was successful.
+	 * 		   400, if the email data is invalid.
+	 * 		   403, if the email is not the same.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_VISIBILITY_PATH)
+	public Response updateVisibility(@PathParam(USER_ID_PARAM) String id, ChangeVisibility data, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateVisibility(id, data, token);
 	}
 	
 	/**
@@ -321,54 +345,8 @@ public class UserResource {
 	@Path(GET_INFO_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response getUserInfo(@PathParam("userId")String userId, @QueryParam("tokenId")String tokenId) {
-		log.info(String.format("Attempting to get information of user with ID: {%s}", userId));
-
-		Key userKey = userKeyFactory.newKey(userId);
-		Key infoKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_INFO_KIND)
-				.newKey(String.format(USER_INFO_FORMAT, userId));
-		
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
-
-
-			Entity user = txn.get(userKey);
-
-			if (user == null) {
-				txn.rollback();
-				String message = String.format("User with ID: {%s} does not exist.", userId);
-				log.warning(message);
-				return Response.status(Status.NOT_FOUND).entity(message).build();
-			}
-			Entity storedInfo = txn.get(infoKey);
-
-			UserInfo info = new UserInfo(storedInfo.getString("phone"),
-					storedInfo.getString("address1"), 
-					storedInfo.getString("address2"), 
-					storedInfo.getString("city"),
-					storedInfo.getString("zip"));
-
-			txn.commit();
-			log.info(String.format("Got information of user with ID: {%s}", userId));
-			return Response.ok(g.toJson(info)).build();
-		} catch (DatastoreException e) {
-			
-			txn.rollback();
-			String message = String.format("DatastoreException on getting information of user with ID: {%s}\n%s",userId, e.toString());
-			
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build();// Internal server error
-			
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after getting information if user with ID: {%s}",userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
-			}
-		}
+	public Response getAccountInfo(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.getAccountInfo(id, token);
 	}
 	
 	/**
@@ -384,64 +362,8 @@ public class UserResource {
 	@PUT
 	@Path(UPDATE_INFO_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateUserInfo(@PathParam("userId")String userId, @QueryParam("tokenId")String tokenID,UserInfo data) {
-		log.info(String.format("Attempting to update information of user with ID: {%s}", userId));
-		
-		if(!data.validate()) {
-			String message = String.format("New information for user with ID: {%s} is invalid.", userId);
-			log.warning(message);
-			return Response.status(Status.BAD_REQUEST).entity(message).build(); //Info Invalid
-		}
-		
-		Key userKey = userKeyFactory.newKey(userId);
-		Key infoKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_INFO_KIND)
-				.newKey(String.format(USER_INFO_FORMAT, userId));
-		
-		Transaction txn = datastore.newTransaction();
-		
-		try {
-			
-			Entity user = txn.get(userKey);
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID: {%s} does not exist.", userId);
-				log.warning(message);
-				return Response.status(Status.NOT_FOUND).entity(message).build();
-			}
-				
-			
-			Entity info = txn.get(infoKey);
-			
-			Entity updatedInfo = Entity.newBuilder(info)
-					.set("phone", data.phone)
-					.set("address1",data.address1)
-					.set("address2", data.address2)
-					.set("city",data.city)
-					.set("zip", data.zip)
-					.build();
-			
-			txn.update(updatedInfo);
-			txn.commit();
-			String message = String.format("Updated information of user with ID: {%s}", userId);
-			log.info(message);
-			return Response.ok(message).build();
-		}
-		catch(DatastoreException e) {
-			txn.rollback();
-			String message = String.format("DatastoreException on update information user with ID: %s\n%s",userId, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build();//Internal server error
-		}
-		finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after update information user with ID: {%s}",userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); //Transaction was active
-			}
-		}
+	public Response updateAccountInfo(@PathParam(USER_ID_PARAM)String id, AccountInfo data, @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.updateAccountInfo(id,data, token);
 	}
 	
 	/**
@@ -457,59 +379,44 @@ public class UserResource {
 	@Path(GET_PROFILE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response getUserProfile(@PathParam("userId")String userId, @QueryParam("tokenId")String tokenId) {
-		log.info(String.format("Attempting to get profile of user with ID: {%s}", userId));
-
-		Key userKey = userKeyFactory.newKey(userId);
-		Key profileKey = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("User", userId))
-				.setKind(USER_PROFILE_KIND)
-				.newKey(String.format(USER_PROFILE_FORMAT, userId));
+	public Response getProfile(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token) {
+		if(badString(id) || badString(token)) {
+			log.warning(GET_PROFILE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
 		
-		Transaction txn = datastore
-				.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
-
-			Entity user = txn.get(userKey);
-
-			if (user == null) {
-				txn.rollback();
-				String message = String.format("User with ID: %s does not exist.",userId);
-				log.warning(message);
-				return Response.status(Status.NOT_FOUND).entity(message).build();
-			}
-			Entity storedProfile = txn.get(profileKey);
-			
-			//if profile is not public and requester is not the owner of the profile
-			//in ALPHA this is not able to be called by any user besides the owner of the profile so there is no problem, but we must discuss this because of the filter
-			if(!storedProfile.getBoolean("public") && !AccessControlManager.getOwner(tokenId).equals(userId)) {
-				txn.rollback();
-				String message = String.format("User with ID: %s has a private profile.",userId);
-				log.warning(message);
-				return Response.status(Status.FORBIDDEN).entity(message).build();
-			}
-			
-			UserProfile profile = new UserProfile(storedProfile.getBoolean("public"),
-					storedProfile.getString("name"),
-					storedProfile.getString("bio"));
-			
-
-			txn.commit();
-			log.info(String.format("Got profile of user with ID: %s", userId));
-			return Response.ok(g.toJson(profile)).build();
-		} catch (DatastoreException e) {
-			txn.rollback();
-			String message = String.format("DatastoreException on getting information of user with ID: {%s}\n%s",userId, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build();// Internal server error
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after getting profile user with ID: {%s}",userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); // Transaction was active
+		log.info(String.format(GET_PROFILE_START,token));
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
 			}
 		}
+		
+		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
+		if(lst.size() > 1 || lst.isEmpty()) {
+			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		Entity userProfile = lst.get(0);
+		
+		UserProfile profile = new UserProfile(
+		userProfile.getString(PROFILE_NAME_PROPERTY),
+		userProfile.getString(PROFILE_BIO_PROPERTY)
+		);
+		log.info(String.format(GET_PROFILE_OK,id,token));
+		return Response.ok(g.toJson(profile)).build();
 	}
 	
 	/**
@@ -525,60 +432,61 @@ public class UserResource {
 	@PUT
 	@Path(UPDATE_PROFILE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateUserProfile(@PathParam("userId")String userId, @QueryParam("tokenId")String tokenId,UserProfile data) {
-		log.info(String.format("Attempting to update profile of user with ID: {%s}", userId));
-		
-		if(!data.validate()) {
-			String message = String.format("New profile for user with ID: {%s} is invalid.", userId);
-			log.warning(message);
-			return Response.status(Status.BAD_REQUEST).entity(message).build(); //Info Invalid
+	public Response updateProfile(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token,UserProfile data) {
+		if(data.badData() || badString(token) || badString(id)) {
+			log.warning(UPDATE_PROFILE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
+		log.info(String.format(UPDATE_PROFILE_START,token));
 		
-		Key userKey = userKeyFactory.newKey(userId);
-		Key profileKey = datastore.newKeyFactory().addAncestor(PathElement.of("User", userId))
-				.setKind(USER_PROFILE_KIND)
-				.newKey(String.format(USER_PROFILE_FORMAT, userId));
-		Transaction txn = datastore.newTransaction();
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
 		
-		try {
-			
-			Entity user = txn.get(userKey);
-			if(user == null) {
-				txn.rollback();
-				String message = String.format("User with ID: %s does not exist.",userId);
-				log.warning(message);
-				return Response.status(Status.NOT_FOUND).entity(message).build();
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
 			}
-				
-			
-			Entity profile = txn.get(profileKey);
-			
-			Entity updatedProfile = Entity.newBuilder(profile)
-					.set("public", data.publicProfile)
-					.set("name", data.name)
-					.set("bio", data.bio)
-					.build();
-			
-			txn.update(updatedProfile);
+		}
+		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
+		if(lst.size() > 1 || lst.isEmpty()) {
+			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		Entity userProfile = lst.get(0);
+		
+		Entity updatedUserProfile = Entity.newBuilder(userProfile)
+		.set(PROFILE_NAME_PROPERTY, data.name)
+		.set(PROFILE_BIO_PROPERTY,data.bio)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedUserProfile);
 			txn.commit();
-			String message = String.format("Updated profile of user with ID: {%s}", userId);
-			log.info(message);
-			return Response.ok(message).build();
+			log.info(String.format(UPDATE_PROFILE_OK,account.getString(ACCOUNT_EMAIL_PROPERTY),token));
+			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
-			txn.rollback();
-			String message = String.format("DatastoreException on update information user with ID: {%s}\n%s",userId, e.toString());
-			log.severe(message);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); //Internal server error
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
-				txn.rollback();
-				String message = String.format("Transaction was active after update profile user with ID: {%s}",userId);
-				log.severe(message);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(message).build(); //Transaction was active
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
 	}
+		
 }
