@@ -76,10 +76,9 @@ public class BackOfficeResource {
 	private static final String END_DATE_PARAM = "endDate";
 	
 	// Paths
-	//TODO:fix paths
 	public static final String PATH = "/restricted";
-	private static final String CHANGE_ROLE_PATH = "/"+USER_ID_PARAM+"/role"; //PUT
-	private static final String LIST_ROLE_PATH = "/role"; // GET
+	private static final String CHANGE_ROLE_PATH = "/updateRole"; //PUT
+	private static final String LIST_ROLE_PATH = "/listRole"; // GET
 	private static final String DAILY_USERS_PATH = "/dailyUsers"; // GET
 	
 
@@ -95,7 +94,7 @@ public class BackOfficeResource {
 	
 	@PUT
 	@Path(CHANGE_ROLE_PATH)
-	public Response changeRoleAccount(@PathParam(USER_ID_PARAM) String id, @QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
+	public Response changeRoleAccount(@QueryParam(USER_ID_PARAM) String id, @QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
 		log.info(String.format(UPDATE_ROLE_START, id, role));
 		Role targetRole = Role.getRole(role);
 		if(badString(id) || targetRole == null || badString(token)) {
@@ -135,7 +134,7 @@ public class BackOfficeResource {
 	@GET
 	@Path(LIST_ROLE_PATH)
 	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
-	public Response listAccountsByRole(@PathParam("role") String role, @QueryParam(TOKEN_ID_PARAM)String token) {
+	public Response listAccountsByRole(@QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM)String token) {
 		
 		Role roleParam = Role.getRole(role);
 		if(roleParam == null || badString(token)) {

@@ -15,7 +15,7 @@ public class GeneralUtils {
 	
 	public static boolean badString(String s) {
 		if(s == null) return true;
-		if(s.isBlank()) return true;
+		if(s.isEmpty()) return true;
 		return false;
 	}
 	

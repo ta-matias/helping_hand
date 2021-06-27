@@ -16,7 +16,6 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
@@ -137,14 +136,15 @@ public class UserResource extends AccountUtils{
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
-		log.info(String.format(CREATE_START,data.email,Role.USER.name()));
+		log.info(String.format(CREATE_START,data.id,Role.USER.name()));
 		
 		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, data.id);
-		Entity check2 = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_EMAIL_PROPERTY, data.email);
+		
 		if(check != null) {
 			log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
 			return Response.status(Status.CONFLICT).build();
 		} 
+		Entity check2 = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_EMAIL_PROPERTY, data.email);
 		if(check2 != null) {
 			log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
 			return Response.status(Status.CONFLICT).build();
@@ -181,7 +181,7 @@ public class UserResource extends AccountUtils{
 		.build();
 		
 		Entity userFeed = Entity.newBuilder(userFeedKey)
-		.set(USER_FEED_NOTIFICATIONS_PROPERTY, ListValue.newBuilder().setExcludeFromIndexes(true).build())
+		.set(USER_FEED_NOTIFICATIONS_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
 		.build();
 		
 		Transaction txn = datastore.newTransaction();
@@ -217,7 +217,7 @@ public class UserResource extends AccountUtils{
 	public Response deleteAccount(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return super.deleteAccount(id,token);
 	}
-	
+
    /**
 	 * A user login is performed.
 	 * @param userId - The user who is going to login.

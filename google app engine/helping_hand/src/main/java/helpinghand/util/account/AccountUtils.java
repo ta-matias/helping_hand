@@ -43,10 +43,10 @@ public class AccountUtils {
 	private static final String PASSWORD_DENIED_ERROR = "[%s] is not the current password for the account [%s]";
 	public static final String ACCOUNT_NOT_FOUND_ERROR = "Account [%s] does not exist";
 	
-	protected static final String CREATE_START = "Attempting to create account with email [%s] and role [%]";
+	protected static final String CREATE_START = "Attempting to create account with id [%s] and role [%s]";
 	protected static final String CREATE_OK = "Successfuly created account [%s] and role [%s]";
 	protected static final String CREATE_ID_CONFLICT_ERROR = "Account with id [%s] already exists";
-	protected static final String CREATE_EMAIL_CONFLICT_ERROR = "Account with email [%s] already exists";
+	protected static final String CREATE_EMAIL_CONFLICT_ERROR = "Account with id [%s] already exists";
 	protected static final String CREATE_BAD_DATA_ERROR = "Account creation attempt failed due to bad inputs";
 	
 	private static final String DELETE_START = "Attempting to delete account [%s] with token [%s]";
@@ -136,6 +136,7 @@ public class AccountUtils {
 	protected static final boolean ACCOUNT_VISIBLE_DEFAULT = true;
 	protected static final String DEFAULT_PROPERTY_VALUE_STRING = "";
 	protected static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
+	
 	
 	public AccountUtils() {}
 	

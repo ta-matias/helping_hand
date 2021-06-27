@@ -108,19 +108,21 @@ public class EventResource {
 	private static final String UPDATE_EVENT_STATUS_OK = "Successfuly updated event [%s](%d) status with token [%s]";
 	private static final String UPDATE_EVENT_STATUS_BAD_DATA_ERROR  = "Updates event status attempt failed due to bad inputs";
 	
-
+	private static final String EVENT_ID_PARAM = "eventId";
+	private static final String STATUS_PARAM = "status";
+	
 	public static final String PATH = "/event";
 	private static final String CREATE_PATH = ""; // POST
 	private static final String LIST_PATH = ""; // GET
-	private static final String END_PATH = "/{eventId}/end"; // PUT
-	private static final String CANCEL_PATH = "/{eventId}"; // DELETE
-	private static final String GET_PATH = "/{eventId}"; // GET
-	private static final String UPDATE_PATH = "/{eventId}"; // PUT
-	private static final String JOIN_PATH = "/{eventId}/join"; // POST
-	private static final String LEAVE_PATH = "/{eventId}/leave"; // DELETE
-	private static final String LIST_BY_EVENT_PATH = "/{eventId}/list"; // GET
-	private static final String GET_STATUS_PATH = "/{eventId}/status";//GET
-	private static final String UPDATE_STATUS_PATH = "/{eventId}/status";//PUT
+	private static final String END_PATH = "/{"+EVENT_ID_PARAM+"}/end"; // PUT
+	private static final String CANCEL_PATH = "/{"+EVENT_ID_PARAM+"}"; // DELETE
+	private static final String GET_PATH = "/{"+EVENT_ID_PARAM+"}"; // GET
+	private static final String UPDATE_PATH = "/{"+EVENT_ID_PARAM+"}"; // PUT
+	private static final String JOIN_PATH = "/{"+EVENT_ID_PARAM+"}/join"; // POST
+	private static final String LEAVE_PATH = "/{"+EVENT_ID_PARAM+"}/leave"; // DELETE
+	private static final String LIST_BY_EVENT_PATH = "/{"+EVENT_ID_PARAM+"}/list"; // GET
+	private static final String GET_STATUS_PATH = "/{"+EVENT_ID_PARAM+"}/status";//GET
+	private static final String UPDATE_STATUS_PATH = "/{"+EVENT_ID_PARAM+"}/status";//PUT
 	
 	private static final String EVENT_KIND = "Event";
 	private static final String EVENT_NAME_PROPERTY ="name";
@@ -138,8 +140,7 @@ public class EventResource {
 	private static final String PARTICIPANT_ID_PROPERTY = "id";
 	
 	
-	private static final String EVENT_ID_PARAM = "eventId";
-	private static final String STATUS_PARAM = "status";
+	
 	
 	
 	

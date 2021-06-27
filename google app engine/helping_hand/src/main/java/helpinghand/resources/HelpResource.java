@@ -36,10 +36,10 @@ import helpinghand.util.help.*;
 public class HelpResource {
 	
 	public static final String PATH = "/help";
-	private static final String CREATE_PATH = "/";
+	private static final String CREATE_PATH = "";
 	private static final String FINISH_PATH = "/{helpId}/finish";
 	private static final String CANCEL_PATH = "/{helpId}";
-	private static final String CHOOSE_HELPER_PATH = "{helpId}/{userId}";
+	private static final String CHOOSE_HELPER_PATH = "/{helpId}";
 	
 	private static final String HELPKIND = "Help";
 	private static final String USERKIND = "User";

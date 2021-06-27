@@ -12,6 +12,9 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 
+import helpinghand.resources.BackOfficeResource;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
+
 @Provider
 public class AccessControlFilter implements ContainerRequestFilter{
 	
@@ -19,8 +22,9 @@ public class AccessControlFilter implements ContainerRequestFilter{
 	private Logger log = Logger.getLogger(AccessControlFilter.class.getName());
 	
 	private static final String ACCESS_FILTER_START = "Verifying request permissions...";
-	
 	private static final String ACCESS_DENIED_ERROR = "Insuficient permissions to execute operation";
+	
+	private static final String BACK_OFFICE_RESOURCE = BackOfficeResource.PATH.substring(1); //removing the '/'
 	
 	public AccessControlFilter() {}
 	
@@ -33,7 +37,7 @@ public class AccessControlFilter implements ContainerRequestFilter{
 		if(method.equals("OPTIONS")) return;//to allow CORS
 		
 		UriInfo requestUriInfo = requestContext.getUriInfo();
-		List<String> tokenList = requestUriInfo.getQueryParameters().get("tokenId");
+		List<String> tokenList = requestUriInfo.getQueryParameters().get(TOKEN_ID_PARAM);
 		String tokenId = null;
 		if(tokenList != null) { 
 			tokenId = tokenList.get(0);
@@ -41,12 +45,20 @@ public class AccessControlFilter implements ContainerRequestFilter{
 		
 		String operationId = method;
 		List<PathSegment> pathSegs = requestUriInfo.getPathSegments();
-		for(PathSegment seg:pathSegs) {
-			operationId += "_"+seg.getPath();
+		String resource = pathSegs.get(0).getPath();
+		operationId += "_"+resource;
+		if(pathSegs.size() > 1) {
+			if(resource.equals(BACK_OFFICE_RESOURCE)) {
+				operationId += "_"+pathSegs.get(1).getPath();
+			}else {
+				for(int i = 2; i< pathSegs.size();i++) {
+					operationId += "_"+pathSegs.get(i).getPath();
+				}
+			}
 		}
-		log.info(String.format("\n operationId = [%s]\n tokenId = [%s]",
-				operationId,
-				tokenId));
+		
+		
+		log.info(String.format("\n operationId = [%s]\n tokenId = [%s]",operationId,tokenId));
 		
 		//check if RBAC Policy "table" is initialized
 		if(!AccessControlManager.RBACPolicyIntitalized()) {
