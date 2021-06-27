@@ -56,10 +56,15 @@ public class BackOfficeResource {
 	private static final String TOKEN_JURISDICTION_ERROR = "Token [%s](access %d) cannot alter higher or same level account [%s](access %d)";
 	private static final String TOKEN_POWER_ERROR = "Token [%s](access %d) cannot change an account's role to a higher level (access %d)";
 	
-	private static final String UPDATE_ROLE_START = "Attempting to update role of user [%s] to [%s]";
-	private static final String UPDATE_ROLE_OK = "Successfulty to updated role of user [%s] to [%s]";
-	private static final String UPDATE_ROLE_BAD_DATA_ERROR = "Update role attempt failed due to bad inputs";
-	private static final String UPDATE_ROLE_UPDATE_ERROR = "Update role attempt failed while changing account's role";
+	private static final String UPDATE_ACCOUNT_ROLE_START = "Attempting to update role of user [%s] to [%s]";
+	private static final String UPDATE_ACCOUNT_ROLE_OK = "Successfulty to updated role of user [%s] to [%s]";
+	private static final String UPDATE_ACCOUNT_ROLE_BAD_DATA_ERROR = "Update role attempt failed due to bad inputs";
+	private static final String UPDATE_ACCOUNT_ROLE_UPDATE_ERROR = "Update account role attempt failed while changing account's role";
+	
+	private static final String UPDATE_TOKEN_ROLE_START = "Attempting to update current role of token [%s] to [%s]";
+	private static final String UPDATE_TOKEN_ROLE_OK = "Successfulty to updated current role of token [%s] to [%s]";
+	private static final String UPDATE_TOKEN_ROLE_BAD_DATA_ERROR = "Update current token role attempt failed due to bad inputs";
+	private static final String UPDATE_TOKEN_ROLE_UPDATE_ERROR = "Update current token role attempt failed while changing account's role";
 	
 	private static final String LIST_ROLE_START = "Attempting to get [%s] account with token [%s]";
 	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token [%s]";
@@ -77,7 +82,8 @@ public class BackOfficeResource {
 	
 	// Paths
 	public static final String PATH = "/restricted";
-	private static final String CHANGE_ROLE_PATH = "/updateRole"; //PUT
+	private static final String UPDATE_ACCOUNT_ROLE_PATH = "/updateAccountRole"; //PUT
+	private static final String UPDATE_TOKEN_ROLE_PATH = "/updateTokenRole";//PUT
 	private static final String LIST_ROLE_PATH = "/listRole"; // GET
 	private static final String DAILY_USERS_PATH = "/dailyUsers"; // GET
 	
@@ -93,12 +99,12 @@ public class BackOfficeResource {
 
 	
 	@PUT
-	@Path(CHANGE_ROLE_PATH)
-	public Response changeRoleAccount(@QueryParam(USER_ID_PARAM) String id, @QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
-		log.info(String.format(UPDATE_ROLE_START, id, role));
+	@Path(UPDATE_ACCOUNT_ROLE_PATH)
+	public Response updateRoleAccount(@QueryParam(USER_ID_PARAM) String id, @QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
+		log.info(String.format(UPDATE_ACCOUNT_ROLE_START, id, role));
 		Role targetRole = Role.getRole(role);
 		if(badString(id) || targetRole == null || badString(token)) {
-			log.warning(UPDATE_ROLE_BAD_DATA_ERROR);
+			log.warning(UPDATE_ACCOUNT_ROLE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}	
 		
@@ -124,10 +130,28 @@ public class BackOfficeResource {
 		}
 		
 		if(AccessControlManager.changeRole(id,targetRole)) {
-			log.info(String.format(UPDATE_ROLE_OK ,id,targetRole.name()));
+			log.info(String.format(UPDATE_ACCOUNT_ROLE_OK ,id,targetRole.name()));
 			return Response.ok().build();
 		}
-		log.severe(UPDATE_ROLE_UPDATE_ERROR);
+		log.severe(UPDATE_ACCOUNT_ROLE_UPDATE_ERROR);
+		return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+	}
+	
+	@PUT
+	@Path(UPDATE_TOKEN_ROLE_PATH)
+	public Response updateRoleToken(@QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
+		log.info(String.format(UPDATE_TOKEN_ROLE_START,token, role));
+		Role targetRole = Role.getRole(role);
+		if(targetRole == null || badString(token)) {
+			log.warning(UPDATE_TOKEN_ROLE_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}	
+		
+		if(AccessControlManager.elevateToken(token, targetRole)){
+			log.info(String.format(UPDATE_TOKEN_ROLE_OK, token,role));
+			return Response.ok().build();
+		}
+		log.severe(UPDATE_TOKEN_ROLE_UPDATE_ERROR);
 		return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 	}
 	

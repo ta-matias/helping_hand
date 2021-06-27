@@ -312,13 +312,12 @@ public class AccessControlManager {
 	/**
 	 * Elevates a token to a new role (only works on user tokens since institutions only have one role)
 	 * @param tokenId - id of the token to be elevated.
-	 * @param target_role - role the token is to be elevated to.
+	 * @param targetRole - role the token is to be elevated to.
 	 * @return <b>true</b> if successful, <b>false</b> if failed.
 	 */
 	public static boolean elevateToken(String tokenId,Role targetRole) {
 		if(badString(tokenId) || targetRole == null) return false;
 		
-		boolean problem = false;
 		
 		Entity oldToken = QueryUtils.getEntityByProperty(TOKEN_KIND,TOKEN_ID_PROPERTY, tokenId);
 		if(oldToken == null) {
@@ -329,8 +328,29 @@ public class AccessControlManager {
 		//user was deleted
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,oldToken.getString(TOKEN_OWNER_PROPERTY)));
-			problem = true;
-			return false;
+			Transaction txn = datastore.newTransaction();
+			try {
+				
+				//update token with new role
+				txn.delete(oldToken.getKey());
+				txn.commit();
+				return true;
+
+
+			}
+			catch(DatastoreException e) {
+				txn.rollback();
+				log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+				return false;
+			}
+			finally {
+				if(txn.isActive()) {
+					txn.rollback();
+					log.severe(TRANSACTION_ACTIVE_ERROR);
+					return false;
+				}
+			}
+			
 		}
 		Role userRole = Role.getRole(account.getString("role"));
 		
@@ -359,7 +379,7 @@ public class AccessControlManager {
 			//update token with new role
 			txn.update(newToken);
 			txn.commit();
-			return !problem;
+			return true;
 
 
 		}

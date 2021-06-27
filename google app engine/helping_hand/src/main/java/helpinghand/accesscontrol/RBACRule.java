@@ -40,9 +40,10 @@ public enum RBACRule {
 	GET_INSTITUTION_MEMBERS("GET_institution_members",new Role[] {USER,INSTITUTION,GBO}), //list an institution's members
 	ADD_INSTITUTION_MEMBER("POST_institution_members",new Role[] {INSTITUTION}), // add a member to an institution 
 	REMOVE_INSTITUTION_MEMBER("DELETE_institution_members",new Role[] {INSTITUTION}), // remove a member from an institution
-	UPDATE_USER_ROLE("PUT_restricted_role",new Role[] {SU}), // update a user account's role
-	GET_USERS_ROLE("PUT_restricted_role",new Role[] {GBO}), // get all accounts of a certain role
-	GET_DAILY_STATS("PUT_restricted_role",new Role[] {GBO}),// get number of accounts created between 2 dates
+	UPDATE_USER_ROLE("PUT_restricted_updateAccountRole",new Role[] {SU}), // update a user account's role
+	UPDATE_TOKEN_ROLE("PUT_restricted_updateTokenRole",new Role[] {USER,GBO,SU}), // update a token's current role
+	GET_USERS_ROLE("PUT_restricted_listRole",new Role[] {GBO}), // get all accounts of a certain role
+	GET_DAILY_STATS("PUT_restricted_dailyUsers",new Role[] {GBO}),// get number of accounts created between 2 dates
 	GET_ALL_EVENTS("GET_event",new Role[] {USER,INSTITUTION,GBO}), 
 	CREATE_EVENT("POST_event",new Role[] {USER,INSTITUTION}),
 	CANCEL_EVENT("DELETE_event",new Role[] {USER,INSTITUTION,GBO}),
