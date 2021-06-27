@@ -5,7 +5,9 @@
 
 package helpinghand.resources;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -17,7 +19,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
+import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
@@ -158,31 +163,39 @@ public class BackOfficeResource {
 		
 		log.info(String.format(DAILY_STATS_START,startDate,endDate,token));
 		
+		Instant startInstant = Instant.parse(startDate);
+		Instant endInstant = Instant.parse(endDate);
 		
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).build();
+		Timestamp startTimestamp = Timestamp.of(Date.from(startInstant));
+		Timestamp endTimestamp = Timestamp.of(Date.from(endInstant));
 		
-		Map<LocalDate, Integer> map = initializeMap(startDate, endDate);
+		Query<ProjectionEntity> query = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_CREATION_PROPERTY)
+		.setFilter(CompositeFilter.and(PropertyFilter.gt(ACCOUNT_CREATION_PROPERTY, startTimestamp),PropertyFilter.lt(ACCOUNT_CREATION_PROPERTY,endTimestamp))).build();
 		
+		
+		Map<LocalDate,Integer> map = initializeMap(startDate,endDate);
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		
 		try {
-			QueryResults<Entity> users = txn.run(query);
+			QueryResults<ProjectionEntity> creationTimestamps = txn.run(query);
 			txn.commit();
-			while(users.hasNext()) {
-				Entity user = users.next();
+			
+			creationTimestamps.forEachRemaining(projectionEntity -> {
 				
-				String creation = user.getString(ACCOUNT_CREATION_PROPERTY);
-				LocalDate creationDate = LocalDate.parse(creation);
+				Timestamp creationTimestamp = projectionEntity.getTimestamp(ACCOUNT_CREATION_PROPERTY);
 				
-				if(map.containsKey(creationDate)) {
-					int counter = map.get(creationDate);
-					counter++;
-					map.put(creationDate, counter);
-				}
-			}
+				LocalDate creation = LocalDateTime.parse(creationTimestamp.toString()).toLocalDate();
+				
+				int counter = map.get(creation);
+				counter++;
+				map.put(creation, counter);
+			});
+			
+			List<String[]> data = map.keySet().stream().map(key -> new String[] {key.toString(),map.get(key).toString()}).collect(Collectors.toList());
+			
 			
 			log.info(String.format(DAILY_STATS_OK));
-			return Response.ok(g.toJson(map)).build();
+			return Response.ok(g.toJson(data)).build();
 		}
 		catch (DatastoreException e) {
 			txn.rollback();
@@ -197,7 +210,7 @@ public class BackOfficeResource {
 		}
 	}
 	
-	private Map<LocalDate, Integer> initializeMap(String startDate, String endDate) {
+private Map<LocalDate, Integer> initializeMap(String startDate, String endDate) {
 		
 		Map<LocalDate, Integer> data = new HashMap<LocalDate, Integer>();
 		

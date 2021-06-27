@@ -9,21 +9,21 @@ import static helpinghand.util.GeneralUtils.badString;
  * @author PogChamp Software
  *
  */
-public class Event {
+public class EventData {
 
+	public long id;
 	public String name;
 	public String creator;
 	public String description;
 	public String start;
 	public String end;
 	public double[] location;
-	public String conditions;
+	public String[] conditions;
 	
-	public Event() {
-		
-	}
+	public EventData() {}
 	
-	public Event( String name, String creator, String description,String start, String end, double[] location, String conditions) {
+	public EventData(long id, String name, String creator, String description,String start, String end, double[] location, String[] conditions) {
+		this.id = id;
 		this.name = name;
 		this.creator = creator;
 		this.description = description;
@@ -45,7 +45,7 @@ public class Event {
 		if(badString(start)) return true;
 		if(badString(end)) return true;
 		if(location == null || location.length != 2)return false;
-		if(badString(conditions)) return true;
+		if(conditions == null) return true;
 		return false;
 		
 			

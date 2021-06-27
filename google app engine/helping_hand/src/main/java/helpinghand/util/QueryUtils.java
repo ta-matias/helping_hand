@@ -8,8 +8,10 @@ import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
+import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.cloud.datastore.Transaction;
 import com.google.datastore.v1.TransactionOptions;
@@ -26,7 +28,27 @@ public class QueryUtils {
 	private static final Logger log= Logger.getLogger(QueryUtils.class.getName());
 	
 	
-	public static Entity getEntityById(String kind, long id) {
+	public static Entity getEntityById(String kind, long event) {
+		
+		Key key = datastore.newKeyFactory().setKind(kind).newKey(event);
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		
+		try {
+			Entity entity =  txn.get(key);
+			return entity;
+			
+		}catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_ERROR, e.toString()));
+			return null;
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return null;
+			}
+		}
 		
 	}
 	
@@ -145,6 +167,40 @@ public class QueryUtils {
 		if(parent == null)return null; 
 		
 		Query<Entity> query = Query.newEntityQueryBuilder().setKind(kind).setFilter(PropertyFilter.hasAncestor(parent.getKey())).build();
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		List<Entity> children = new LinkedList<>();
+		try {
+			QueryResults<Entity> results = txn.run(query);
+			txn.commit();
+			results.forEachRemaining(child ->children.add(child));
+			return children;
+			
+		}catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_ERROR, e.toString()));
+			return null;
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return null;
+			}
+		}
+
+		
+	}
+	
+	/**
+	 * Queries the datastore for the child entities of an entity that are of a certain kind and a satisfy a property check
+	 * @param parent - the parent entity
+	 * @return a list containing all children of the entity (can be empty), or null in case of error
+	 */
+	public static List<Entity> getEntityChildrenByKindAndProperty(Entity parent,String kind,String property,String value) {
+		
+		if(parent == null)return null; 
+		
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(kind).setFilter(CompositeFilter.and(PropertyFilter.eq(property, value),PropertyFilter.hasAncestor(parent.getKey()))).build();
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		List<Entity> children = new LinkedList<>();
 		try {

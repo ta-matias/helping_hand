@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
@@ -34,8 +35,9 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 
-import java.time.LocalDateTime;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -153,14 +155,14 @@ public class UserResource extends AccountUtils{
 		Key userProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(USER_PROFILE_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey());
 		Key userFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(USER_FEED_KIND, accountKey.getId())).setKind(USER_FEED_KIND).newKey());
 		
-		LocalDateTime now = LocalDateTime.now();
+		Timestamp now = Timestamp.now();
 		
 		Entity account = Entity.newBuilder(accountKey)
 		.set(ACCOUNT_ID_PROPERTY, data.id)
 		.set(ACCOUNT_EMAIL_PROPERTY,data.email)
 		.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(DigestUtils.sha512Hex(data.password)).setExcludeFromIndexes(true).build())
 		.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
-		.set(ACCOUNT_CREATION_PROPERTY,now.toString())
+		.set(ACCOUNT_CREATION_PROPERTY,now)
 		.set(ACCOUNT_STATUS_PROPERTY,ACCOUNT_STATUS_DEFAULT_USER)
 		.set(ACCOUNT_VISIBILITY_PROPERTY, ACCOUNT_VISIBLE_DEFAULT)
 		.build();
@@ -400,7 +402,7 @@ public class UserResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		
@@ -455,7 +457,7 @@ public class UserResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);

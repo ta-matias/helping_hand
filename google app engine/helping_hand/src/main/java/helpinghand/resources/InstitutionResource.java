@@ -3,7 +3,6 @@
  */
 package helpinghand.resources;
 
-import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -24,6 +23,7 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
@@ -47,6 +47,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 
 /**
  * @author PogChamp Software
@@ -58,6 +59,7 @@ public class InstitutionResource extends AccountUtils{
 
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in InstitutionResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in InstitutionResource: Transaction was active";
+	private static final String REPEATED_MEMBER_ERROR = "The same user is registered in an institution repeatedly";
 	
 	private static final String GET_ALL_START ="Attempting to get all institutions with token [%s]";
 	private static final String GET_ALL_OK ="Successfuly got all institutions with token [%s]";
@@ -79,6 +81,7 @@ public class InstitutionResource extends AccountUtils{
 	
 	private static final String INSTITUTION_ID_PARAM = "instId";
 	private static final String INSTITUTION_MEMBER_ID_PARAM = "memberId";
+	
 	
 	
 	//Paths
@@ -186,14 +189,14 @@ public class InstitutionResource extends AccountUtils{
 		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_INFO_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
 		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(INSTITUTION_PROFILE_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
 		
-		LocalDateTime now = LocalDateTime.now();
+		Timestamp now = Timestamp.now();
 		
 		Entity account = Entity.newBuilder(accountKey)
 		.set(ACCOUNT_ID_PROPERTY, data.id)
 		.set(ACCOUNT_EMAIL_PROPERTY,data.email)
 		.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(DigestUtils.sha512Hex(data.password)).setExcludeFromIndexes(true).build())
 		.set(ACCOUNT_ROLE_PROPERTY,Role.INSTITUTION.name())
-		.set(ACCOUNT_CREATION_PROPERTY, now.toString())
+		.set(ACCOUNT_CREATION_PROPERTY, now)
 		.set(ACCOUNT_STATUS_PROPERTY,ACCOUNT_STATUS_DEFAULT_INSTITUTION)
 		.set(ACCOUNT_VISIBILITY_PROPERTY, ACCOUNT_VISIBLE_DEFAULT)
 		.build();
@@ -426,7 +429,7 @@ public class InstitutionResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		
@@ -488,7 +491,7 @@ public class InstitutionResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,INSTITUTION_PROFILE_KIND);
@@ -562,7 +565,7 @@ public class InstitutionResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		
@@ -598,17 +601,22 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity check2 = QueryUtils.getEntityByProperty(INSTITUTION_MEMBERS_KIND, INSTITUTION_MEMBERS_ID_PROPERTY, memberId);
-		if(check2 != null) {
-			log.severe(String.format(ADD_MEMBER_CONFLICT_ERROR, memberId,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-		
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
+		
+		List<Entity> check2List = QueryUtils.getEntityChildrenByKindAndProperty(account, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		if(check2List.size() > 1) {
+			log.severe(REPEATED_MEMBER_ERROR);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		if(check2List.size() == 1) {
+			log.warning(String.format(ADD_MEMBER_CONFLICT_ERROR, memberId,id));
+			return Response.status(Status.CONFLICT).build();
+		}
+		
 		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
@@ -618,7 +626,7 @@ public class InstitutionResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		
@@ -672,11 +680,16 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity check2 = QueryUtils.getEntityByProperty(INSTITUTION_MEMBERS_KIND, INSTITUTION_MEMBERS_ID_PROPERTY, memberId);
-		if(check2 == null) {
+		List<Entity> check2List = QueryUtils.getEntityChildrenByKindAndProperty(check, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		if(check2List.size() > 1) {
+			log.severe(REPEATED_MEMBER_ERROR);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		if(check2List.isEmpty()) {
 			log.severe(String.format(REMOVE_MEMBER_NOT_FOUND_ERROR, memberId,id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
+		Entity check2 = check2List.get(0);
 		
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
@@ -692,7 +705,7 @@ public class InstitutionResource extends AccountUtils{
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
 			}
 		}
 		

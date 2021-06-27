@@ -1,12 +1,15 @@
 package helpinghand.accesscontrol;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -137,15 +140,19 @@ public class AccessControlManager {
 		
 		String role = account.getString(AccountUtils.ACCOUNT_ROLE_PROPERTY).equals(Role.INSTITUTION.name())?Role.INSTITUTION.name():Role.USER.name();
 		
-		LocalDateTime creation = LocalDateTime.now();
-		LocalDateTime expiration = creation.plusHours(TOKEN_DURATION);
+		
+		Timestamp creation = Timestamp.now();
+		
+		Instant creationInstant = creation.toDate().toInstant();
+		
+		Timestamp expiration = Timestamp.of(Date.from(creationInstant.plus(TOKEN_DURATION, ChronoUnit.HOURS)));
 		
 		Key tokenKey = datastore.allocateId(datastore.newKeyFactory().setKind(TOKEN_KIND).newKey());
 		
 		Entity token = Entity.newBuilder(tokenKey)
 		.set(TOKEN_OWNER_PROPERTY, id)
-		.set(TOKEN_CREATION_PROPERTY,creation.toString())
-		.set(TOKEN_EXPIRATION_PROPERTY,creation.toString())
+		.set(TOKEN_CREATION_PROPERTY,creation)
+		.set(TOKEN_EXPIRATION_PROPERTY,expiration)
 		.set(TOKEN_ID_PROPERTY, tokenId)
 		.set(TOKEN_ROLE_PROPERTY,role)
 		.build();
@@ -330,13 +337,16 @@ public class AccessControlManager {
 			return false;
 		}
 		
-		LocalDateTime creation = LocalDateTime.now();
-		LocalDateTime expiration = creation.plusHours(TOKEN_DURATION);
+		Timestamp creation = Timestamp.now();
+		
+		Instant creationInstant = creation.toDate().toInstant();
+		
+		Timestamp expiration = Timestamp.of(Date.from(creationInstant.plus(TOKEN_DURATION, ChronoUnit.HOURS)));
 		
 		Entity newToken = Entity.newBuilder(oldToken)
 		.set(TOKEN_ROLE_PROPERTY, targetRole.name())
-		.set(TOKEN_CREATION_PROPERTY,creation.toString())
-		.set(TOKEN_EXPIRATION_PROPERTY,expiration.toString())
+		.set(TOKEN_CREATION_PROPERTY,creation)
+		.set(TOKEN_EXPIRATION_PROPERTY,expiration)
 		.build();
 		
 		
@@ -385,9 +395,9 @@ public class AccessControlManager {
 				return false;
 			}
 			
-			LocalDateTime now = LocalDateTime.now();
-			LocalDateTime tokenExpiration =LocalDateTime.parse(token.getString(TOKEN_EXPIRATION_PROPERTY));
-			if(tokenExpiration.isAfter(now)) {
+			Timestamp now = Timestamp.now();
+			Timestamp tokenExpiration =token.getTimestamp(TOKEN_EXPIRATION_PROPERTY);
+			if(tokenExpiration.compareTo(now) > 0) {
 				log.severe(String.format(TOKEN_EXPIRED_ERROR,tokenId));
 				return false;
 			}
