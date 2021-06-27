@@ -234,7 +234,9 @@ public class AccessControlManager {
 
 		List<Entity> tokens = QueryUtils.getEntityListByProperty(TOKEN_KIND, TOKEN_OWNER_PROPERTY, accountId);
 		
-		Key[] keys = tokens.stream().map(token->token.getKey()).collect(Collectors.toList()).toArray(size->new Key[size]);
+		Key[] keys = new Key[tokens.size()]; 
+		tokens.stream().map(token->token.getKey()).collect(Collectors.toList()).toArray(keys);
+		
 		
 		Transaction txn = datastore.newTransaction();
 		try {

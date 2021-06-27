@@ -112,12 +112,12 @@ public class EventResource {
 	private static final String STATUS_PARAM = "status";
 	
 	public static final String PATH = "/event";
-	private static final String CREATE_PATH = ""; // POST
 	private static final String LIST_PATH = ""; // GET
-	private static final String END_PATH = "/{"+EVENT_ID_PARAM+"}/end"; // PUT
-	private static final String CANCEL_PATH = "/{"+EVENT_ID_PARAM+"}"; // DELETE
-	private static final String GET_PATH = "/{"+EVENT_ID_PARAM+"}"; // GET
+	private static final String CREATE_PATH = ""; // POST
 	private static final String UPDATE_PATH = "/{"+EVENT_ID_PARAM+"}"; // PUT
+	private static final String CANCEL_PATH = "/{"+EVENT_ID_PARAM+"}"; // DELETE
+	private static final String END_PATH = "/{"+EVENT_ID_PARAM+"}/end"; // PUT
+	private static final String GET_PATH = "/{"+EVENT_ID_PARAM+"}/get"; // GET
 	private static final String JOIN_PATH = "/{"+EVENT_ID_PARAM+"}/join"; // POST
 	private static final String LEAVE_PATH = "/{"+EVENT_ID_PARAM+"}/leave"; // DELETE
 	private static final String LIST_BY_EVENT_PATH = "/{"+EVENT_ID_PARAM+"}/list"; // GET
@@ -226,7 +226,7 @@ public class EventResource {
 	 */
 	@PUT
 	@Path(END_PATH)
-	public Response endEvent(@PathParam("eventId") String event, @QueryParam("tokenId") String token) {
+	public Response endEvent(@PathParam(EVENT_ID_PARAM) String event, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(token)) {
 			log.warning(END_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();

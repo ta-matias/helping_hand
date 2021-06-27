@@ -42,7 +42,18 @@ public enum RBACRule {
 	REMOVE_INSTITUTION_MEMBER("DELETE_institution_members",new Role[] {INSTITUTION}), // remove a member from an institution
 	UPDATE_USER_ROLE("PUT_restricted_role",new Role[] {SU}), // update a user account's role
 	GET_USERS_ROLE("PUT_restricted_role",new Role[] {GBO}), // get all accounts of a certain role
-	GET_DAILY_STATS("PUT_restricted_role",new Role[] {GBO}); // get number of accounts created between 2 dates
+	GET_DAILY_STATS("PUT_restricted_role",new Role[] {GBO}),// get number of accounts created between 2 dates
+	GET_ALL_EVENTS("GET_event",new Role[] {USER,INSTITUTION,GBO}), 
+	CREATE_EVENT("POST_event",new Role[] {USER,INSTITUTION}),
+	CANCEL_EVENT("DELETE_event",new Role[] {USER,INSTITUTION,GBO}),
+	END_EVENT("PUT_event_end",new Role[] {USER,INSTITUTION,GBO}),
+	GET_EVENT("GET_event_get",new Role[] {USER,INSTITUTION,GBO}),
+	UPDATE_EVENT("PUT_event",new Role[] {USER,INSTITUTION,GBO}),
+	JOIN_EVENT("POST_event_join",new Role[] {USER,INSTITUTION}),
+	LEAVE_EVENT("DELETE_event_leave",new Role[] {USER,INSTITUTION}),
+	LIST_EVENT_PARTICIPANTS("GET_event_list",new Role[] {USER,INSTITUTION}),
+	GET_EVENT_STATUS("GET_event_status",new Role[] {USER,INSTITUTION,GBO}),
+	UPDATE_EVENT_STATUS("PUT_event_status",new Role[] {USER,INSTITUTION,GBO});
 	
 	
 	
