@@ -419,7 +419,7 @@ public class AccessControlManager {
 			
 			Timestamp now = Timestamp.now();
 			Timestamp tokenExpiration =token.getTimestamp(TOKEN_EXPIRATION_PROPERTY);
-			if(tokenExpiration.compareTo(now) > 0) {
+			if(tokenExpiration.compareTo(now) < 0) {
 				log.severe(String.format(TOKEN_EXPIRED_ERROR,tokenId));
 				return false;
 			}
