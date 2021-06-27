@@ -125,9 +125,6 @@ public class AccountUtils {
 	public static final String INSTITUTION_PROFILE_INITIALS_PROPERTY = "initials";
 	public static final String INSTITUTION_PROFILE_CATEGORIES_PROPERTY = "categories";
 	
-	public static final String USER_FEED_KIND = "UserFeed";
-	public static final String USER_FEED_NOTIFICATIONS_PROPERTY = "notification";
-	
 	public static final String INSTITUTION_MEMBERS_KIND = "InstMember";
 	public static final String INSTITUTION_MEMBERS_ID_PROPERTY = "id";
 	
@@ -171,7 +168,10 @@ public class AccountUtils {
 		List<Key> toDelete = new LinkedList<>();
 		toDelete.add(account.getKey());
 		QueryUtils.getEntityChildren(account).stream().forEach(c->toDelete.add(c.getKey()));
-		QueryUtils.getEntityListByProperty(INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,id).stream().forEach(m->toDelete.add(m.getKey()));
+		if(!Role.getRole(account.getString(ACCOUNT_ROLE_PROPERTY)).equals(Role.INSTITUTION)) {
+			QueryUtils.getEntityListByProperty(INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,id).stream().forEach(m->toDelete.add(m.getKey()));
+		}
+		
 		
 		Key[] keys = new Key[toDelete.size()];
 		toDelete.toArray(keys);
@@ -580,7 +580,7 @@ public class AccountUtils {
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
-		log.info(String.format(GET_ACCOUNT_INFO_START,token));
+		log.info(String.format(GET_ACCOUNT_INFO_START,id,token));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));

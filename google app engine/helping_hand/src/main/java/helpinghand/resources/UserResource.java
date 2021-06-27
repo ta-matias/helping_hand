@@ -16,11 +16,13 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.Value;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
@@ -52,11 +54,20 @@ public class UserResource extends AccountUtils{
 	private static final String GET_ALL_OK ="Successfuly got all users with token [%s]";
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 	
+	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
+
+	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to [%s]'s feed";
+	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
+	private static final String ADD_NOTIFICATION_FEED_BAD_DATA_ERROR = "Add notification to feed failed due to bad input";
+	
 	public static final String USER_ID_PARAM = "userId";
 	
 	public static final String USER_STATS_KIND = "UserStats";
 	public static final String USER_STATS_RATING_PROPERTY = "rating";
 	public static final String USER_sSTATS_RELIABILITY_PROPERTY = "reliability";
+	
+	public static final String USER_FEED_KIND = "UserFeed";
+	public static final String USER_FEED_NOTIFICATIONS_PROPERTY = "notification";
 	
 	
 	//Paths
@@ -494,5 +505,65 @@ public class UserResource extends AccountUtils{
 			}
 		}
 	}
+	
+	public static boolean addNotificationToFeed(String user,String message) {
+		if(badString(user)||badString(message)) {
+			log.warning(ADD_NOTIFICATION_FEED_BAD_DATA_ERROR);
+			return false;
+		}
 		
+		log.info(String.format(ADD_NOTIFICATION_FEED_START,user));
+		
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		if(account == null) {
+			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+			return false;
+		}
+		
+		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
+		if(feedList.isEmpty() || feedList.size() > 1) {
+			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
+			return false;
+		}
+		
+		
+		
+		Entity feed = feedList.get(0);
+		
+		List<Value<String>> notifications = feed.getList(USER_FEED_NOTIFICATIONS_PROPERTY);
+		
+		ListValue.Builder feedBuilder = ListValue.newBuilder();
+		
+		notifications.forEach(notification->{
+			feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
+		});
+		
+		ListValue completeFeed = feedBuilder.build();
+		
+		Entity updatedFeed = Entity.newBuilder(feed)
+		.set(USER_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedFeed);
+			txn.commit();
+			log.info(String.format(ADD_NOTIFICATION_FEED_OK,user));
+			return true;
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return false;
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return false;
+			}
+		}
+		
+	}
+	
+	
+	
 }
