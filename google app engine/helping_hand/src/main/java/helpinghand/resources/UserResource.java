@@ -54,6 +54,10 @@ public class UserResource extends AccountUtils{
 	
 	public static final String USER_ID_PARAM = "userId";
 	
+	public static final String USER_STATS_KIND = "UserStats";
+	public static final String USER_STATS_RATING_PROPERTY = "rating";
+	public static final String USER_sSTATS_RELIABILITY_PROPERTY = "reliability";
+	
 	
 	//Paths
 	public static final String PATH = "/user";

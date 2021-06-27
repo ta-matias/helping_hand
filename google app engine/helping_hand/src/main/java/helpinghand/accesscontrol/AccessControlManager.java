@@ -429,7 +429,7 @@ public class AccessControlManager {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, token.getString(TOKEN_OWNER_PROPERTY)));
 				return false;
 			}
-			if(account.getBoolean(AccountUtils.ACCOUNT_STATUS_PROPERTY)) {
+			if(!account.getBoolean(AccountUtils.ACCOUNT_STATUS_PROPERTY)) {
 				log.severe(String.format(ACCOUNT_INACTIVE_ERROR, token.getString(TOKEN_OWNER_PROPERTY)));
 				return false;
 			}

@@ -32,6 +32,8 @@ import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.Transaction;
+import com.google.datastore.v1.TransactionOptions;
+import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.AccessControlManager;
@@ -627,14 +629,14 @@ public class EventResource {
 		
 		Query<Entity> query = Query.newEntityQueryBuilder().setKind(EVENT_KIND).build();
 		
-		Transaction txn = datastore.newTransaction();
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		
 		try {
 			QueryResults<Entity> events = txn.run(query);
 			txn.commit();
 			List<String[]> eventList = new LinkedList<>();	
 
-			events.forEachRemaining(event ->eventList.add(new String[] {event.getString(EVENT_NAME_PROPERTY),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))}));
+			events.forEachRemaining(event ->eventList.add(new String[] {Long.toString(event.getKey().getId()),event.getString(EVENT_NAME_PROPERTY),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))}));
 
 			log.info(String.format(LIST_EVENTS_OK, token));
 			return Response.ok(g.toJson(eventList)).build();

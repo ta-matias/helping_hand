@@ -47,14 +47,22 @@ public enum RBACRule {
 	GET_ALL_EVENTS("GET_event",new Role[] {USER,INSTITUTION,GBO}), 
 	CREATE_EVENT("POST_event",new Role[] {USER,INSTITUTION}),
 	CANCEL_EVENT("DELETE_event",new Role[] {USER,INSTITUTION,GBO}),
-	END_EVENT("PUT_event_end",new Role[] {USER,INSTITUTION,GBO}),
+	END_EVENT("PUT_event_end",new Role[] {USER,INSTITUTION}),
 	GET_EVENT("GET_event_get",new Role[] {USER,INSTITUTION,GBO}),
-	UPDATE_EVENT("PUT_event",new Role[] {USER,INSTITUTION,GBO}),
+	UPDATE_EVENT("PUT_event",new Role[] {USER,INSTITUTION}),
 	JOIN_EVENT("POST_event_join",new Role[] {USER,INSTITUTION}),
 	LEAVE_EVENT("DELETE_event_leave",new Role[] {USER,INSTITUTION}),
-	LIST_EVENT_PARTICIPANTS("GET_event_list",new Role[] {USER,INSTITUTION}),
+	LIST_EVENT_PARTICIPANTS("GET_event_list",new Role[] {USER,INSTITUTION,GBO}),
 	GET_EVENT_STATUS("GET_event_status",new Role[] {USER,INSTITUTION,GBO}),
-	UPDATE_EVENT_STATUS("PUT_event_status",new Role[] {USER,INSTITUTION,GBO});
+	UPDATE_EVENT_STATUS("PUT_event_status",new Role[] {USER,INSTITUTION,GBO}),
+	GET_ALL_HELP("GET_help",new Role[] {USER,GBO}),
+	CREATE_HELP("POST_help",new Role[] {USER,INSTITUTION}),
+	UPDATE_HELP("PUT_help",new Role[] {USER,INSTITUTION}),
+	CANCEL_HELP("DELETE_help",new Role[] {USER,INSTITUTION,GBO}),
+	FINISH_HELP("PUT_help_finish",new Role[] {USER,INSTITUTION}),
+	OFFER_HELP("PUT_help_offer",new Role[] {USER}),
+	LEAVE_HELP("DELETE_help_leave",new Role[] {USER}),
+	CHOOSE_HELPER("PUT_help_helper",new Role[] {USER,INSTITUTION});
 	
 	
 	
