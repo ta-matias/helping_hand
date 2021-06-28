@@ -165,6 +165,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -259,6 +260,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -319,6 +321,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -375,6 +378,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -434,6 +438,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -489,6 +494,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -544,6 +550,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,ACCOUNT_INFO_KIND);
@@ -608,6 +615,7 @@ public class AccountUtils {
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		

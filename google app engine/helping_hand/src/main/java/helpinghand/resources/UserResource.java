@@ -36,6 +36,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 
 
@@ -440,6 +441,7 @@ public class UserResource extends AccountUtils{
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		
@@ -500,6 +502,7 @@ public class UserResource extends AccountUtils{
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
 				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
@@ -540,7 +543,7 @@ public class UserResource extends AccountUtils{
 	
 	@GET
 	@Path(GET_FEED_PATH)
-	public Response getFeed(@PathParam(USER_ID_PARAM) String user, @QueryParam(TOKEN_ID_PARAM) String token) {
+	public Response getFeed(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(token)) {
 			log.info(GET_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -548,15 +551,25 @@ public class UserResource extends AccountUtils{
 		
 		log.info(String.format(GET_FEED_START, token));
 		
-		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, token,id));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
 		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
 		if(feedList.isEmpty() || feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
+			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		
@@ -565,14 +578,14 @@ public class UserResource extends AccountUtils{
 		List<Value<String>> notifications = feed.getList(USER_FEED_NOTIFICATIONS_PROPERTY);
 		List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
 		
-		log.info(String.format(GET_FEED_OK,user,token));
+		log.info(String.format(GET_FEED_OK,id,token));
 		return Response.ok(g.toJson(notificationList)).build();
 	}
 	
 	@PUT
 	@Path(UPDATE_FEED_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateFeed(@PathParam(USER_ID_PARAM) String user,@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
+	public Response updateFeed(@PathParam(USER_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
 		if(badString(token) || feed == null) {
 			log.info(UPDATE_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -580,17 +593,30 @@ public class UserResource extends AccountUtils{
 		
 		log.info(String.format(UPDATE_FEED_START, token));
 		
-		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+
+		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, token,id));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
 		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
 		if(feedList.isEmpty() || feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
+			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
+		
+		
 		
 		Entity feedEntity = feedList.get(0);
 		
@@ -611,7 +637,7 @@ public class UserResource extends AccountUtils{
 			txn.update(updatedFeed);
 			txn.commit();
 		
-			log.info(String.format(UPDATE_FEED_OK,user,token));
+			log.info(String.format(UPDATE_FEED_OK,id,token));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
