@@ -388,7 +388,7 @@ public class AccountUtils {
 		}
 		
 		Entity updatedAccount = Entity.newBuilder(account)
-		.set(ACCOUNT_EMAIL_PROPERTY,DigestUtils.sha512Hex(data.email))
+		.set(ACCOUNT_EMAIL_PROPERTY,data.email)
 		.build();
 		
 		Transaction txn = datastore.newTransaction();
