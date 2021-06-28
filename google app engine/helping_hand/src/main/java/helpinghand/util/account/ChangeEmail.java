@@ -8,6 +8,8 @@ public class ChangeEmail {
 	public String email;
 	public String password;
 	
+	public ChangeEmail() {}
+	
 	public ChangeEmail(String email, String password) {
 		this.email = email;
 		this.password = password;

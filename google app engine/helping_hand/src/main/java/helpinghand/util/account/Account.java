@@ -9,6 +9,8 @@ public class Account {
 	public boolean status;
 	public boolean visible;
 	
+	public Account() {}
+	
 	public Account(String id, String email, boolean status, boolean visible) {
 		this.id = id;
 		this.email = email;

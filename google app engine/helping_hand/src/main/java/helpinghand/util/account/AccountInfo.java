@@ -9,6 +9,8 @@ public class AccountInfo {
 	public String zipcode;
 	public String city;
 	
+	public AccountInfo() {}
+	
 	public AccountInfo(String phone, String address1, String address2, String zipcode, String city) {
 		this.phone = phone;
 		this.address1 = address1;

@@ -6,6 +6,9 @@ public class ChangeId {
 	
 	public String id;
 	public String password;
+	
+	public ChangeId() {}
+	
 	public ChangeId(String id, String password) {
 		this.id = id;
 		this.password = password;

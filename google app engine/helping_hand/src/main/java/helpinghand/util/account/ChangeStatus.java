@@ -6,6 +6,9 @@ public class ChangeStatus {
 	
 	public boolean status;
 	public String password;
+	
+	public ChangeStatus() {}
+	
 	public ChangeStatus(boolean status, String password) {
 		super();
 		this.status = status;

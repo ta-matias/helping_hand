@@ -7,6 +7,8 @@ public class InstitutionProfile {
 	public String bio;
 	public String[] categories;
 	
+	public InstitutionProfile() {}
+	
 	public InstitutionProfile(String name, String initials, String bio, String[] categories) {
 		this.name = name;
 		this.initials = initials;
