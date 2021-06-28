@@ -9,6 +9,8 @@ import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.ListValue;
 
 public enum RBACRule {
+	
+	//UserResource
 	GET_ALL_USERS("GET_user",new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	CREATE_USER("POST_user",new Role[] {ALL}), //create a user account
 	DELETE_USER("DELETE_user",new Role[] {USER,GBO}), //delete a user account
@@ -23,6 +25,10 @@ public enum RBACRule {
 	GET_USER_INFO("GET_user_info",new Role[] {USER,INSTITUTION,GBO}), //get a user's account info
 	UPDATE_USER_PROFILE("PUT_user_profile",new Role[] {USER,GBO}), // update a user's profile
 	GET_USER_PROFILE("GET_user_profile",new Role[] {USER,INSTITUTION,GBO}), //get a user's profile
+	GET_USER_FEED("GET_user_feed",new Role[] {USER}),
+	UPDATE_USER_FEED("UPDATE_user_feed",new Role[] {USER}),
+	
+	//Institution Resource
 	GET_ALL_INSTITUTIONS("GET_institution",new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)
 	CREATE_INSTITUTION("POST_institution",new Role[] {ALL}), //create an institution account
 	DELETE_INSTITUTION("DELETE_institution",new Role[] {INSTITUTION,GBO}), // delete an institution account
@@ -40,10 +46,14 @@ public enum RBACRule {
 	GET_INSTITUTION_MEMBERS("GET_institution_members",new Role[] {USER,INSTITUTION,GBO}), //list an institution's members
 	ADD_INSTITUTION_MEMBER("POST_institution_members",new Role[] {INSTITUTION}), // add a member to an institution 
 	REMOVE_INSTITUTION_MEMBER("DELETE_institution_members",new Role[] {INSTITUTION}), // remove a member from an institution
+	
+	//BackofficeResource
 	UPDATE_USER_ROLE("PUT_restricted_updateAccountRole",new Role[] {SU}), // update a user account's role
 	UPDATE_TOKEN_ROLE("PUT_restricted_updateTokenRole",new Role[] {USER,GBO,SU}), // update a token's current role
-	GET_USERS_ROLE("PUT_restricted_listRole",new Role[] {GBO}), // get all accounts of a certain role
-	GET_DAILY_STATS("PUT_restricted_dailyUsers",new Role[] {GBO}),// get number of accounts created between 2 dates
+	GET_USERS_ROLE("GET_restricted_listRole",new Role[] {GBO}), // get all accounts of a certain role
+	GET_DAILY_STATS("GET_restricted_dailyUsers",new Role[] {GBO}),// get number of accounts created between 2 dates
+	
+	//EventResource
 	GET_ALL_EVENTS("GET_event",new Role[] {USER,INSTITUTION,GBO}), 
 	CREATE_EVENT("POST_event",new Role[] {USER,INSTITUTION}),
 	CANCEL_EVENT("DELETE_event",new Role[] {USER,INSTITUTION,GBO}),
@@ -55,12 +65,14 @@ public enum RBACRule {
 	LIST_EVENT_PARTICIPANTS("GET_event_list",new Role[] {USER,INSTITUTION,GBO}),
 	GET_EVENT_STATUS("GET_event_status",new Role[] {USER,INSTITUTION,GBO}),
 	UPDATE_EVENT_STATUS("PUT_event_status",new Role[] {USER,INSTITUTION,GBO}),
+	
+	//HelpResource
 	GET_ALL_HELP("GET_help",new Role[] {USER,GBO}),
 	CREATE_HELP("POST_help",new Role[] {USER,INSTITUTION}),
 	UPDATE_HELP("PUT_help",new Role[] {USER,INSTITUTION}),
 	CANCEL_HELP("DELETE_help",new Role[] {USER,INSTITUTION,GBO}),
 	FINISH_HELP("PUT_help_finish",new Role[] {USER,INSTITUTION}),
-	OFFER_HELP("PUT_help_offer",new Role[] {USER}),
+	OFFER_HELP("POST_help_offer",new Role[] {USER}),
 	LEAVE_HELP("DELETE_help_leave",new Role[] {USER}),
 	CHOOSE_HELPER("PUT_help_helper",new Role[] {USER,INSTITUTION});
 	

@@ -48,6 +48,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 
 /**
@@ -174,6 +175,11 @@ public class EventResource {
 		}
 		
 		log.info(String.format(CREATE_EVENT_START,token));
+		
+		if(!AccessControlManager.getOwner(token).equals(data.creator)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, token,data.creator));
+			return Response.status(Status.FORBIDDEN).build();
+		}
 		
 		LatLng location = LatLng.of(data.location[0],data.location[1]);
 		ListValue.Builder builder = ListValue.newBuilder();
@@ -440,7 +446,6 @@ public class EventResource {
 	 */
 	@GET
 	@Path(GET_PATH)
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response getEvent(@PathParam(EVENT_ID_PARAM) String event, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(event) || badString (token)) {
 			log.warning(GET_EVENT_BAD_DATA_ERROR);
@@ -482,8 +487,6 @@ public class EventResource {
 	 */
 	@POST
 	@Path(JOIN_PATH)
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response joinEvent(@PathParam(EVENT_ID_PARAM) String event, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(event) || badString(token)) {
 			log.warning(JOIN_EVENT_BAD_DATA_ERROR);

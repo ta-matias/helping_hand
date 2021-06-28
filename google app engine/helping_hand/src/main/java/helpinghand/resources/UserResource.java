@@ -42,6 +42,7 @@ import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @Path(UserResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
@@ -55,6 +56,14 @@ public class UserResource extends AccountUtils{
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 	
 	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
+	
+	private static final String GET_FEED_START ="Attempting to get notification with token [%s]";
+	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token [%s]";
+	private static final String GET_FEED_BAD_DATA_ERROR = "Get notification feed failed due to bad input";
+	
+	private static final String UPDATE_FEED_START ="Attempting to update notification list with token [%s]";
+	private static final String UPDATE_FEED_OK ="Successfuly updated notification feed  of [%s] with token [%s]";
+	private static final String UPDATE_FEED_BAD_DATA_ERROR = "Update notification feed failed due to bad input";
 
 	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to [%s]'s feed";
 	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
@@ -86,6 +95,8 @@ public class UserResource extends AccountUtils{
 	private static final String GET_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//GET
 	private static final String UPDATE_PROFILE_PATH ="/{" + USER_ID_PARAM + "}/profile";//PUT
 	private static final String GET_PROFILE_PATH = "/{" + USER_ID_PARAM + "}/profile";//GET
+	private static final String GET_FEED_PATH = "/{" + USER_ID_PARAM + "}/feed";//GET
+	private static final String UPDATE_FEED_PATH = "/{" + USER_ID_PARAM + "}/feed";//PUT
 	
 	
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
@@ -329,6 +340,7 @@ public class UserResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_STATUS_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateStatus(@PathParam(USER_ID_PARAM) String id, ChangeStatus data, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateStatus(id, data, token);
 	}
@@ -346,6 +358,7 @@ public class UserResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_VISIBILITY_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateVisibility(@PathParam(USER_ID_PARAM) String id, ChangeVisibility data, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateVisibility(id, data, token);
 	}
@@ -361,7 +374,6 @@ public class UserResource extends AccountUtils{
 	@GET
 	@Path(GET_INFO_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 	public Response getAccountInfo(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token) {
 		return super.getAccountInfo(id, token);
 	}
@@ -394,8 +406,6 @@ public class UserResource extends AccountUtils{
 	 */
 	@GET
 	@Path(GET_PROFILE_PATH)
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 	public Response getProfile(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token) {
 		if(badString(id) || badString(token)) {
 			log.warning(GET_PROFILE_BAD_DATA_ERROR);
@@ -492,6 +502,106 @@ public class UserResource extends AccountUtils{
 			txn.update(updatedUserProfile);
 			txn.commit();
 			log.info(String.format(UPDATE_PROFILE_OK,account.getString(ACCOUNT_EMAIL_PROPERTY),token));
+			return Response.ok().build();
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	@GET
+	@Path(GET_FEED_PATH)
+	public Response getFeed(@QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(token)) {
+			log.info(GET_FEED_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(GET_FEED_START, token));
+		
+		String user = AccessControlManager.getOwner(token);
+		if(user == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
+		if(feedList.isEmpty() || feedList.size() > 1) {
+			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		Entity feed = feedList.get(0);
+		
+		List<Value<String>> notifications = feed.getList(USER_FEED_NOTIFICATIONS_PROPERTY);
+		List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
+		
+		log.info(String.format(GET_FEED_OK,user,token));
+		return Response.ok(g.toJson(notificationList)).build();
+	}
+	
+	@PUT
+	@Path(UPDATE_FEED_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateFeed(@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
+		if(badString(token) || feed == null) {
+			log.info(UPDATE_FEED_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(UPDATE_FEED_START, token));
+		
+		String user = AccessControlManager.getOwner(token);
+		if(user == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
+		if(feedList.isEmpty() || feedList.size() > 1) {
+			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		Entity feedEntity = feedList.get(0);
+		
+		ListValue.Builder feedBuilder = ListValue.newBuilder();
+		
+		for(String notification:feed){
+			feedBuilder.addValue(StringValue.newBuilder(notification).setExcludeFromIndexes(true).build());
+		}
+		
+		ListValue completeFeed = feedBuilder.build(); 
+		
+		Entity updatedFeed = Entity.newBuilder(feedEntity)
+		.set(USER_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedFeed);
+			txn.commit();
+		
+			log.info(String.format(UPDATE_FEED_OK,user,token));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {

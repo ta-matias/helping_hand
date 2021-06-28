@@ -157,7 +157,6 @@ public class BackOfficeResource {
 	
 	@GET
 	@Path(LIST_ROLE_PATH)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 	public Response listAccountsByRole(@QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM)String token) {
 		
 		Role roleParam = Role.getRole(role);
@@ -176,8 +175,6 @@ public class BackOfficeResource {
 
 	@GET
 	@Path(DAILY_USERS_PATH)
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 	public Response dailyStatistics(@QueryParam(TOKEN_ID_PARAM) String token,@QueryParam(START_DATE_PARAM)String startDate,@QueryParam(END_DATE_PARAM)String endDate) {
 		if(badString(token) || badString(startDate) || badString(endDate)) {
 			log.warning(DAILY_STATS_BAD_DATA_ERROR);
@@ -233,7 +230,7 @@ public class BackOfficeResource {
 		}
 	}
 	
-private Map<LocalDate, Integer> initializeMap(String startDate, String endDate) {
+	private Map<LocalDate, Integer> initializeMap(String startDate, String endDate) {
 		
 		Map<LocalDate, Integer> data = new HashMap<LocalDate, Integer>();
 		

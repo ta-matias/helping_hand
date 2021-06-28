@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -47,6 +48,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERT
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 /**
  * @author PogChamp Software
@@ -134,11 +136,9 @@ public class HelpResource {
 	
 	private final Gson g = new Gson();
 	
-	public HelpResource() {
-		
-	}
+	public HelpResource() {}
 	
-	@PUT
+	@GET
 	@Path(LIST_PATH)
 	public Response listHelp(@QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(token)) {
@@ -188,6 +188,11 @@ public class HelpResource {
 			return Response.status(Status.BAD_REQUEST).entity("Invalid attributes!").build();
 		}
 		log.info(String.format(CREATE_HELP_START, token));
+		
+		if(!AccessControlManager.getOwner(token).equals(data.creator)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, token,data.creator));
+			return Response.status(Status.FORBIDDEN).build();
+		}
 		
 		LatLng location = LatLng.of(data.location[0],data.location[1]);
 		ListValue.Builder builder = ListValue.newBuilder();
@@ -499,7 +504,7 @@ public class HelpResource {
 		
 	}
 	
-	@PUT
+	@POST
 	@Path(OFFER_HELP_PATH)
 	public Response offerHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(help) || badString(token)) {
@@ -561,7 +566,7 @@ public class HelpResource {
 		
 	}
 	
-	@PUT
+	@DELETE
 	@Path(LEAVE_HELP_PATH)
 	public Response leaveHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(help) || badString(token)) {

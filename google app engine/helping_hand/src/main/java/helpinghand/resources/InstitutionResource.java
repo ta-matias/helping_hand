@@ -102,8 +102,8 @@ public class InstitutionResource extends AccountUtils{
 	private static final String GET_INFO_PATH="/{"+INSTITUTION_ID_PARAM+"}/info"; //GET
 	private static final String UPDATE_PROFILE_PATH="/{"+INSTITUTION_ID_PARAM+"}/profile"; //PUT
 	private static final String GET_PROFILE_PATH="/{"+INSTITUTION_ID_PARAM+"}/profile"; //GET
-	private static final String ADD_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //POST
-	private static final String REMOVE_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //DELETE
+	private static final String ADD_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //PUT
+	private static final String REMOVE_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //PUT
 	private static final String GET_MEMBERS_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //GET
 
 	
@@ -237,7 +237,6 @@ public class InstitutionResource extends AccountUtils{
 			}
 		}
 	}
-	
 
 	/**
 	 * Deletes an institution given its institution identification and the token identification.
@@ -253,7 +252,6 @@ public class InstitutionResource extends AccountUtils{
 		return super.deleteAccount(email, token);
 	}
 	
-	
 	/**
 	 * A institution login is performed.
 	 * @param instId - The institution id that is going to login.
@@ -268,7 +266,6 @@ public class InstitutionResource extends AccountUtils{
 	public Response login(Login data) {
 		return super.login(data);
 	}
-
 	
 	/**
 	 * A institution logout is performed.
@@ -296,6 +293,7 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_ID_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateId(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeId data, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateId(id, data, token);
 	}
@@ -313,6 +311,7 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_PASSWORD_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updatePassword(@PathParam(INSTITUTION_ID_PARAM) String id, ChangePassword data, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updatePassword(id, data, token);
 	}
@@ -330,6 +329,7 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_EMAIL_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeEmail data , @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateEmail(id, data, token);
 	}
@@ -347,6 +347,7 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_STATUS_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateStatus( @PathParam(INSTITUTION_ID_PARAM) String id, ChangeStatus data,  @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateStatus(id, data, token);
 	}
@@ -364,6 +365,7 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@PUT
 	@Path(UPDATE_VISIBILITY_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateVisibility( @PathParam(INSTITUTION_ID_PARAM) String id, ChangeVisibility data,  @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateVisibility(id, data, token);
 	}
@@ -409,7 +411,6 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@GET
 	@Path(GET_PROFILE_PATH)
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response getProfile(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(id) || badString(token)) {
 			log.warning(GET_PROFILE_BAD_DATA_ERROR);
@@ -587,7 +588,7 @@ public class InstitutionResource extends AccountUtils{
 	 * 		   404, if the institution does not exist or the subscription already exists.
 	 * 		   500, otherwise.
 	 */
-	@POST 
+	@POST
 	@Path(ADD_MEMBER_PATH)
 	public Response addMember(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(INSTITUTION_MEMBER_ID_PARAM) String memberId, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(id) || badString(memberId)||badString(token)) {
