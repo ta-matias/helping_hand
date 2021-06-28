@@ -172,6 +172,10 @@ public class AccountUtils {
 			QueryUtils.getEntityListByProperty(INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,id).stream().forEach(m->toDelete.add(m.getKey()));
 		}
 		
+		if(!AccessControlManager.endAllSessions(id)) {
+			log.warning(String.format(LOGOUT_FAILED, token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
 		
 		Key[] keys = new Key[toDelete.size()];
 		toDelete.toArray(keys);
@@ -181,7 +185,7 @@ public class AccountUtils {
 		try {
 			txn.delete(keys);
 			txn.commit();
-			AccessControlManager.endAllSessions(id);
+			
 			log.info(String.format(DELETE_OK,token));
 			return Response.ok().build();
 		}
@@ -220,7 +224,7 @@ public class AccountUtils {
 	protected Response logout(String token) {
 		log.info(String.format(LOGOUT_START,token));
 		
-		if(AccessControlManager.endSession(token)) {
+		if(!AccessControlManager.endSession(token)) {
 			log.warning(String.format(LOGOUT_FAILED, token));
 			return Response.status(Status.FORBIDDEN).build();
 		}
