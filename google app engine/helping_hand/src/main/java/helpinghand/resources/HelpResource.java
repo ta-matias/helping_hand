@@ -29,6 +29,7 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.ListValue;
+import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
@@ -536,7 +537,7 @@ public class HelpResource {
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Key helperKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELPER_KIND).newKey());
+		Key helperKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(HELP_KIND, helpEntity.getKey().getId())).setKind(HELPER_KIND).newKey());
 		
 		Entity helper = Entity.newBuilder(helperKey)
 		.set(HELPER_ID_PROPERTY,user)

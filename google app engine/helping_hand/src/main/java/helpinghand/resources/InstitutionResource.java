@@ -437,8 +437,13 @@ public class InstitutionResource extends AccountUtils{
 		}
 		
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,INSTITUTION_PROFILE_KIND);
-		if(lst.size() > 1 || lst.isEmpty()) {
+		if(lst.size() > 1) {
 			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		if(lst.isEmpty()) {
+			log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		Entity instProfile = lst.get(0);
@@ -498,10 +503,16 @@ public class InstitutionResource extends AccountUtils{
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,INSTITUTION_PROFILE_KIND);
-		if(lst.size() > 1 || lst.isEmpty()) {
+		if(lst.size() > 1) {
 			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
+		
+		if(lst.isEmpty()) {
+			log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
 		Entity instProfile = lst.get(0);
 		
 		ListValue.Builder listValueBuilder = ListValue.newBuilder();
@@ -633,7 +644,7 @@ public class InstitutionResource extends AccountUtils{
 			}
 		}
 		
-		Key memberKey = datastore.allocateId(datastore.newKeyFactory().setKind(INSTITUTION_MEMBERS_KIND).newKey());
+		Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).setKind(INSTITUTION_MEMBERS_KIND).newKey());
 		
 		Entity member = Entity.newBuilder(memberKey)
 		.set(INSTITUTION_MEMBERS_ID_PROPERTY,memberId)

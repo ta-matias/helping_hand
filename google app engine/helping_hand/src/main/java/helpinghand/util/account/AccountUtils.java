@@ -88,15 +88,18 @@ public class AccountUtils {
 	private static final String UPDATE_ACCOUNT_INFO_OK = "Successfuly updated account info of account [%s] with token [%s]";
 	private static final String UPDATE_ACCOUNT_INFO_BAD_DATA_ERROR = "Change account info attempt failed due to bad inputs";
 	private static final String MULTIPLE_ACCOUNT_INFO_ERROR = "There are multiple account infos for the account [%s]";
+	private static final String ACCOUNT_INFO_NOT_FOUND_ERROR = "There is no account info for the account [%s]";
 	
 	private static final String GET_ACCOUNT_INFO_START = "Attempting to get info of account [%s] with token [%s]";
 	private static final String GET_ACCOUNT_INFO_OK = "Successfuly got account info of account [%s] with token [%s]";
 	private static final String GET_ACCOUNT_INFO_BAD_DATA_ERROR = "Get account info attempt failed due to bad inputs";
 	
+	
 	protected static final String UPDATE_PROFILE_START ="Attempting to update profile with token [%s]";
 	protected static final String UPDATE_PROFILE_OK = "Successfuly updated prfile of account [%s] with token [%s]";
 	protected static final String UPDATE_PROFILE_BAD_DATA_ERROR = "Change profile attempt failed due to bad inputs";
-	protected static final String MULTIPLE_PROFILE_ERROR = "There are multiple account infos for the account [%s]";
+	protected static final String MULTIPLE_PROFILE_ERROR = "There are multiple account profiles for the account [%s]";
+	protected static final String PROFILE_NOT_FOUND_ERROR = "There is no account profile for the account [%s]";
 	
 	protected static final String GET_PROFILE_START = "Attempting to get profile of account [%s] with token [%s]";
 	protected static final String GET_PROFILE_OK = "Successfuly got profile of account [%s] with token [%s]";
@@ -544,8 +547,13 @@ public class AccountUtils {
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,ACCOUNT_INFO_KIND);
-		if(lst.size() > 1 || lst.isEmpty()) {
+		if(lst.size() > 1) {
 			log.severe(String.format(MULTIPLE_ACCOUNT_INFO_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		if(lst.isEmpty()) {
+			log.severe(String.format(ACCOUNT_INFO_NOT_FOUND_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		Entity accountInfo = lst.get(0);
@@ -603,9 +611,15 @@ public class AccountUtils {
 			}
 		}
 		
+		
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,ACCOUNT_INFO_KIND);
-		if(lst.size() > 1 || lst.isEmpty()) {
+		if(lst.size() > 1) {
 			log.severe(String.format(MULTIPLE_ACCOUNT_INFO_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		if(lst.isEmpty()) {
+			log.severe(String.format(ACCOUNT_INFO_NOT_FOUND_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		Entity accountInfo = lst.get(0);

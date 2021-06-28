@@ -56,6 +56,10 @@ public class UserResource extends AccountUtils{
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 	
 	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
+	private static final String FEED_NOT_FOUND_ERROR = "User [%s] has no notification feeds";
+	
+	private static final String MULTIPLE_STATS_ERROR = "User [%s] has multiple stats";
+	private static final String STATS_NOT_FOUND_ERROR = "User [%s] has no stats";
 	
 	private static final String GET_FEED_START ="Attempting to get notification with token [%s]";
 	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token [%s]";
@@ -73,7 +77,9 @@ public class UserResource extends AccountUtils{
 	
 	public static final String USER_STATS_KIND = "UserStats";
 	public static final String USER_STATS_RATING_PROPERTY = "rating";
-	public static final String USER_sSTATS_RELIABILITY_PROPERTY = "reliability";
+	public static final String USER_STATS_RELIABILITY_PROPERTY = "reliability";
+	public static final double USER_STATS_RATING_INITIAL = 0;
+	public static final double USER_STATS_RELIABILITY_INITIAL = 100;
 	
 	public static final String USER_FEED_KIND = "UserFeed";
 	public static final String USER_FEED_NOTIFICATIONS_PROPERTY = "notification";
@@ -177,9 +183,10 @@ public class UserResource extends AccountUtils{
 		}
 		
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
-		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_INFO_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
-		Key userProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(USER_PROFILE_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey());
-		Key userFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(USER_FEED_KIND, accountKey.getId())).setKind(USER_FEED_KIND).newKey());
+		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
+		Key userProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey());
+		Key userFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_FEED_KIND).newKey());
+		Key userStatsKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_STATS_KIND).newKey());
 		
 		Timestamp now = Timestamp.now();
 		
@@ -210,9 +217,14 @@ public class UserResource extends AccountUtils{
 		.set(USER_FEED_NOTIFICATIONS_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
 		.build();
 		
+		Entity userStats = Entity.newBuilder(userStatsKey)
+		.set(USER_STATS_RATING_PROPERTY,USER_STATS_RATING_INITIAL)
+		.set(USER_STATS_RELIABILITY_PROPERTY,USER_STATS_RELIABILITY_INITIAL)
+		.build();
+		
 		Transaction txn = datastore.newTransaction();
 		try {
-			txn.add(account,accountInfo,userProfile,userFeed);
+			txn.add(account,accountInfo,userProfile,userFeed,userStats);
 			txn.commit();
 			log.info(String.format(CREATE_OK,data.id,Role.USER.name()));
 			return Response.ok().build();
@@ -432,8 +444,13 @@ public class UserResource extends AccountUtils{
 		}
 		
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
-		if(lst.size() > 1 || lst.isEmpty()) {
+		if(lst.size() > 1) {
 			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		if(lst.isEmpty()) {
+			log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		Entity userProfile = lst.get(0);
@@ -486,10 +503,15 @@ public class UserResource extends AccountUtils{
 			}
 		}
 		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
-		if(lst.size() > 1 || lst.isEmpty()) {
+		if(lst.size() > 1 ) {
 			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
+		if(lst.isEmpty()) {
+			log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
 		Entity userProfile = lst.get(0);
 		
 		Entity updatedUserProfile = Entity.newBuilder(userProfile)
@@ -631,11 +653,14 @@ public class UserResource extends AccountUtils{
 		}
 		
 		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
-		if(feedList.isEmpty() || feedList.size() > 1) {
+		if(feedList.size() > 1) {
 			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
 			return false;
 		}
-		
+		if(feedList.isEmpty()) {
+			log.severe(String.format(FEED_NOT_FOUND_ERROR,user));
+			return false;
+		}
 		
 		
 		Entity feed = feedList.get(0);
