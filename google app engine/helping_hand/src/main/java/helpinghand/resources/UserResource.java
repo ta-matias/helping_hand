@@ -540,19 +540,13 @@ public class UserResource extends AccountUtils{
 	
 	@GET
 	@Path(GET_FEED_PATH)
-	public Response getFeed(@QueryParam(TOKEN_ID_PARAM) String token) {
+	public Response getFeed(@PathParam(USER_ID_PARAM) String user, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(token)) {
 			log.info(GET_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
 		log.info(String.format(GET_FEED_START, token));
-		
-		String user = AccessControlManager.getOwner(token);
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
-			return Response.status(Status.NOT_FOUND).build();
-		}
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
 		if(account == null) {
@@ -578,19 +572,13 @@ public class UserResource extends AccountUtils{
 	@PUT
 	@Path(UPDATE_FEED_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateFeed(@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
+	public Response updateFeed(@PathParam(USER_ID_PARAM) String user,@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
 		if(badString(token) || feed == null) {
 			log.info(UPDATE_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
 		log.info(String.format(UPDATE_FEED_START, token));
-		
-		String user = AccessControlManager.getOwner(token);
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
-			return Response.status(Status.NOT_FOUND).build();
-		}
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
 		if(account == null) {
