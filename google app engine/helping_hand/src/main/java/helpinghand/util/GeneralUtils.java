@@ -13,6 +13,8 @@ public class GeneralUtils {
 	public static final String TOKEN_NOT_FOUND_ERROR = "Token [%s] does not exist";
 	public static final String TOKEN_ACCESS_INSUFFICIENT_ERROR = "Token [%s] cannot execute the operation with current access level ([%d] < [%d])";
 	public static final String TOKEN_OWNER_ERROR = "Token [%s] does not belong to [%s]";
+	public static final String NOTIFICATION_ERROR = "Error notifying  user [%s]";
+	public static final String RATING_ERROR = "Error rating user [%s]";
 	
 	public static boolean badString(String s) {
 		if(s == null) return true;

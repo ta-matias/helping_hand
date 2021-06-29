@@ -122,6 +122,35 @@ public class QueryUtils {
 		
 	}
 	
+	public static List<Entity> getEntityListByProperty(String kind, String property, boolean value) {
+		
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(kind).setFilter(PropertyFilter.eq(property, value)).build();
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		
+		try {
+			QueryResults<Entity> results = txn.run(query);
+			txn.commit();
+			
+			List<Entity> entities = new LinkedList<>();
+			results.forEachRemaining(entity->entities.add(entity));
+			return entities;
+			
+		}catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_ERROR, e.toString()));
+			return null;
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return null;
+			}
+		}
+
+		
+	}
+	
 	
 	/**
 	 * Queries the datastore for the child entities of an entity
@@ -197,6 +226,35 @@ public class QueryUtils {
 	 * @return a list containing all children of the entity (can be empty), or null in case of error
 	 */
 	public static List<Entity> getEntityChildrenByKindAndProperty(Entity parent,String kind,String property,String value) {
+		
+		if(parent == null)return null; 
+		
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(kind).setFilter(CompositeFilter.and(PropertyFilter.eq(property, value),PropertyFilter.hasAncestor(parent.getKey()))).build();
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		List<Entity> children = new LinkedList<>();
+		try {
+			QueryResults<Entity> results = txn.run(query);
+			txn.commit();
+			results.forEachRemaining(child ->children.add(child));
+			return children;
+			
+		}catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_ERROR, e.toString()));
+			return null;
+		}
+		finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return null;
+			}
+		}
+
+		
+	}
+	
+public static List<Entity> getEntityChildrenByKindAndProperty(Entity parent,String kind,String property,boolean value) {
 		
 		if(parent == null)return null; 
 		

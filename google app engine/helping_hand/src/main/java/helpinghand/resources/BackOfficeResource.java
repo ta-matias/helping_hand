@@ -129,7 +129,7 @@ public class BackOfficeResource {
 			log.warning(String.format(TOKEN_POWER_ERROR, token,tokenRole.getAccess(),targetRole.getAccess()));
 		}
 		
-		if(AccessControlManager.changeRole(id,targetRole)) {
+		if(AccessControlManager.updateAccountRole(id,targetRole)) {
 			log.info(String.format(UPDATE_ACCOUNT_ROLE_OK ,id,targetRole.name()));
 			return Response.ok().build();
 		}
@@ -147,7 +147,7 @@ public class BackOfficeResource {
 			return Response.status(Status.BAD_REQUEST).build();
 		}	
 		
-		if(AccessControlManager.elevateToken(token, targetRole)){
+		if(AccessControlManager.updateTokenRole(token, targetRole)){
 			log.info(String.format(UPDATE_TOKEN_ROLE_OK, token,role));
 			return Response.ok().build();
 		}

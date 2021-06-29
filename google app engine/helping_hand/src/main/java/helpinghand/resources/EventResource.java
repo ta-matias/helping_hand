@@ -46,9 +46,11 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
+import static helpinghand.resources.UserResource.addNotificationToFeed;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
+import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 
 /**
@@ -58,6 +60,8 @@ import static helpinghand.util.GeneralUtils.badString;
 @Path(EventResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class EventResource {
+	
+	private static final String EVENT_CANCELED_NOTIFICATION = "Event '%s' has been canceled";
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in EventResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is EventResource: Transaction was active";
@@ -328,7 +332,14 @@ public class EventResource {
 			}
 		}
 		
-		List<Key> toDelete = QueryUtils.getEntityChildrenByKind(eventEntity, PARTICIPANT_KIND).stream().map(entity->entity.getKey()).collect(Collectors.toList());
+		List<Entity> participants = QueryUtils.getEntityChildrenByKind(eventEntity, PARTICIPANT_KIND);
+		for(Entity participant: participants) {
+			if(!addNotificationToFeed(participant.getString(PARTICIPANT_ID_PROPERTY),String.format(EVENT_CANCELED_NOTIFICATION, eventEntity.getString(EVENT_NAME_PROPERTY)))) {
+				log.severe(NOTIFICATION_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+		List<Key> toDelete = participants.stream().map(entity->entity.getKey()).collect(Collectors.toList());
 		toDelete.add(eventEntity.getKey());
 		
 		Key[] keys = new Key[toDelete.size()];

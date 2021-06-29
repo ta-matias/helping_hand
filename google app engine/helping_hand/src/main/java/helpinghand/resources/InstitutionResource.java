@@ -188,8 +188,8 @@ public class InstitutionResource extends AccountUtils{
 		}
 		
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
-		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_INFO_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
-		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(INSTITUTION_PROFILE_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
+		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
+		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
 		
 		Timestamp now = Timestamp.now();
 		

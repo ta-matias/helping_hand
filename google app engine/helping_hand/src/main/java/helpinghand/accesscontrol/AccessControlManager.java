@@ -267,7 +267,7 @@ public class AccessControlManager {
 	 * @param new_role - role to be removed from the user
 	 * @return <b>true</b> if change was successful, <b>false</b> if it failed
 	 */
-	public static boolean changeRole(String id, Role newRole) {
+	public static boolean updateAccountRole(String id, Role newRole) {
 		if(badString(id) || newRole == null) return false;
 		
 		Entity oldAccount = QueryUtils.getEntityByProperty(AccountUtils.ACCOUNT_KIND, AccountUtils.ACCOUNT_ID_PROPERTY, id);
@@ -315,7 +315,7 @@ public class AccessControlManager {
 	 * @param targetRole - role the token is to be elevated to.
 	 * @return <b>true</b> if successful, <b>false</b> if failed.
 	 */
-	public static boolean elevateToken(String tokenId,Role targetRole) {
+	public static boolean updateTokenRole(String tokenId,Role targetRole) {
 		if(badString(tokenId) || targetRole == null) return false;
 		
 		

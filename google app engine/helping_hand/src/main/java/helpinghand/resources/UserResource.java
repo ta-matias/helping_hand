@@ -31,6 +31,7 @@ import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
 import helpinghand.util.QueryUtils;
 import helpinghand.util.account.*;
+import helpinghand.util.user.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
@@ -74,13 +75,23 @@ public class UserResource extends AccountUtils{
 	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
 	private static final String ADD_NOTIFICATION_FEED_BAD_DATA_ERROR = "Add notification to feed failed due to bad input";
 	
+	private static final String GET_STATS_START ="Attempting to get stats of [%s] with token [%s]";
+	private static final String	GET_STATS_OK ="Successfuly got stats of [%s] with token [%s]";
+	private static final String GET_STATS_BAD_DATA_ERROR = "Get stats failed due to bad input";
+	
+	private static final String ADD_RATING_START ="Attempting to add rating to [%s]";
+	private static final String	ADD_RATING_OK ="Successfuly added rating to [%s]";
+	private static final String ADD_RATING_BAD_DATA_ERROR = "Add rating failed due to bad input";
+	
+	
 	public static final String USER_ID_PARAM = "userId";
 	
 	public static final String USER_STATS_KIND = "UserStats";
 	public static final String USER_STATS_RATING_PROPERTY = "rating";
-	public static final String USER_STATS_RELIABILITY_PROPERTY = "reliability";
-	public static final double USER_STATS_RATING_INITIAL = 0;
-	public static final double USER_STATS_RELIABILITY_INITIAL = 100;
+	public static final String USER_STATS_REQUESTS_DONE_PROPERTY = "done";
+	public static final String USER_STATS_REQUESTS_PROMISED_PROPERTY = "promised";
+	public static final double USER_STATS_INITIAL_RATING = 0.0;
+	public static final int USER_STATS_INITIAL_REQUESTS = 0;
 	
 	public static final String USER_FEED_KIND = "UserFeed";
 	public static final String USER_FEED_NOTIFICATIONS_PROPERTY = "notification";
@@ -104,6 +115,7 @@ public class UserResource extends AccountUtils{
 	private static final String GET_PROFILE_PATH = "/{" + USER_ID_PARAM + "}/profile";//GET
 	private static final String GET_FEED_PATH = "/{" + USER_ID_PARAM + "}/feed";//GET
 	private static final String UPDATE_FEED_PATH = "/{" + USER_ID_PARAM + "}/feed";//PUT
+	private static final String GET_STATS_PATH = "/{" + USER_ID_PARAM + "}/stats";//GET
 	
 	
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
@@ -219,8 +231,9 @@ public class UserResource extends AccountUtils{
 		.build();
 		
 		Entity userStats = Entity.newBuilder(userStatsKey)
-		.set(USER_STATS_RATING_PROPERTY,USER_STATS_RATING_INITIAL)
-		.set(USER_STATS_RELIABILITY_PROPERTY,USER_STATS_RELIABILITY_INITIAL)
+		.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,USER_STATS_INITIAL_RATING)
+		.set(USER_STATS_REQUESTS_DONE_PROPERTY,USER_STATS_INITIAL_REQUESTS)
+		.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_REQUESTS)
 		.build();
 		
 		Transaction txn = datastore.newTransaction();
@@ -544,7 +557,7 @@ public class UserResource extends AccountUtils{
 	@GET
 	@Path(GET_FEED_PATH)
 	public Response getFeed(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
-		if(badString(token)) {
+		if(badString(token) || badString(id)) {
 			log.info(GET_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
@@ -568,7 +581,11 @@ public class UserResource extends AccountUtils{
 		}
 		
 		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
-		if(feedList.isEmpty() || feedList.size() > 1) {
+		if(feedList.isEmpty()) {
+			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} 
+		if( feedList.size() > 1) {
 			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
@@ -586,7 +603,7 @@ public class UserResource extends AccountUtils{
 	@Path(UPDATE_FEED_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response updateFeed(@PathParam(USER_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
-		if(badString(token) || feed == null) {
+		if(badString(token) || feed == null || badString(id)) {
 			log.info(UPDATE_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
@@ -611,7 +628,11 @@ public class UserResource extends AccountUtils{
 		}
 		
 		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
-		if(feedList.isEmpty() || feedList.size() > 1) {
+		if(feedList.isEmpty()) {
+			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} 
+		if( feedList.size() > 1) {
 			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
@@ -650,6 +671,42 @@ public class UserResource extends AccountUtils{
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+	}
+	
+	@GET
+	@Path(GET_STATS_PATH)
+	public Response getStats(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(token) || badString(id)) {
+			log.info(GET_STATS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		log.info(String.format(GET_STATS_START, id, token));
+		
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		List<Entity> statList = QueryUtils.getEntityChildrenByKind(account, USER_STATS_KIND);
+		if(statList.isEmpty()) {
+			log.severe(String.format(STATS_NOT_FOUND_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} 
+		if( statList.size() > 1) {
+			log.severe(String.format(MULTIPLE_STATS_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		Entity statsEntity = statList.get(0);
+		
+		double reliability = statsEntity.getDouble(USER_STATS_REQUESTS_DONE_PROPERTY) / statsEntity.getDouble(USER_STATS_REQUESTS_PROMISED_PROPERTY);
+		
+		UserStats stats = new UserStats(statsEntity.getDouble(USER_STATS_RATING_PROPERTY),reliability);
+		
+		log.info(String.format(GET_STATS_OK,id,token));
+		return Response.ok(g.toJson(stats)).build();
 	}
 	
 	public static boolean addNotificationToFeed(String user,String message) {
@@ -711,8 +768,73 @@ public class UserResource extends AccountUtils{
 			}
 		}
 		
+		
+		
 	}
 	
-	
-	
+	public static boolean addRatingToStats(String user,boolean finished,int rating) {
+		if(badString(user)|| rating < 0 || rating > 5) {
+			log.warning(ADD_RATING_BAD_DATA_ERROR);
+			return false;
+		}
+		
+		log.info(String.format(ADD_RATING_START,user));
+		
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		if(account == null) {
+			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+			return false;
+		}
+		
+		List<Entity> statList = QueryUtils.getEntityChildrenByKind(account, USER_STATS_KIND);
+		if(statList.isEmpty()) {
+			log.severe(String.format(STATS_NOT_FOUND_ERROR,user));
+			return false;
+		} 
+		if( statList.size() > 1) {
+			log.severe(String.format(MULTIPLE_STATS_ERROR,user));
+			return false;
+		}
+		
+		Entity stats = statList.get(0);
+		
+		double oldRating = stats.getDouble(USER_STATS_RATING_PROPERTY);
+		double oldDone = stats.getDouble(USER_STATS_REQUESTS_DONE_PROPERTY);
+		double oldPromised = stats.getDouble(USER_STATS_REQUESTS_PROMISED_PROPERTY);
+		
+		double newPromised = oldPromised++;
+		double newDone = oldDone;
+		double newRating = oldRating;
+		
+		if(finished) {
+			newDone++;
+			newRating = ((oldRating * oldDone)+rating)/newDone;
+		}
+		
+		
+		
+		Entity updatedStats = Entity.newBuilder(stats)
+		.set(USER_STATS_RATING_PROPERTY, newRating)
+		.set(USER_STATS_REQUESTS_DONE_PROPERTY,newDone)
+		.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,newPromised)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedStats);
+			txn.commit();
+			log.info(String.format(ADD_RATING_OK,user));
+			return true;
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return false;
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return false;
+			}
+		}
+	}
 }

@@ -32,7 +32,6 @@ import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
-import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.cloud.datastore.Transaction;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
@@ -50,7 +49,11 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
+import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
+import static helpinghand.util.GeneralUtils.RATING_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.resources.UserResource.addNotificationToFeed;
+import static helpinghand.resources.UserResource.addRatingToStats;
 /**
  * @author PogChamp Software
  *
@@ -59,12 +62,18 @@ import static helpinghand.util.GeneralUtils.badString;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class HelpResource {
 	
+	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose (%s) has left the help request";
+	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
+	
+	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in HelpResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is HelpResource: Transaction was active";
 	private static final String HELP_NOT_FOUND_ERROR = "There is no help with id (%s)";
 	private static final String MULTIPLE_HELPER_ERROR = "The user is registered as offering help multiple times";
 	private static final String HELPER_NOT_FOUND_ERROR = "The user [%s] is not offering to help in (%s)";
 	private static final String HELPER_CONFLICT_ERROR = "The user [%s] is already offering to help in (%s)";
+	private static final String NO_CURRENT_HELPER_ERROR = "There is no current helper is this help request";
+	private static final String MULTIPLE_CURRENT_HELPER_ERROR = "There are multiple current helpers in this help request";
 	
 	private static final String LIST_HELP_START  = "Attempting to get all help requests with token [%s]";
 	private static final String LIST_HELP_OK = "Successfuly got all help requests with token [%s]";
@@ -111,6 +120,7 @@ public class HelpResource {
 	private static final String LEAVE_HELP_PATH = "/{helpId}/leave";//PUT
 	
 	private static final String HELP_ID_PARAM = "helpId";
+	private static final String RATING_PARAM = "rating";
 	
 	private static final String HELP_KIND = "Help";
 	private static final String HELP_NAME_PROPERTY = "name";
@@ -122,7 +132,6 @@ public class HelpResource {
 	private static final String HELP_STATUS_PROPERTY = "status";
 	private static final String HELP_CONDITIONS_PROPERTY = "conditions";
 	private static final boolean HELP_STATUS_INITIAL = true;
-	private static final boolean HELP_STATUS_DONE = false;
 	
 	private static final String HELPER_ID_PARAM ="helperId";
 	private static final String HELPER_KIND ="Helper";
@@ -307,8 +316,10 @@ public class HelpResource {
 	
 	@PUT
 	@Path(FINISH_PATH)
-	public Response finishHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
-		if(badString(help) || badString(token)) {
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response finishHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token , @QueryParam(RATING_PARAM) String rating) {
+		int ratingValue = Integer.parseInt(rating);
+		if(badString(help) || badString(token) ||ratingValue<0 || ratingValue > 5) {
 			log.warning(FINISH_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
@@ -334,23 +345,42 @@ public class HelpResource {
 			}
 		}
 		
+		List<Entity> helperList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND, HELPER_CURRENT_PROPERTY, true);
+		if(helperList.isEmpty()) {
+			log.severe(NO_CURRENT_HELPER_ERROR);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		if(helperList.size() > 1) {
+			log.severe(MULTIPLE_CURRENT_HELPER_ERROR);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		Entity currentHelper = helperList.get(0);
+		
+		if(!addRatingToStats(currentHelper.getString(HELPER_ID_PROPERTY),true,ratingValue)) {
+			log.severe(String.format(RATING_ERROR, currentHelper.getString(HELPER_ID_PROPERTY)));
+		}
+		
 		if(helpEntity.getBoolean(HELP_PERMANENT_PROPERTY)) {
 			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,token));
 			return Response.ok().build();
 		}
-		Entity updatedHelp = Entity.newBuilder(helpEntity)
-		.set(HELP_STATUS_PROPERTY, HELP_STATUS_DONE)
-		.build();
 		
 		//TODO:do something to current helper
+		
+		
+		
+		List<Key> toDelete = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND).stream().map(helper->helper.getKey()).collect(Collectors.toList());
+		toDelete.add(helpEntity.getKey());
+		Key[] keys =  new Key[toDelete.size()];
+		toDelete.toArray(keys);
 		
 		Transaction txn = datastore.newTransaction();
 		
 		try {
-			
-			txn.update(updatedHelp);
+			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(FINISH_HELP_OK, updatedHelp.getString(HELP_NAME_PROPERTY),help,token));
+			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), help,token));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -395,7 +425,14 @@ public class HelpResource {
 			}
 		}
 		
-		List<Key> toDelete = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND).stream().map(helper->helper.getKey()).collect(Collectors.toList());
+		List<Entity> helpers = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND);
+		for(Entity helper: helpers) {
+			if(!addNotificationToFeed(helper.getString(HELPER_ID_PROPERTY),String.format(HELP_CANCELED_NOTIFICATION, helpEntity.getString(HELP_NAME_PROPERTY)))) {
+				log.severe(NOTIFICATION_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+		List<Key> toDelete = helpers.stream().map(entity->entity.getKey()).collect(Collectors.toList());
 		toDelete.add(helpEntity.getKey());
 		Key[] keys =  new Key[toDelete.size()];
 		toDelete.toArray(keys);
@@ -468,26 +505,33 @@ public class HelpResource {
 			return Response.status(Status.CONFLICT).build();
 		}
 		
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_CURRENT_PROPERTY, true)).build();
+		
 		
 		Entity updatedHelper = Entity.newBuilder(helperEntity)
 		.set(HELPER_CURRENT_PROPERTY, true)
 		.build();
 		
+		List<Entity> currentHelperList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_CURRENT_PROPERTY ,true);
+		if(currentHelperList.size() > 1) {
+			log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR,help));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		Entity[] toUpdate = new Entity[] {updatedHelper};
+		if(!currentHelperList.isEmpty()) {
+			Entity currentHelper = currentHelperList.get(0);
+			Entity updatedCurrentHelper = Entity.newBuilder(currentHelper)
+			.set(HELPER_CURRENT_PROPERTY, false)
+			.build();
+			
+			toUpdate= new Entity[] {updatedHelper,updatedCurrentHelper};
+		}
+		
+		
 		Transaction txn = datastore.newTransaction();
 		
 		try {
-			QueryResults<Entity> results = txn.run(query);
-			if(results.hasNext()) {
-				Entity currentHelper = results.next();
-				Entity updatedCurrentHelper = Entity.newBuilder(currentHelper)
-				.set(HELPER_CURRENT_PROPERTY, false)
-				.build();
-				txn.update(updatedHelper,updatedCurrentHelper);
-			}else {
-				txn.update(updatedHelper);
-			}
-			
+			txn.update(toUpdate);
 			txn.commit();
 			log.info(String.format(CHOOSE_HELPER_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,token));
 			return Response.ok().build();
@@ -599,8 +643,18 @@ public class HelpResource {
 		}
 		Entity helper = checkList.get(0);
 		
-		if(helper.getBoolean(HELPER_CONFLICT_ERROR)) {
-			//TODO:notify creator to choose new helper, maybe drop reliability of helper
+		if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
+			if(!addNotificationToFeed(helpEntity.getString(HELP_CREATOR_PROPERTY),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
+				log.severe(String.format(NOTIFICATION_ERROR, helpEntity.getString(HELP_CREATOR_PROPERTY)));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			//TODO:This should be optional
+			 
+			if(!addRatingToStats(user,false,0)) {
+				log.severe(String.format(RATING_ERROR, user));
+			 	return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 		}
 		
 		
