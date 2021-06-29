@@ -62,7 +62,7 @@ public enum RBACRule {
 	GET_EVENT("GET_event_get",new Role[] {USER,INSTITUTION,GBO}),
 	UPDATE_EVENT("PUT_event",new Role[] {USER,INSTITUTION}),
 	JOIN_EVENT("POST_event_join",new Role[] {USER,}),
-	LEAVE_EVENT("DELETE_event_leave",new Role[] {USER,}),
+	LEAVE_EVENT("DELETE_event_leave",new Role[] {USER}),
 	LIST_EVENT_PARTICIPANTS("GET_event_list",new Role[] {USER,INSTITUTION,GBO}),
 	GET_EVENT_STATUS("GET_event_status",new Role[] {USER,INSTITUTION,GBO}),
 	UPDATE_EVENT_STATUS("PUT_event_status",new Role[] {USER,INSTITUTION,GBO}),

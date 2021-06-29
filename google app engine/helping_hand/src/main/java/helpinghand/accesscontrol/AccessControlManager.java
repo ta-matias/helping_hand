@@ -489,26 +489,4 @@ public class AccessControlManager {
 	
 	}
 	
-	/**
-	 * Returns the owner entity of the provided tokenId
-	 * @param tokenId - id of token
-	 * @return userId of the owner of the token or null in case of error
-	 */
-	public static Entity getOwnerEntity(String tokenId) {
-		if(badString(tokenId))return null;
-
-		Entity token = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, tokenId);
-		if(token == null){
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return null;
-		}
-		Entity owner = QueryUtils.getEntityByProperty(AccountUtils.ACCOUNT_KIND,AccountUtils.ACCOUNT_ID_PROPERTY,token.getString(TOKEN_OWNER_PROPERTY));
-		if(owner == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,token.getString(TOKEN_OWNER_PROPERTY)));
-			endSession(tokenId);//delete token if it somehow belongs to an account that has been deleted
-			return null;
-		}
-		return owner;
-	
-	}
 }

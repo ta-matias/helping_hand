@@ -248,8 +248,8 @@ public class InstitutionResource extends AccountUtils{
 	 */
 	@DELETE
 	@Path(DELETE_PATH)
-	public Response deleteAccount(@PathParam(INSTITUTION_ID_PARAM) String email, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.deleteAccount(email, token);
+	public Response deleteAccount(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.deleteAccount(id, token);
 	}
 	
 	/**

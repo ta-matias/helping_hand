@@ -52,8 +52,6 @@ import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
-import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
-import static helpinghand.util.account.AccountUtils.ACCOUNT_ROLE_PROPERTY;
 
 /**
  * @author PogChamp Software
@@ -95,7 +93,6 @@ public class EventResource {
 	private static final String JOIN_EVENT_OK = "Successfuly joined event [%s](%d) with token [%s]";
 	private static final String JOIN_EVENT_BAD_DATA_ERROR  = "Join event attempt failed due to bad inputs";
 	private static final String JOIN_EVENT_CONFLICT_ERROR  = "User [%s] already joined event (%d)";
-	private static final String JOIN_EVENT_INSTITUTION_ERROR = "Token belongs to Institution [%s] that cannot join events";
 	
 	private static final String LEAVE_EVENT_START  = "Attempting to leave event (%d) with token [%s]";
 	private static final String LEAVE_EVENT_OK = "Successfuly left event [%s](%d) with token [%s]";
@@ -519,18 +516,14 @@ public class EventResource {
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity user = AccessControlManager.getOwnerEntity(token);
+		String user = AccessControlManager.getOwner(token);
 		if(user == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
 			return Response.status(Status.FORBIDDEN).build();
 		}
-		if(user.getString(ACCOUNT_ROLE_PROPERTY).equals(Role.INSTITUTION.name())) {
-			log.warning(String.format(JOIN_EVENT_INSTITUTION_ERROR, user.getString(ACCOUNT_ID_PROPERTY)));
-			return Response.status(Status.FORBIDDEN).build();
-		}
 		
 		
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(eventEntity, PARTICIPANT_KIND, PARTICIPANT_ID_PROPERTY, user.getString(ACCOUNT_ID_PROPERTY));
+		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(eventEntity, PARTICIPANT_KIND, PARTICIPANT_ID_PROPERTY, user);
 		if(checkList.size()>1) {
 			log.severe(MULTIPLE_PARTICIPANT_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
