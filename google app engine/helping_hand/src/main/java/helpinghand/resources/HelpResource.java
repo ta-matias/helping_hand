@@ -52,6 +52,8 @@ import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.RATING_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ROLE_PROPERTY;
 import static helpinghand.resources.UserResource.addNotificationToFeed;
 import static helpinghand.resources.UserResource.addRatingToStats;
 /**
@@ -98,6 +100,7 @@ public class HelpResource {
 	private static final String OFFER_HELP_START  = "Attempting to offer help with token [%s]";
 	private static final String OFFER_HELP_OK = "Successfuly offered help to [%s](%d) with token [%s]";
 	private static final String OFFER_HELP_BAD_DATA_ERROR  = "Offer help attempt failed due to bad inputs";
+	private static final String OFFER_HELP_INSTITUTION_ERROR = "Token belongs to Institution [%s] that cannot offer help in requests";
 	
 	private static final String LEAVE_HELP_START  = "Attempting to leave help with token [%s]";
 	private static final String LEAVE_HELP_OK = "Successfuly left help for [%s](%d) with token [%s]";
@@ -564,13 +567,18 @@ public class HelpResource {
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		String user = AccessControlManager.getOwner(token);
+		Entity user = AccessControlManager.getOwnerEntity(token);
 		if(user == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
 			return Response.status(Status.FORBIDDEN).build();
 		}
+		if(user.getString(ACCOUNT_ROLE_PROPERTY).equals(Role.INSTITUTION.name())) {
+			log.warning(String.format(OFFER_HELP_INSTITUTION_ERROR, user.getString(ACCOUNT_ID_PROPERTY)));
+			return Response.status(Status.FORBIDDEN).build();
+		}
 		
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_ID_PROPERTY, user);
+		
+		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_ID_PROPERTY, user.getString(ACCOUNT_ID_PROPERTY));
 		
 		if(checkList.size()>1) {
 			log.severe(MULTIPLE_HELPER_ERROR);
