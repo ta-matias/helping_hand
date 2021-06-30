@@ -154,7 +154,7 @@ public class AccessControlManager {
 			txn.add(token);
 			txn.commit();
 			
-			return new LoginInfo(id,role,token.getKey().getId(),expiration.toString());
+			return new LoginInfo(id,role,Long.toString(token.getKey().getId()),expiration.toString());
 			
 		}
 		catch(DatastoreException e) {
