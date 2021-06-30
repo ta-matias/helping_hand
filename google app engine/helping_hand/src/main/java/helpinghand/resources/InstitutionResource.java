@@ -612,24 +612,24 @@ public class InstitutionResource extends AccountUtils{
 		
 		log.info(String.format(ADD_MEMBER_START,memberId,id,token));
 		
-		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, memberId);
-		if(check == null) {
+		Entity memberAccount = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, memberId);
+		if(memberAccount == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-		if(account == null) {
+		Entity institutionAccount = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(institutionAccount == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		List<Entity> check2List = QueryUtils.getEntityChildrenByKindAndProperty(account, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
-		if(check2List.size() > 1) {
+		List<Entity> mermberList = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		if(mermberList.size() > 1) {
 			log.severe(REPEATED_MEMBER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		if(check2List.size() == 1) {
+		if(mermberList.size() == 1) {
 			log.warning(String.format(ADD_MEMBER_CONFLICT_ERROR, memberId,id));
 			return Response.status(Status.CONFLICT).build();
 		}
@@ -648,7 +648,7 @@ public class InstitutionResource extends AccountUtils{
 			}
 		}
 		
-		Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).setKind(INSTITUTION_MEMBERS_KIND).newKey());
+		Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, institutionAccount.getKey().getId())).setKind(INSTITUTION_MEMBERS_KIND).newKey());
 		
 		Entity member = Entity.newBuilder(memberKey)
 		.set(INSTITUTION_MEMBERS_ID_PROPERTY,memberId)
@@ -692,13 +692,13 @@ public class InstitutionResource extends AccountUtils{
 		
 		log.info(String.format(REMOVE_MEMBER_START,memberId,id,token));
 		
-		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, memberId);
-		if(check == null) {
+		Entity institutionAccount = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(institutionAccount == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		List<Entity> check2List = QueryUtils.getEntityChildrenByKindAndProperty(check, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		List<Entity> check2List = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
 		if(check2List.size() > 1) {
 			log.severe(REPEATED_MEMBER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
