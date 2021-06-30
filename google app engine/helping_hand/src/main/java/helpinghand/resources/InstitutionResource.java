@@ -127,8 +127,8 @@ public class InstitutionResource extends AccountUtils{
 			log.info(GET_ALL_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(GET_ALL_START, token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_ALL_START, tokenId));
 		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.INSTITUTION.name())).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
@@ -141,7 +141,7 @@ public class InstitutionResource extends AccountUtils{
 				institutions.add(new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))});
 			});
 			
-			log.info(String.format(GET_ALL_OK,token));
+			log.info(String.format(GET_ALL_OK,tokenId));
 			return Response.ok(g.toJson(institutions)).build();
 		}
 		catch(DatastoreException e) {
