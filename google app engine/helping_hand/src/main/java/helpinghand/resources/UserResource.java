@@ -33,6 +33,7 @@ import helpinghand.util.QueryUtils;
 import helpinghand.util.account.*;
 import helpinghand.util.user.*;
 
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
@@ -53,8 +54,8 @@ public class UserResource extends AccountUtils{
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in UserResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in UserResource: Transaction was active";
 	
-	private static final String GET_ALL_START ="Attempting to get all users with token [%s]";
-	private static final String GET_ALL_OK ="Successfuly got all users with token [%s]";
+	private static final String GET_ALL_START ="Attempting to get all users with token (%d)";
+	private static final String GET_ALL_OK ="Successfuly got all users with token (%d)";
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 	
 	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
@@ -63,20 +64,20 @@ public class UserResource extends AccountUtils{
 	private static final String MULTIPLE_STATS_ERROR = "User [%s] has multiple stats";
 	private static final String STATS_NOT_FOUND_ERROR = "User [%s] has no stats";
 	
-	private static final String GET_FEED_START ="Attempting to get notification with token [%s]";
-	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token [%s]";
+	private static final String GET_FEED_START ="Attempting to get notification with token (%d)";
+	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token (%d)";
 	private static final String GET_FEED_BAD_DATA_ERROR = "Get notification feed failed due to bad input";
 	
-	private static final String UPDATE_FEED_START ="Attempting to update notification list with token [%s]";
-	private static final String UPDATE_FEED_OK ="Successfuly updated notification feed  of [%s] with token [%s]";
+	private static final String UPDATE_FEED_START ="Attempting to update notification list with token (%d)";
+	private static final String UPDATE_FEED_OK ="Successfuly updated notification feed  of [%s] with token (%d)";
 	private static final String UPDATE_FEED_BAD_DATA_ERROR = "Update notification feed failed due to bad input";
 
 	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to [%s]'s feed";
 	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
 	private static final String ADD_NOTIFICATION_FEED_BAD_DATA_ERROR = "Add notification to feed failed due to bad input";
 	
-	private static final String GET_STATS_START ="Attempting to get stats of [%s] with token [%s]";
-	private static final String	GET_STATS_OK ="Successfuly got stats of [%s] with token [%s]";
+	private static final String GET_STATS_START ="Attempting to get stats of [%s] with token (%d)";
+	private static final String	GET_STATS_OK ="Successfuly got stats of [%s] with token (%d)";
 	private static final String GET_STATS_BAD_DATA_ERROR = "Get stats failed due to bad input";
 	
 	private static final String ADD_RATING_START ="Attempting to add rating to [%s]";
@@ -240,7 +241,6 @@ public class UserResource extends AccountUtils{
 		try {
 			txn.add(account,accountInfo,userProfile,userFeed,userStats);
 			txn.commit();
-			log.info(String.format(CREATE_OK,data.id,Role.USER.name()));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -437,23 +437,23 @@ public class UserResource extends AccountUtils{
 			log.warning(GET_PROFILE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(GET_PROFILE_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_PROFILE_START,id,tokenId));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -474,7 +474,7 @@ public class UserResource extends AccountUtils{
 		userProfile.getString(PROFILE_NAME_PROPERTY),
 		userProfile.getString(PROFILE_BIO_PROPERTY)
 		);
-		log.info(String.format(GET_PROFILE_OK,id,token));
+		log.info(String.format(GET_PROFILE_OK,id,tokenId));
 		return Response.ok(g.toJson(profile)).build();
 	}
 	
@@ -496,25 +496,25 @@ public class UserResource extends AccountUtils{
 			log.warning(UPDATE_PROFILE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_PROFILE_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_PROFILE_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -539,7 +539,7 @@ public class UserResource extends AccountUtils{
 		try {
 			txn.update(updatedUserProfile);
 			txn.commit();
-			log.info(String.format(UPDATE_PROFILE_OK,account.getString(ACCOUNT_EMAIL_PROPERTY),token));
+			log.info(String.format(UPDATE_PROFILE_OK,account.getString(ACCOUNT_EMAIL_PROPERTY),tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -561,22 +561,22 @@ public class UserResource extends AccountUtils{
 			log.info(GET_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(GET_FEED_START, token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_FEED_START, tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, token,id));
+			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -595,7 +595,7 @@ public class UserResource extends AccountUtils{
 		List<Value<String>> notifications = feed.getList(USER_FEED_NOTIFICATIONS_PROPERTY);
 		List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
 		
-		log.info(String.format(GET_FEED_OK,id,token));
+		log.info(String.format(GET_FEED_OK,id,tokenId));
 		return Response.ok(g.toJson(notificationList)).build();
 	}
 	
@@ -607,23 +607,23 @@ public class UserResource extends AccountUtils{
 			log.info(UPDATE_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_FEED_START, token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_FEED_START, tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
 		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, token,id));
+			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -658,7 +658,7 @@ public class UserResource extends AccountUtils{
 			txn.update(updatedFeed);
 			txn.commit();
 		
-			log.info(String.format(UPDATE_FEED_OK,id,token));
+			log.info(String.format(UPDATE_FEED_OK,id,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -680,12 +680,12 @@ public class UserResource extends AccountUtils{
 			log.info(GET_STATS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(GET_STATS_START, id, token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_STATS_START, id, tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -705,7 +705,7 @@ public class UserResource extends AccountUtils{
 		
 		UserStats stats = new UserStats(statsEntity.getDouble(USER_STATS_RATING_PROPERTY),reliability);
 		
-		log.info(String.format(GET_STATS_OK,id,token));
+		log.info(String.format(GET_STATS_OK,id,tokenId));
 		return Response.ok(g.toJson(stats)).build();
 	}
 	

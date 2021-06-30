@@ -43,7 +43,6 @@ import helpinghand.util.event.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
-import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.resources.UserResource.addNotificationToFeed;
@@ -65,54 +64,54 @@ public class EventResource {
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in EventResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is EventResource: Transaction was active";
-	private static final String EVENT_NOT_FOUND_ERROR = "There is no event with id (%s)";
+	private static final String EVENT_NOT_FOUND_ERROR = "There is no event with id (%d)";
 	private static final String MULTIPLE_PARTICIPANT_ERROR = "Participant is registed multiple times in the event";
-	private static final String EVENT_ENDED_ERROR = "Event [%s](%s) already ended";
+	private static final String EVENT_ENDED_ERROR = "Event [%s](%d) already ended";
 	
-	private static final String CREATE_EVENT_START  = "Attempting to create event with token [%s]";
-	private static final String CREATE_EVENT_OK = "Successfuly created event [%s](%d) with token [%s]";
+	private static final String CREATE_EVENT_START  = "Attempting to create event with token (%d)";
+	private static final String CREATE_EVENT_OK = "Successfuly created event [%s](%d) with token (%d)";
 	private static final String CREATE_EVENT_BAD_DATA_ERROR  = "Create event attempt failed due to bad inputs";
 	
-	private static final String END_EVENT_START  = "Attempting to end event (%d) with token [%s]";
-	private static final String END_EVENT_OK = "Successfuly ended event [%s](%d) with token [%s]";
+	private static final String END_EVENT_START  = "Attempting to end event (%d) with token (%d)";
+	private static final String END_EVENT_OK = "Successfuly ended event [%s](%d) with token (%d)";
 	private static final String END_EVENT_BAD_DATA_ERROR  = "End event attempt failed due to bad inputs";
 	
-	private static final String CANCEL_EVENT_START  = "Attempting to cancel event (%d) with token [%s]";
-	private static final String CANCEL_EVENT_OK = "Successfuly canceled event [%s](%d) with token [%s]";
+	private static final String CANCEL_EVENT_START  = "Attempting to cancel event (%d) with token (%d)";
+	private static final String CANCEL_EVENT_OK = "Successfuly canceled event [%s](%d) with token (%d)";
 	private static final String CANCEL_EVENT_BAD_DATA_ERROR  = "Cancel event attempt failed due to bad inputs";
 	
-	private static final String UPDATE_EVENT_START  = "Attempting to update event (%d) with token [%s]";
-	private static final String UPDATE_EVENT_OK = "Successfuly updated event [%s](%d) with token [%s]";
+	private static final String UPDATE_EVENT_START  = "Attempting to update event (%d) with token (%d)";
+	private static final String UPDATE_EVENT_OK = "Successfuly updated event [%s](%d) with token (%d)";
 	private static final String UPDATE_EVENT_BAD_DATA_ERROR  = "Update event attempt failed due to bad inputs";
 	
-	private static final String GET_EVENT_START  = "Attempting to get event (%d) with token [%s]";
-	private static final String GET_EVENT_OK = "Successfuly got event [%s](%d) with token [%s]";
+	private static final String GET_EVENT_START  = "Attempting to get event (%d) with token (%d)";
+	private static final String GET_EVENT_OK = "Successfuly got event [%s](%d) with token (%d)";
 	private static final String GET_EVENT_BAD_DATA_ERROR  = "Get event attempt failed due to bad inputs";
 	
-	private static final String JOIN_EVENT_START  = "Attempting to join event (%d) event with token [%s]";
-	private static final String JOIN_EVENT_OK = "Successfuly joined event [%s](%d) with token [%s]";
+	private static final String JOIN_EVENT_START  = "Attempting to join event (%d) event with token (%d)";
+	private static final String JOIN_EVENT_OK = "Successfuly joined event [%s](%d) with token (%d)";
 	private static final String JOIN_EVENT_BAD_DATA_ERROR  = "Join event attempt failed due to bad inputs";
 	private static final String JOIN_EVENT_CONFLICT_ERROR  = "User [%s] already joined event (%d)";
 	
-	private static final String LEAVE_EVENT_START  = "Attempting to leave event (%d) with token [%s]";
-	private static final String LEAVE_EVENT_OK = "Successfuly left event [%s](%d) with token [%s]";
+	private static final String LEAVE_EVENT_START  = "Attempting to leave event (%d) with token (%d)";
+	private static final String LEAVE_EVENT_OK = "Successfuly left event [%s](%d) with token (%d)";
 	private static final String LEAVE_EVENT_BAD_DATA_ERROR  = "Leave event attempt failed due to bad inputs";
 	private static final String LEAVE_EVENT_NOT_FOUND_ERROR  = "User [%s] has not joined event (%d)";
 	
-	private static final String LIST_EVENTS_START  = "Attempting to get all events with token [%s]";
-	private static final String LIST_EVENTS_OK = "Successfuly got all events with token [%s]";
+	private static final String LIST_EVENTS_START  = "Attempting to get all events with token (%d)";
+	private static final String LIST_EVENTS_OK = "Successfuly got all events with token (%d)";
 	private static final String LIST_EVENTS_BAD_DATA_ERROR  = "Get all events attempt failed due to bad inputs";
 	
-	private static final String LIST_EVENT_PARTICIPANTS_START  = "Attempting to get event (%d) participants with token [%s]";
-	private static final String LIST_EVENT_PARTICIPANTS_OK = "Successfuly got event [%s](%d) participants with token [%s]";
+	private static final String LIST_EVENT_PARTICIPANTS_START  = "Attempting to get event (%d) participants with token (%d)";
+	private static final String LIST_EVENT_PARTICIPANTS_OK = "Successfuly got event [%s](%d) participants with token (%d)";
 	private static final String LIST_EVENT_PARTICIPANTS_BAD_DATA_ERROR  = "Get event participants attempt failed due to bad inputs";
 	
-	private static final String GET_EVENT_STATUS_START  = "Attempting to get event (%d) status with token [%s]";
-	private static final String GET_EVENT_STATUS_OK = "Successfuly got event [%s](%d) status with token [%s]";
+	private static final String GET_EVENT_STATUS_START  = "Attempting to get event (%d) status with token (%d)";
+	private static final String GET_EVENT_STATUS_OK = "Successfuly got event [%s](%d) status with token (%d)";
 	private static final String GET_EVENT_STATUS_BAD_DATA_ERROR  = "Get event status attempt failed due to bad inputs";
 	
-	private static final String UPDATE_EVENT_STATUS_START  = "Attempting to update event (%d) status with token [%s]";
-	private static final String UPDATE_EVENT_STATUS_OK = "Successfuly updated event [%s](%d) status with token [%s]";
+	private static final String UPDATE_EVENT_STATUS_START  = "Attempting to update event (%d) status with token (%d)";
+	private static final String UPDATE_EVENT_STATUS_OK = "Successfuly updated event [%s](%d) status with token (%d)";
 	private static final String UPDATE_EVENT_STATUS_BAD_DATA_ERROR  = "Updates event status attempt failed due to bad inputs";
 	
 	private static final String EVENT_ID_PARAM = "eventId";
@@ -177,11 +176,11 @@ public class EventResource {
 			log.warning(CREATE_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(CREATE_EVENT_START,tokenId));
 		
-		log.info(String.format(CREATE_EVENT_START,token));
-		
-		if(!AccessControlManager.getOwner(token).equals(data.creator)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, token,data.creator));
+		if(!AccessControlManager.getOwner(tokenId).equals(data.creator)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,data.creator));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -210,7 +209,7 @@ public class EventResource {
 			
 			txn.add(event);
 			txn.commit();
-			log.info(String.format(CREATE_EVENT_OK, data.name,eventKey.getId(),token));
+			log.info(String.format(CREATE_EVENT_OK, data.name,eventKey.getId(),tokenId));
 			
 			return Response.ok(eventKey.getId()).build();
 			
@@ -239,28 +238,31 @@ public class EventResource {
 	@PUT
 	@Path(END_PATH)
 	public Response endEvent(@PathParam(EVENT_ID_PARAM) String event, @QueryParam(TOKEN_ID_PARAM) String token) {
-		if(badString(token)) {
+		
+		if(badString(event)|| badString(token)) {
 			log.warning(END_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(END_EVENT_START, event,token));
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(END_EVENT_START, eventId,tokenId));
 		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NOT_FOUND_ERROR, event));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
-		if(token == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 		}
 		
 		if(!eventEntity.getString(EVENT_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
 			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;
 			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -277,7 +279,7 @@ public class EventResource {
 		try {
 			
 			txn.update(updatedEvent);
-			log.info(String.format(END_EVENT_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),event,token));
+			log.info(String.format(END_EVENT_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			txn.commit();
 			return Response.ok().build();
 		} catch(DatastoreException e) {
@@ -305,29 +307,31 @@ public class EventResource {
 	@DELETE
 	@Path(CANCEL_PATH)
 	public Response cancelEvent(@PathParam(EVENT_ID_PARAM) String event, @QueryParam(TOKEN_ID_PARAM) String token) {
+		
 		if(badString(event)||badString(token)) {
 			log.warning(CANCEL_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(CANCEL_EVENT_START,tokenId));
 		
-		log.info(String.format(CANCEL_EVENT_START,token));
-		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NOT_FOUND_ERROR, event));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
-		if(token == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 		}
 		
 		if(!eventEntity.getString(EVENT_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
 			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;
 			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -351,7 +355,7 @@ public class EventResource {
 			
 			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(CANCEL_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventEntity.getKey().getId(),token));
+			log.info(String.format(CANCEL_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventEntity.getKey().getId(),tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -384,18 +388,19 @@ public class EventResource {
 			log.warning(UPDATE_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(UPDATE_EVENT_START, eventId,tokenId));
 		
-		log.info(String.format(UPDATE_EVENT_START, event,token));
-		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND, Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND, eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NOT_FOUND_ERROR, event));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -404,7 +409,7 @@ public class EventResource {
 			int minAccess = 1;
 			
 			if(tokenRole.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR, token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR, tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -431,7 +436,7 @@ public class EventResource {
 			
 			txn.update(updatedEvent);
 			txn.commit();
-			log.info(String.format(UPDATE_EVENT_OK, data.name,updatedEvent.getKey().getId(),token));
+			log.info(String.format(UPDATE_EVENT_OK, data.name,updatedEvent.getKey().getId(),tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -462,10 +467,11 @@ public class EventResource {
 			log.warning(GET_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.fine(String.format(GET_EVENT_START,eventId,tokenId));
 		
-		log.fine(String.format(GET_EVENT_START,event,token));
-		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND, Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		
 		LatLng location = eventEntity.getLatLng(EVENT_LOCATION_PROPERTY);
 		List<String> conditionsList = eventEntity.getList(EVENT_CONDITIONS_PROPERTY).stream().map(value -> ((String)value.get())).collect(Collectors.toList());
@@ -483,7 +489,7 @@ public class EventResource {
 		conditions
 		);
 		
-		log.info(String.format(GET_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),event,token));
+		log.info(String.format(GET_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 		return Response.ok(g.toJson(data)).build();
 		
 	}
@@ -503,22 +509,24 @@ public class EventResource {
 			log.warning(JOIN_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(JOIN_EVENT_START, event,token));
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(JOIN_EVENT_START, eventId,tokenId));
 		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND, Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NOT_FOUND_ERROR, event));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		if(!eventEntity.getBoolean(EVENT_STATUS_PROPERTY)) {
-			log.warning(String.format(EVENT_ENDED_ERROR,eventEntity.getString(EVENT_NAME_PROPERTY),event));
+			log.warning(String.format(EVENT_ENDED_ERROR,eventEntity.getString(EVENT_NAME_PROPERTY),eventId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		String user = AccessControlManager.getOwner(token);
+		String user = AccessControlManager.getOwner(tokenId);
 		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -529,7 +537,7 @@ public class EventResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if(checkList.size() == 1) {
-			log.warning(String.format(JOIN_EVENT_CONFLICT_ERROR, user,event));
+			log.warning(String.format(JOIN_EVENT_CONFLICT_ERROR, user,eventId));
 			return Response.status(Status.CONFLICT).build();
 		}
 		
@@ -544,7 +552,7 @@ public class EventResource {
 		try {
 			txn.add(participant);
 			txn.commit();
-			log.info(String.format(JOIN_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY), event,token));
+			log.info(String.format(JOIN_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY), eventId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -575,21 +583,23 @@ public class EventResource {
 			log.warning(LEAVE_EVENT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(LEAVE_EVENT_START, event,token));
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(LEAVE_EVENT_START, eventId,tokenId));
 		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND, Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND, eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NOT_FOUND_ERROR, event));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		if(!eventEntity.getBoolean(EVENT_STATUS_PROPERTY)) {
-			log.warning(String.format(EVENT_ENDED_ERROR,eventEntity.getString(EVENT_NAME_PROPERTY),event));
+			log.warning(String.format(EVENT_ENDED_ERROR,eventEntity.getString(EVENT_NAME_PROPERTY),eventId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		String user = AccessControlManager.getOwner(token);
+		String user = AccessControlManager.getOwner(tokenId);
 		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -601,7 +611,7 @@ public class EventResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if(checkList.isEmpty()) {
-			log.warning(String.format(LEAVE_EVENT_NOT_FOUND_ERROR, user,event));
+			log.warning(String.format(LEAVE_EVENT_NOT_FOUND_ERROR, user,eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		Entity check = checkList.get(0);
@@ -611,7 +621,7 @@ public class EventResource {
 		try {
 			txn.delete(check.getKey());
 			txn.commit();
-			log.info(String.format(LEAVE_EVENT_OK, eventEntity.getString(EVENT_NAME_PROPERTY),event,token));
+			log.info(String.format(LEAVE_EVENT_OK, eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -640,7 +650,8 @@ public class EventResource {
 			log.warning(LIST_EVENTS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(LIST_EVENTS_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(LIST_EVENTS_START,tokenId));
 		
 		Query<Entity> query = Query.newEntityQueryBuilder().setKind(EVENT_KIND).build();
 		
@@ -653,7 +664,7 @@ public class EventResource {
 
 			events.forEachRemaining(event ->eventList.add(new String[] {Long.toString(event.getKey().getId()),event.getString(EVENT_NAME_PROPERTY),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))}));
 
-			log.info(String.format(LIST_EVENTS_OK, token));
+			log.info(String.format(LIST_EVENTS_OK, tokenId));
 			return Response.ok(g.toJson(eventList)).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -684,17 +695,19 @@ public class EventResource {
 			log.warning(LIST_EVENT_PARTICIPANTS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(LIST_EVENT_PARTICIPANTS_START, event,token));
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(LIST_EVENT_PARTICIPANTS_START, eventId,tokenId));
 		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NOT_FOUND_ERROR, event));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		List<String> participants = QueryUtils.getEntityChildrenByKind(eventEntity, PARTICIPANT_KIND).stream().map(entity->entity.getString(PARTICIPANT_ID_PROPERTY)).collect(Collectors.toList());
 		
-		log.info(String.format(LIST_EVENT_PARTICIPANTS_OK, eventEntity.getString(EVENT_NAME_PROPERTY),event,token));
+		log.info(String.format(LIST_EVENT_PARTICIPANTS_OK, eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 		return Response.ok(g.toJson(participants)).build();
 	}
 	
@@ -711,15 +724,17 @@ public class EventResource {
 			log.warning(GET_EVENT_STATUS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(GET_EVENT_STATUS_START, event,token));
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(GET_EVENT_STATUS_START, eventId,tokenId));
 		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NAME_PROPERTY, event));
+			log.warning(String.format(EVENT_NAME_PROPERTY, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		log.info(String.format(GET_EVENT_STATUS_OK, eventEntity.getString(EVENT_NAME_PROPERTY),event,token));
+		log.info(String.format(GET_EVENT_STATUS_OK, eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 		return Response.ok(Boolean.toString(eventEntity.getBoolean(EVENT_STATUS_PROPERTY))).build();
 		
 	}
@@ -738,18 +753,19 @@ public class EventResource {
 			log.warning(UPDATE_EVENT_STATUS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		long tokenId = Long.parseLong(token);
+		long eventId = Long.parseLong(event);
+		log.info(String.format(UPDATE_EVENT_STATUS_START, eventId,tokenId));
 		
-		log.info(String.format(UPDATE_EVENT_STATUS_START, event,token));
-		
-		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,Long.parseLong(event));
+		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NAME_PROPERTY, event));
+			log.warning(String.format(EVENT_NAME_PROPERTY, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -758,7 +774,7 @@ public class EventResource {
 			int minAccess = 1;
 			
 			if(tokenRole.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR, token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR, tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -772,15 +788,17 @@ public class EventResource {
 		try {
 			txn.update(updatedEvent);
 			txn.commit();
-			log.info(String.format(UPDATE_EVENT_STATUS_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),event,token));
+			log.info(String.format(UPDATE_EVENT_STATUS_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 			if(txn.isActive()) {
 				txn.rollback();
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Transaction was active!").build();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
 		

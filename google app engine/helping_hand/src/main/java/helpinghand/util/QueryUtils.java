@@ -28,13 +28,15 @@ public class QueryUtils {
 	private static final Logger log= Logger.getLogger(QueryUtils.class.getName());
 	
 	
-	public static Entity getEntityById(String kind, long event) {
+	public static Entity getEntityById(String kind, long id) {
 		
-		Key key = datastore.newKeyFactory().setKind(kind).newKey(event);
+		Key key = datastore.newKeyFactory().setKind(kind).newKey(id);
+		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		
 		try {
-			Entity entity =  txn.get(key);
+			
+			Entity entity = txn.get(key);
+			txn.commit();
 			return entity;
 			
 		}catch(DatastoreException e) {

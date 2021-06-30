@@ -4,13 +4,13 @@ public class LoginInfo {
 	
 	public String name;
 	public String role;
-	public String token;
+	public long tokenId;
 	public String expires;
 	
-	public LoginInfo(String name, String role, String token,String expires) {
+	public LoginInfo(String name, String role, long tokenId,String expires) {
 		this.name = name;
 		this.role = role;
-		this.token = token;
+		this.tokenId = tokenId;
 		this.expires = expires;
 	}
 	

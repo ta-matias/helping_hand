@@ -42,7 +42,6 @@ import helpinghand.accesscontrol.Role;
 import helpinghand.util.QueryUtils;
 import helpinghand.util.help.*;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
-import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
@@ -62,51 +61,51 @@ import static helpinghand.resources.UserResource.addRatingToStats;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class HelpResource {
 	
-	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose (%s) has left the help request";
+	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose, [%s], has left the help request";
 	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
 	
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in HelpResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is HelpResource: Transaction was active";
-	private static final String HELP_NOT_FOUND_ERROR = "There is no help with id (%s)";
+	private static final String HELP_NOT_FOUND_ERROR = "There is no help with id (%d)";
 	private static final String MULTIPLE_HELPER_ERROR = "The user is registered as offering help multiple times";
-	private static final String HELPER_NOT_FOUND_ERROR = "The user [%s] is not offering to help in (%s)";
-	private static final String HELPER_CONFLICT_ERROR = "The user [%s] is already offering to help in (%s)";
+	private static final String HELPER_NOT_FOUND_ERROR = "The user [%s] is not offering to help in (%d)";
+	private static final String HELPER_CONFLICT_ERROR = "The user [%s] is already offering to help in (%d)";
 	private static final String NO_CURRENT_HELPER_ERROR = "There is no current helper is this help request";
-	private static final String MULTIPLE_CURRENT_HELPER_ERROR = "There are multiple current helpers in this help request";
+	private static final String MULTIPLE_CURRENT_HELPER_ERROR = "There are multiple current helpers in this help(%d) request";
 	
-	private static final String LIST_HELP_START  = "Attempting to get all help requests with token [%s]";
-	private static final String LIST_HELP_OK = "Successfuly got all help requests with token [%s]";
+	private static final String LIST_HELP_START  = "Attempting to get all help requests with token (%d)";
+	private static final String LIST_HELP_OK = "Successfuly got all help requests with token (%d)";
 	private static final String LIST_HELP_BAD_DATA_ERROR  = "Get all help requests attempt failed due to bad inputs";
 	
-	private static final String CREATE_HELP_START  = "Attempting to create help with token [%s]";
-	private static final String CREATE_HELP_OK = "Successfuly created help [%s](%d) with token [%s]";
+	private static final String CREATE_HELP_START  = "Attempting to create help with token (%d)";
+	private static final String CREATE_HELP_OK = "Successfuly created help [%s](%d) with token (%d)";
 	private static final String CREATE_HELP_BAD_DATA_ERROR  = "Create help attempt failed due to bad inputs";
 	
-	private static final String UPDATE_HELP_START  = "Attempting to update help with token [%s]";
-	private static final String UPDATE_HELP_OK = "Successfuly updated help [%s](%d) with token [%s]";
+	private static final String UPDATE_HELP_START  = "Attempting to update help(%d) with token (%d)";
+	private static final String UPDATE_HELP_OK = "Successfuly updated help [%s](%d) with token (%d)";
 	private static final String UPDATE_HELP_BAD_DATA_ERROR  = "Update help attempt failed due to bad inputs";
 	
-	private static final String CANCEL_HELP_START  = "Attempting to cancel help with token [%s]";
-	private static final String CANCEL_HELP_OK = "Successfuly canceled help [%s](%d) with token [%s]";
+	private static final String CANCEL_HELP_START  = "Attempting to cancel help(%d) with token (%d)";
+	private static final String CANCEL_HELP_OK = "Successfuly canceled help [%s](%d) with token (%d)";
 	private static final String CANCEL_HELP_BAD_DATA_ERROR  = "Cancel help attempt failed due to bad inputs";
 	
-	private static final String FINISH_HELP_START  = "Attempting to finish help with token [%s]";
-	private static final String FINISH_HELP_OK = "Successfuly finished help [%s](%d) with token [%s]";
+	private static final String FINISH_HELP_START  = "Attempting to finish help (%d) with token (%d)";
+	private static final String FINISH_HELP_OK = "Successfuly finished help [%s](%d) with token (%d)";
 	private static final String FINISH_HELP_BAD_DATA_ERROR  = "Finish help attempt failed due to bad inputs";
 	
-	private static final String OFFER_HELP_START  = "Attempting to offer help with token [%s]";
-	private static final String OFFER_HELP_OK = "Successfuly offered help to [%s](%d) with token [%s]";
+	private static final String OFFER_HELP_START  = "Attempting to offer to help in (%d) with token (%d)";
+	private static final String OFFER_HELP_OK = "Successfuly offered to help in [%s](%d) with token (%d)";
 	private static final String OFFER_HELP_BAD_DATA_ERROR  = "Offer help attempt failed due to bad inputs";
 	
-	private static final String LEAVE_HELP_START  = "Attempting to leave help with token [%s]";
-	private static final String LEAVE_HELP_OK = "Successfuly left help for [%s](%d) with token [%s]";
+	private static final String LEAVE_HELP_START  = "Attempting to leave help (%d) with token (%d)";
+	private static final String LEAVE_HELP_OK = "Successfuly left help for [%s](%d) with token (%d)";
 	private static final String LEAVE_HELP_BAD_DATA_ERROR  = "Leave help attempt failed due to bad inputs";
 	
-	private static final String CHOOSE_HELPER_START  = "Attempting to choose helper with token [%s]";
-	private static final String CHOOSE_HELPER_OK = "Successfuly chose helper for [%s](%d) with token [%s]";
+	private static final String CHOOSE_HELPER_START  = "Attempting to choose helper for (%d) with token (%d)";
+	private static final String CHOOSE_HELPER_OK = "Successfuly chose helper for [%s](%d) with token (%d)";
 	private static final String CHOOSE_HELPER_BAD_DATA_ERROR  = "Choose helper attempt failed due to bad inputs";
-	private static final String CHOOSE_HELPER_CONFLICT = "User [%s] is already the current helper of (%s)";
+	private static final String CHOOSE_HELPER_CONFLICT = "User [%s] is already the current helper of (%d)";
 	
 	
 	public static final String PATH = "/help";
@@ -155,7 +154,8 @@ public class HelpResource {
 			log.warning(LIST_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(LIST_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(LIST_HELP_START, tokenId));
 		
 		Query<Entity> query = Query.newEntityQueryBuilder().setKind(HELP_KIND).build();
 	
@@ -171,7 +171,7 @@ public class HelpResource {
 			results.forEachRemaining(help ->helpList.add(new String[] {Long.toString(help.getKey().getId()),help.getString(HELP_NAME_PROPERTY)
 					,Boolean.toString(help.getBoolean(HELP_STATUS_PROPERTY)),Boolean.toString(help.getBoolean(HELP_PERMANENT_PROPERTY))}));
 			
-			log.info(String.format(LIST_HELP_OK,token));
+			log.info(String.format(LIST_HELP_OK,tokenId));
 			return Response.ok(g.toJson(helpList)).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -197,10 +197,11 @@ public class HelpResource {
 			log.warning(CREATE_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).entity("Invalid attributes!").build();
 		}
-		log.info(String.format(CREATE_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(CREATE_HELP_START, tokenId));
 		
-		if(!AccessControlManager.getOwner(token).equals(data.creator)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, token,data.creator));
+		if(!AccessControlManager.getOwner(tokenId).equals(data.creator)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,data.creator));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -229,7 +230,7 @@ public class HelpResource {
 			
 			txn.add(help);
 			txn.commit();
-			log.info(String.format(CREATE_HELP_OK, token));
+			log.info(String.format(CREATE_HELP_OK, tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -252,24 +253,26 @@ public class HelpResource {
 			log.warning(UPDATE_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(UPDATE_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		long helpId = Long.parseLong(help);
+		log.info(String.format(UPDATE_HELP_START,helpId, tokenId));
 		
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, Long.parseLong(help));
+		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND,helpId);
 		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, help));
+			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
-		if(token == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 		}
 		
 		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
 			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;
 			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -298,7 +301,7 @@ public class HelpResource {
 			
 			txn.update(updatedHelp);
 			txn.commit();
-			log.info(String.format(UPDATE_HELP_OK, data.name,help,token));
+			log.info(String.format(UPDATE_HELP_OK, data.name,helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -323,24 +326,26 @@ public class HelpResource {
 			log.warning(FINISH_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(FINISH_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		long helpId = Long.parseLong(help);
+		log.info(String.format(FINISH_HELP_START,helpId, tokenId));
 		
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, Long.parseLong(help));
+		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
 		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, help));
+			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
-		if(token == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 		}
 		
 		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
 			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;
 			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -362,7 +367,7 @@ public class HelpResource {
 		}
 		
 		if(helpEntity.getBoolean(HELP_PERMANENT_PROPERTY)) {
-			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,token));
+			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,tokenId));
 			return Response.ok().build();
 		}
 		
@@ -380,7 +385,7 @@ public class HelpResource {
 		try {
 			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), help,token));
+			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -403,24 +408,26 @@ public class HelpResource {
 			log.warning(CANCEL_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(CANCEL_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		long helpId = Long.parseLong(help);
+		log.info(String.format(CANCEL_HELP_START, helpId,tokenId));
 		
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, Long.parseLong(help));
+		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
 		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, help));
+			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
-		if(token == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 		}
 		
 		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
 			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;
 			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -442,7 +449,7 @@ public class HelpResource {
 		try {
 			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), help,token));
+			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -465,24 +472,26 @@ public class HelpResource {
 			log.warning(CHOOSE_HELPER_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(CHOOSE_HELPER_START, token));
+		long tokenId = Long.parseLong(token);
+		Long helpId = Long.parseLong(help);
+		log.info(String.format(CHOOSE_HELPER_START,helpId, tokenId));
 		
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, Long.parseLong(help));
+		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
 		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, help));
+			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 		}
 		
 		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
 			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;
 			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,tokenRole.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -494,14 +503,14 @@ public class HelpResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if(!checkList.isEmpty()) {
-			log.warning(String.format(HELPER_CONFLICT_ERROR, tokenEntity.getString(TOKEN_OWNER_PROPERTY),help));
+			log.warning(String.format(HELPER_CONFLICT_ERROR, tokenEntity.getString(TOKEN_OWNER_PROPERTY),helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		Entity helperEntity = checkList.get(0);
 		
 		if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
-			log.warning(String.format(CHOOSE_HELPER_CONFLICT,helper,help));
+			log.warning(String.format(CHOOSE_HELPER_CONFLICT,helper,helpId));
 			return Response.status(Status.CONFLICT).build();
 		}
 		
@@ -513,7 +522,7 @@ public class HelpResource {
 		
 		List<Entity> currentHelperList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_CURRENT_PROPERTY ,true);
 		if(currentHelperList.size() > 1) {
-			log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR,help));
+			log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR,helpId));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		
@@ -533,7 +542,7 @@ public class HelpResource {
 		try {
 			txn.update(toUpdate);
 			txn.commit();
-			log.info(String.format(CHOOSE_HELPER_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,token));
+			log.info(String.format(CHOOSE_HELPER_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -556,17 +565,19 @@ public class HelpResource {
 			log.warning(OFFER_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(OFFER_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		long helpId = Long.parseLong(help);
+		log.info(String.format(OFFER_HELP_START, helpId,tokenId));
 		
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, Long.parseLong(help));
+		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
 		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, help));
+			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		String user = AccessControlManager.getOwner(token);
+		String user = AccessControlManager.getOwner(tokenId);
 		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -577,7 +588,7 @@ public class HelpResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if(!checkList.isEmpty()) {
-			log.warning(String.format(HELPER_CONFLICT_ERROR, user,help));
+			log.warning(String.format(HELPER_CONFLICT_ERROR, user,helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
@@ -595,7 +606,7 @@ public class HelpResource {
 			
 			txn.add(helper);
 			txn.commit();
-			log.info(String.format(OFFER_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,token));
+			log.info(String.format(OFFER_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -618,17 +629,19 @@ public class HelpResource {
 			log.warning(LEAVE_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(LEAVE_HELP_START, token));
+		long tokenId = Long.parseLong(token);
+		long helpId = Long.parseLong(help);
+		log.info(String.format(LEAVE_HELP_START,helpId, tokenId));
 		
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, Long.parseLong(help));
+		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
 		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, help));
+			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		String user = AccessControlManager.getOwner(token);
+		String user = AccessControlManager.getOwner(tokenId);
 		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -638,7 +651,7 @@ public class HelpResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if(checkList.isEmpty()) {
-			log.warning(String.format(HELPER_NOT_FOUND_ERROR, user,help));
+			log.warning(String.format(HELPER_NOT_FOUND_ERROR, user,helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		Entity helper = checkList.get(0);
@@ -664,7 +677,7 @@ public class HelpResource {
 			
 			txn.delete(helper.getKey());
 			txn.commit();
-			log.info(String.format(LEAVE_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY),help,token));
+			log.info(String.format(LEAVE_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();

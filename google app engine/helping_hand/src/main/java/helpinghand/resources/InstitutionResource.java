@@ -44,6 +44,7 @@ import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
@@ -61,21 +62,21 @@ public class InstitutionResource extends AccountUtils{
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in InstitutionResource: Transaction was active";
 	private static final String REPEATED_MEMBER_ERROR = "The same user is registered in an institution repeatedly";
 	
-	private static final String GET_ALL_START ="Attempting to get all institutions with token [%s]";
-	private static final String GET_ALL_OK ="Successfuly got all institutions with token [%s]";
+	private static final String GET_ALL_START ="Attempting to get all institutions with token (%d)";
+	private static final String GET_ALL_OK ="Successfuly got all institutions with token (%d)";
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all institutions attempt failed due to bad input";
 	
-	private static final String GET_MEMBERS_START ="Attempting to get all institution [%s] members with token [%s]";
-	private static final String GET_MEMBERS_OK ="Successfuly got all institution [%s] members with token [%s]";
+	private static final String GET_MEMBERS_START ="Attempting to get all institution [%s] members with token (%d)";
+	private static final String GET_MEMBERS_OK ="Successfuly got all institution [%s] members with token (%d)";
 	private static final String GET_MEMBERS_BAD_DATA_ERROR = "Get institutions members attempt failed due to bad input";
 	
-	private static final String ADD_MEMBER_START ="Attempting to get add member [%s] to institution [%s] with token [%s]";
-	private static final String ADD_MEMBER_OK ="Successfuly added member [%s] to institution [%s] with token [%s]";
+	private static final String ADD_MEMBER_START ="Attempting to get add member [%s] to institution [%s] with token (%d)";
+	private static final String ADD_MEMBER_OK ="Successfuly added member [%s] to institution [%s] with token (%d)";
 	private static final String ADD_MEMBER_BAD_DATA_ERROR = "Add member to institution attempt failed due to bad input";
 	private static final String ADD_MEMBER_CONFLICT_ERROR = "Account [%s] is already a member of institution [%s]";
 
-	private static final String REMOVE_MEMBER_START ="Attempting to remove member [%s] from institution [%s] with token [%s]";
-	private static final String REMOVE_MEMBER_OK ="Successfuly removed member [%s] from institution [%s] with token [%s]";
+	private static final String REMOVE_MEMBER_START ="Attempting to remove member [%s] from institution [%s] with token (%d)";
+	private static final String REMOVE_MEMBER_OK ="Successfuly removed member [%s] from institution [%s] with token (%d)";
 	private static final String REMOVE_MEMBER_BAD_DATA_ERROR = "Remove member from institution  attempt failed due to bad input";
 	private static final String REMOVE_MEMBER_NOT_FOUND_ERROR = "Account [%s] is not a member of institution [%s]";
 	
@@ -416,14 +417,14 @@ public class InstitutionResource extends AccountUtils{
 			log.warning(GET_PROFILE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
+		Long tokenId = Long.parseLong(token);
 		log.info(String.format(GET_PROFILE_START,token));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
 			return Response.status(Status.FORBIDDEN).build();
@@ -482,7 +483,7 @@ public class InstitutionResource extends AccountUtils{
 			log.warning(UPDATE_PROFILE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
+		long tokenId = Long.parseLong(token);
 		log.info(String.format(UPDATE_PROFILE_START,token));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
@@ -491,7 +492,7 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
 			return Response.status(Status.FORBIDDEN).build();
@@ -565,14 +566,14 @@ public class InstitutionResource extends AccountUtils{
 			log.warning(GET_MEMBERS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
+		long tokenId = Long.parseLong(token);
 		log.info(String.format(GET_MEMBERS_START,id,token));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
 			return Response.status(Status.FORBIDDEN).build();
@@ -609,8 +610,8 @@ public class InstitutionResource extends AccountUtils{
 			log.warning(ADD_MEMBER_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(ADD_MEMBER_START,memberId,id,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(ADD_MEMBER_START,memberId,id,tokenId));
 		
 		Entity memberAccount = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, memberId);
 		if(memberAccount == null) {
@@ -634,16 +635,16 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.CONFLICT).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -658,7 +659,7 @@ public class InstitutionResource extends AccountUtils{
 		try {
 			txn.add(member);
 			txn.commit();
-			log.info(String.format(ADD_MEMBER_OK,memberId,id,token));
+			log.info(String.format(ADD_MEMBER_OK,memberId,id,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -689,8 +690,8 @@ public class InstitutionResource extends AccountUtils{
 			log.warning(REMOVE_MEMBER_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(REMOVE_MEMBER_START,memberId,id,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(REMOVE_MEMBER_START,memberId,id,tokenId));
 		
 		Entity institutionAccount = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(institutionAccount == null) {
@@ -714,16 +715,16 @@ public class InstitutionResource extends AccountUtils{
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -734,7 +735,7 @@ public class InstitutionResource extends AccountUtils{
 		try {
 			txn.delete(check2.getKey());
 			txn.commit();
-			log.info(String.format(REMOVE_MEMBER_OK,memberId,id,token));
+			log.info(String.format(REMOVE_MEMBER_OK,memberId,id,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {

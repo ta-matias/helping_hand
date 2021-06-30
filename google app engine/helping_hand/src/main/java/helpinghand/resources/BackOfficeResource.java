@@ -33,7 +33,6 @@ import helpinghand.util.QueryUtils;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
-import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.resources.UserResource.USER_ID_PARAM;
 import static helpinghand.util.GeneralUtils.badString;
@@ -53,25 +52,25 @@ public class BackOfficeResource {
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in BackOfficeResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in BackOfficeResource: Transaction was active";
 	
-	private static final String TOKEN_JURISDICTION_ERROR = "Token [%s](access %d) cannot alter higher or same level account [%s](access %d)";
-	private static final String TOKEN_POWER_ERROR = "Token [%s](access %d) cannot change an account's role to a higher level (access %d)";
+	private static final String TOKEN_JURISDICTION_ERROR = "Token (%d)(access %d) cannot alter higher or same level account [%s](access %d)";
+	private static final String TOKEN_POWER_ERROR = "Token (%d)(access %d) cannot change an account's role to a higher level (access %d)";
 	
 	private static final String UPDATE_ACCOUNT_ROLE_START = "Attempting to update role of user [%s] to [%s]";
 	private static final String UPDATE_ACCOUNT_ROLE_OK = "Successfulty to updated role of user [%s] to [%s]";
 	private static final String UPDATE_ACCOUNT_ROLE_BAD_DATA_ERROR = "Update role attempt failed due to bad inputs";
 	private static final String UPDATE_ACCOUNT_ROLE_UPDATE_ERROR = "Update account role attempt failed while changing account's role";
 	
-	private static final String UPDATE_TOKEN_ROLE_START = "Attempting to update current role of token [%s] to [%s]";
-	private static final String UPDATE_TOKEN_ROLE_OK = "Successfulty to updated current role of token [%s] to [%s]";
+	private static final String UPDATE_TOKEN_ROLE_START = "Attempting to update current role of token (%d) to [%s]";
+	private static final String UPDATE_TOKEN_ROLE_OK = "Successfulty to updated current role of token (%d) to [%s]";
 	private static final String UPDATE_TOKEN_ROLE_BAD_DATA_ERROR = "Update current token role attempt failed due to bad inputs";
 	private static final String UPDATE_TOKEN_ROLE_UPDATE_ERROR = "Update current token role attempt failed while changing account's role";
 	
-	private static final String LIST_ROLE_START = "Attempting to get [%s] account with token [%s]";
-	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token [%s]";
+	private static final String LIST_ROLE_START = "Attempting to get [%s] accounts with token (%d)";
+	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token (%d)";
 	private static final String LIST_ROLE_BAD_DATA_ERROR = "List accounts by role attempt failed due to bad inputs";
 	
-	private static final String DAILY_STATS_START = "Attempting to get [%s] account with token [%s]";
-	private static final String DAILY_STATS_OK = "Successfulty to got [%s] accounts with token [%s]";
+	private static final String DAILY_STATS_START = "Attempting to get account creation stats with token (%d)";
+	private static final String DAILY_STATS_OK = "Successfulty to got account creation statswith token (%d)";
 	private static final String DAILY_STATS_BAD_DATA_ERROR = "List accounts by role attempt failed due to bad inputs";
 	
 	
@@ -101,19 +100,19 @@ public class BackOfficeResource {
 	@PUT
 	@Path(UPDATE_ACCOUNT_ROLE_PATH)
 	public Response updateRoleAccount(@QueryParam(USER_ID_PARAM) String id, @QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
-		log.info(String.format(UPDATE_ACCOUNT_ROLE_START, id, role));
 		Role targetRole = Role.getRole(role);
 		if(badString(id) || targetRole == null || badString(token)) {
 			log.warning(UPDATE_ACCOUNT_ROLE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}	
-		
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_ACCOUNT_ROLE_START, id, role));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(TOKEN_KIND,TOKEN_ID_PROPERTY,token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,token));
 		}
@@ -140,15 +139,15 @@ public class BackOfficeResource {
 	@PUT
 	@Path(UPDATE_TOKEN_ROLE_PATH)
 	public Response updateRoleToken(@QueryParam(USER_ROLE_PARAM) String role, @QueryParam(TOKEN_ID_PARAM) String token) {
-		log.info(String.format(UPDATE_TOKEN_ROLE_START,token, role));
 		Role targetRole = Role.getRole(role);
 		if(targetRole == null || badString(token)) {
 			log.warning(UPDATE_TOKEN_ROLE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}	
-		
-		if(AccessControlManager.updateTokenRole(token, targetRole)){
-			log.info(String.format(UPDATE_TOKEN_ROLE_OK, token,role));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_TOKEN_ROLE_START,tokenId, role));
+		if(AccessControlManager.updateTokenRole(tokenId, targetRole)){
+			log.info(String.format(UPDATE_TOKEN_ROLE_OK, tokenId,role));
 			return Response.ok().build();
 		}
 		log.severe(UPDATE_TOKEN_ROLE_UPDATE_ERROR);
@@ -164,7 +163,8 @@ public class BackOfficeResource {
 			log.warning(LIST_ROLE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		log.info(String.format(LIST_ROLE_START,roleParam.name(),token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(LIST_ROLE_START,roleParam.name(),tokenId));
 		
 		List<Entity> entities = QueryUtils.getEntityListByProperty(ACCOUNT_KIND, ACCOUNT_ROLE_PROPERTY, roleParam.name());
 		List<String[]> data = entities.stream().map(entity->new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))}).collect(Collectors.toList());
@@ -180,8 +180,8 @@ public class BackOfficeResource {
 			log.warning(DAILY_STATS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(DAILY_STATS_START,startDate,endDate,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(DAILY_STATS_START,startDate,endDate,tokenId));
 		
 		Instant startInstant = Instant.parse(startDate);
 		Instant endInstant = Instant.parse(endDate);

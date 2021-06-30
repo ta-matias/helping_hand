@@ -28,6 +28,7 @@ import static helpinghand.util.GeneralUtils.badPassword;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 
 
 
@@ -39,7 +40,7 @@ public class AccountUtils {
 	
 	protected static final String DATASTORE_EXCEPTION_ERROR = "Error in AccountUtils: %s";
 	protected static final String TRANSACTION_ACTIVE_ERROR = "Error in AccountUtils: Transaction was active";
-	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token [%s] does not exist";
+	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token (%d) does not exist";
 	private static final String PASSWORD_DENIED_ERROR = "[%s] is not the current password for the account [%s]";
 	public static final String ACCOUNT_NOT_FOUND_ERROR = "Account [%s] does not exist";
 	
@@ -49,8 +50,8 @@ public class AccountUtils {
 	protected static final String CREATE_EMAIL_CONFLICT_ERROR = "Account with id [%s] already exists";
 	protected static final String CREATE_BAD_DATA_ERROR = "Account creation attempt failed due to bad inputs";
 	
-	private static final String DELETE_START = "Attempting to delete account [%s] with token [%s]";
-	private static final String DELETE_OK = "Successfully deleted account with token [%s]";
+	private static final String DELETE_START = "Attempting to delete account [%s] with token (%d)";
+	private static final String DELETE_OK = "Successfully deleted account with token (%d)";
 	private static final String DELETE_BAD_DATA_ERROR = "Delete attempt failed due to bad inputs";
 	
 	private static final String LOGIN_START = "Attempting to login into account [%s]";
@@ -58,51 +59,52 @@ public class AccountUtils {
 	private static final String LOGIN_OK = "Login successful for account [%s]";
 	private static final String LOGIN_BAD_DATA_ERROR ="Login attempt failed due to bad inputs";
 	
-	private static final String LOGOUT_START = "Attempting to logout with token [%s]";
-	private static final String LOGOUT_FAILED = "Logout failed for token [%s]";
-	private static final String LOGOUT_OK = "Logout successful for token [%s]";
+	private static final String LOGOUT_START = "Attempting to logout with token (%d)";
+	private static final String LOGOUT_FAILED = "Logout failed for token (%d)";
+	private static final String LOGOUT_OK = "Logout successful for token (%d)";
+	private static final String LOGOUT_BAD_DATA_ERROR ="LOgout attempt failed due to bad inputs";
 
-	private static final String UPDATE_ID_START = "Attempting to update id with token [%s]";
-	private static final String UPDATE_ID_OK = "Successfuly updated id from [%s] to [%s] with token [%s]";
+	private static final String UPDATE_ID_START = "Attempting to update id with token (%d)";
+	private static final String UPDATE_ID_OK = "Successfuly updated id from [%s] to [%s] with token (%d)";
 	private static final String UPDATE_ID_BAD_DATA_ERROR ="Change id attempt failed due to bad inputs";
 	private static final String UPDATE_ID_CONFLICT_ERROR = "There already exists an account with id [%s]";
 	
-	private static final String UPDATE_PASSWORD_START = "Attempting to update password with token [%s]";
-	private static final String UPDATE_PASSWORD_OK = "Successfuly updated password from [%s] to [%s] with token [%s]";
+	private static final String UPDATE_PASSWORD_START = "Attempting to update password with token (%d)";
+	private static final String UPDATE_PASSWORD_OK = "Successfuly updated password from [%s] to [%s] with token (%d)";
 	private static final String UPDATE_PASSWORD_BAD_DATA_ERROR ="Change password attempt failed due to bad inputs";
 	
-	private static final String UPDATE_EMAIL_START ="Attempting to update email with token [%s]";
-	private static final String UPDATE_EMAIL_OK = "Successfuly update email to [%s] with token [%s]";
+	private static final String UPDATE_EMAIL_START ="Attempting to update email with token (%d)";
+	private static final String UPDATE_EMAIL_OK = "Successfuly update email to [%s] with token (%d)";
 	private static final String UPDATE_EMAIL_BAD_DATA_ERROR = "Change email attempt failed due to bad inputs";
 	private static final String UPDATE_EMAIL_CONFLICT_ERROR = "There already exists an account with email [%s]";
 	
-	private static final String UPDATE_STATUS_START ="Attempting to update status with token [%s]";
-	private static final String UPDATE_STATUS_OK = "Successfuly updated status to [%s] with token [%s]";
+	private static final String UPDATE_STATUS_START ="Attempting to update status with token (%d)";
+	private static final String UPDATE_STATUS_OK = "Successfuly updated status to [%s] with token (%d)";
 	private static final String UPDATE_STATUS_BAD_DATA_ERROR = "Change status attempt failed due to bad inputs";
 	
-	private static final String UPDATE_VISIBILITY_START ="Attempting to update visibility with token [%s]";
-	private static final String UPDATE_VISIBILITY_OK = "Successfuly updated visibility to [%s] with token [%s]";
+	private static final String UPDATE_VISIBILITY_START ="Attempting to update visibility with token (%d)";
+	private static final String UPDATE_VISIBILITY_OK = "Successfuly updated visibility to [%s] with token (%d)";
 	private static final String UPDATE_VISIBILITY_BAD_DATA_ERROR = "Change visibility attempt failed due to bad inputs";
 	
-	private static final String UPDATE_ACCOUNT_INFO_START ="Attempting to update account info with token [%s]";
-	private static final String UPDATE_ACCOUNT_INFO_OK = "Successfuly updated account info of account [%s] with token [%s]";
+	private static final String UPDATE_ACCOUNT_INFO_START ="Attempting to update account info with token (%d)";
+	private static final String UPDATE_ACCOUNT_INFO_OK = "Successfuly updated account info of account [%s] with token (%d)";
 	private static final String UPDATE_ACCOUNT_INFO_BAD_DATA_ERROR = "Change account info attempt failed due to bad inputs";
 	private static final String MULTIPLE_ACCOUNT_INFO_ERROR = "There are multiple account infos for the account [%s]";
 	private static final String ACCOUNT_INFO_NOT_FOUND_ERROR = "There is no account info for the account [%s]";
 	
-	private static final String GET_ACCOUNT_INFO_START = "Attempting to get info of account [%s] with token [%s]";
-	private static final String GET_ACCOUNT_INFO_OK = "Successfuly got account info of account [%s] with token [%s]";
+	private static final String GET_ACCOUNT_INFO_START = "Attempting to get info of account [%s] with token (%d)";
+	private static final String GET_ACCOUNT_INFO_OK = "Successfuly got account info of account [%s] with token (%d)";
 	private static final String GET_ACCOUNT_INFO_BAD_DATA_ERROR = "Get account info attempt failed due to bad inputs";
 	
 	
-	protected static final String UPDATE_PROFILE_START ="Attempting to update profile with token [%s]";
-	protected static final String UPDATE_PROFILE_OK = "Successfuly updated prfile of account [%s] with token [%s]";
+	protected static final String UPDATE_PROFILE_START ="Attempting to update profile with token (%d)";
+	protected static final String UPDATE_PROFILE_OK = "Successfuly updated prfile of account [%s] with token (%d)";
 	protected static final String UPDATE_PROFILE_BAD_DATA_ERROR = "Change profile attempt failed due to bad inputs";
 	protected static final String MULTIPLE_PROFILE_ERROR = "There are multiple account profiles for the account [%s]";
 	protected static final String PROFILE_NOT_FOUND_ERROR = "There is no account profile for the account [%s]";
 	
-	protected static final String GET_PROFILE_START = "Attempting to get profile of account [%s] with token [%s]";
-	protected static final String GET_PROFILE_OK = "Successfuly got profile of account [%s] with token [%s]";
+	protected static final String GET_PROFILE_START = "Attempting to get profile of account [%s] with token (%d)";
+	protected static final String GET_PROFILE_OK = "Successfuly got profile of account [%s] with token (%d)";
 	protected static final String GET_PROFILE_BAD_DATA_ERROR = "Get profile attempt failed due to bad inputs";
 	
 	public static final String ACCOUNT_KIND = "Account";
@@ -146,8 +148,8 @@ public class AccountUtils {
 			log.warning(DELETE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(DELETE_START,id,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(DELETE_START,id,tokenId));
 		
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
@@ -155,16 +157,16 @@ public class AccountUtils {
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -177,7 +179,7 @@ public class AccountUtils {
 		}
 		
 		if(!AccessControlManager.endAllSessions(id)) {
-			log.warning(String.format(LOGOUT_FAILED, token));
+			log.warning(String.format(LOGOUT_FAILED, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -226,13 +228,18 @@ public class AccountUtils {
 	}
 	
 	protected Response logout(String token) {
-		log.info(String.format(LOGOUT_START,token));
+		if(badString(token)) {
+			log.warning(LOGOUT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(LOGOUT_START,tokenId));
 		
-		if(!AccessControlManager.endSession(token)) {
-			log.warning(String.format(LOGOUT_FAILED, token));
+		if(!AccessControlManager.endSession(tokenId)) {
+			log.warning(String.format(LOGOUT_FAILED, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
-		log.info(String.format(LOGOUT_OK, token));
+		log.info(String.format(LOGOUT_OK, tokenId));
 		return Response.ok().build();
 	}
 
@@ -241,25 +248,25 @@ public class AccountUtils {
 			log.warning(UPDATE_ID_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_ID_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_ID_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -282,7 +289,7 @@ public class AccountUtils {
 		try {
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_ID_OK,id,data.id,token));
+			log.info(String.format(UPDATE_ID_OK,id,data.id,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -302,25 +309,25 @@ public class AccountUtils {
 			log.warning(UPDATE_PASSWORD_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_PASSWORD_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_PASSWORD_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -339,7 +346,7 @@ public class AccountUtils {
 		try {
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_PASSWORD_OK,data.oldPassword,data.newPassword,token));
+			log.info(String.format(UPDATE_PASSWORD_OK,data.oldPassword,data.newPassword,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -359,25 +366,25 @@ public class AccountUtils {
 			log.warning(UPDATE_EMAIL_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_EMAIL_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_EMAIL_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -399,7 +406,7 @@ public class AccountUtils {
 		try {
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_EMAIL_OK,data.email,token));
+			log.info(String.format(UPDATE_EMAIL_OK,data.email,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -419,25 +426,25 @@ public class AccountUtils {
 			log.warning(UPDATE_STATUS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_STATUS_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_STATUS_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -455,7 +462,7 @@ public class AccountUtils {
 		try {
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_STATUS_OK,data.status,token));
+			log.info(String.format(UPDATE_STATUS_OK,data.status,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -475,25 +482,25 @@ public class AccountUtils {
 			log.warning(UPDATE_VISIBILITY_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_VISIBILITY_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_VISIBILITY_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -511,7 +518,7 @@ public class AccountUtils {
 		try {
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_VISIBILITY_OK,data.visibility,token));
+			log.info(String.format(UPDATE_VISIBILITY_OK,data.visibility,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -531,25 +538,25 @@ public class AccountUtils {
 			log.warning(UPDATE_ACCOUNT_INFO_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(UPDATE_ACCOUNT_INFO_START,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_ACCOUNT_INFO_START,tokenId));
 		
 		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, token));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -577,7 +584,7 @@ public class AccountUtils {
 		try {
 			txn.update(updatedAccountInfo);
 			txn.commit();
-			log.info(String.format(UPDATE_ACCOUNT_INFO_OK,id,token));
+			log.info(String.format(UPDATE_ACCOUNT_INFO_OK,id,tokenId));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -598,23 +605,23 @@ public class AccountUtils {
 			log.warning(GET_ACCOUNT_INFO_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
-		
-		log.info(String.format(GET_ACCOUNT_INFO_START,id,token));
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_ACCOUNT_INFO_START,id,tokenId));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		Entity tokenEntity = QueryUtils.getEntityByProperty(AccessControlManager.TOKEN_KIND, AccessControlManager.TOKEN_ID_PROPERTY, token);
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(tokenEntity == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, token));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
 			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 			int minAccess = 1;//minimum access level required do execute this operation
 			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,token,role.getAccess(),minAccess));
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
@@ -639,7 +646,7 @@ public class AccountUtils {
 		accountInfo.getString(ACCOUNT_INFO_ZIPCODE_PROPERTY),
 		accountInfo.getString(ACCOUNT_INFO_CITY_PROPERTY)
 		);
-		log.info(String.format(GET_ACCOUNT_INFO_OK,id,token));
+		log.info(String.format(GET_ACCOUNT_INFO_OK,id,tokenId));
 		return Response.ok(g.toJson(info)).build();
 	}
 

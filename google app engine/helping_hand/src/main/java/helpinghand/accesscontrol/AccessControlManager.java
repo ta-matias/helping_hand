@@ -5,7 +5,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -30,8 +29,8 @@ public class AccessControlManager {
 	
 	private static final String ACCOUNT_NOT_FOUND_ERROR = "Error in AccessControlManager: Account [%s] does not exist";
 	private static final String ACCOUNT_INACTIVE_ERROR = "Error in AccessControlManager: Account [%s] is inactive";
-	private static final String TOKEN_NOT_FOUND_ERROR = "Error in AccessControlManager: Token with id [%s] does not exist";
-	private static final String TOKEN_EXPIRED_ERROR = "Error in AccessControlManager: Token [%s] has expired";
+	private static final String TOKEN_NOT_FOUND_ERROR = "Error in AccessControlManager: Token with id (%d) does not exist";
+	private static final String TOKEN_EXPIRED_ERROR = "Error in AccessControlManager: Token (%d) has expired";
 	private static final String WRONG_PASSWORD_ERROR = "Error in AccessControlManager: Wrong password for account [%s]";
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in AccessControlManager: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in AccessControlManager: Transaction was active";
@@ -48,7 +47,6 @@ public class AccessControlManager {
 	public static final String TOKEN_ID_PARAM = "tokenId";
 	
 	public static final String TOKEN_KIND = "Token";
-	public static final String TOKEN_ID_PROPERTY = "id";
 	public static final String TOKEN_OWNER_PROPERTY = "account";
 	public static final String TOKEN_ROLE_PROPERTY = "role";
 	public static final String TOKEN_CREATION_PROPERTY = "creation";
@@ -131,12 +129,7 @@ public class AccessControlManager {
 		}
 		
 		
-		
 
-		String tokenId;
-		do {
-			tokenId = UUID.randomUUID().toString();
-		}while(QueryUtils.getEntityByProperty(TOKEN_KIND,TOKEN_ID_PROPERTY,id) != null);
 		
 		String role = account.getString(AccountUtils.ACCOUNT_ROLE_PROPERTY).equals(Role.INSTITUTION.name())?Role.INSTITUTION.name():Role.USER.name();
 		
@@ -153,7 +146,6 @@ public class AccessControlManager {
 		.set(TOKEN_OWNER_PROPERTY, id)
 		.set(TOKEN_CREATION_PROPERTY,creation)
 		.set(TOKEN_EXPIRATION_PROPERTY,expiration)
-		.set(TOKEN_ID_PROPERTY, tokenId)
 		.set(TOKEN_ROLE_PROPERTY,role)
 		.build();
 		
@@ -162,7 +154,7 @@ public class AccessControlManager {
 			txn.add(token);
 			txn.commit();
 			
-			return new LoginInfo(id,role,tokenId,expiration.toString());
+			return new LoginInfo(id,role,token.getKey().getId(),expiration.toString());
 			
 		}
 		catch(DatastoreException e) {
@@ -189,12 +181,11 @@ public class AccessControlManager {
 	 * @param tokenId - token id given by the user or institution
 	 * @return <b>true</b> if logout was successful, <b>false</b> in case it failed.
 	 */
-	public static boolean endSession(String tokenId) {
-		if(badString(tokenId)) return false;
+	public static boolean endSession(long tokenId) {
 		
 		boolean problem = false;
 		
-		Entity token = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, tokenId);
+		Entity token = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(token == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 			return false;
@@ -229,10 +220,10 @@ public class AccessControlManager {
 	 * @param accountID - id of the account
 	 * @return  <b>true</b> if logout was successful, <b>false</b> in case it failed.
 	 */
-	public static boolean endAllSessions(String accountId) {
-		if(badString(accountId)) return false;
+	public static boolean endAllSessions(String id) {
+		if(badString(id)) return false;
 
-		List<Entity> tokens = QueryUtils.getEntityListByProperty(TOKEN_KIND, TOKEN_OWNER_PROPERTY, accountId);
+		List<Entity> tokens = QueryUtils.getEntityListByProperty(TOKEN_KIND, TOKEN_OWNER_PROPERTY, id);
 		
 		Key[] keys = new Key[tokens.size()]; 
 		tokens.stream().map(token->token.getKey()).collect(Collectors.toList()).toArray(keys);
@@ -315,11 +306,11 @@ public class AccessControlManager {
 	 * @param targetRole - role the token is to be elevated to.
 	 * @return <b>true</b> if successful, <b>false</b> if failed.
 	 */
-	public static boolean updateTokenRole(String tokenId,Role targetRole) {
-		if(badString(tokenId) || targetRole == null) return false;
+	public static boolean updateTokenRole(long tokenId,Role targetRole) {
+		if(targetRole == null) return false;
 		
 		
-		Entity oldToken = QueryUtils.getEntityByProperty(TOKEN_KIND,TOKEN_ID_PROPERTY, tokenId);
+		Entity oldToken = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(oldToken == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 			return false;
@@ -404,14 +395,14 @@ public class AccessControlManager {
 	 * @param operationId - id of the operations
 	 * @return true if it has permission , false if it doesn't have permission
 	 */
-	public static boolean hasAccess(String tokenId,String operationId) {
+	public static boolean hasAccess(long tokenId,String operationId) {
 		if(badString(operationId)) return false;
 		
-		boolean hasToken = !badString(tokenId);
+		boolean hasToken = tokenId<0?false:true;
 		
 		String role = Role.ALL.name();
 		if(hasToken) {
-			Entity token =QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, tokenId);
+			Entity token =QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 			if(token == null) {
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return false;
@@ -477,10 +468,9 @@ public class AccessControlManager {
 	 * @param tokenId - id of token
 	 * @return userId of the owner of the token or null in case of error
 	 */
-	public static String getOwner(String tokenId) {
-		if(badString(tokenId))return null;
+	public static String getOwner(long tokenId) {
 
-		Entity token = QueryUtils.getEntityByProperty(TOKEN_KIND, TOKEN_ID_PROPERTY, tokenId);
+		Entity token = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 		if(token == null){
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 			return null;

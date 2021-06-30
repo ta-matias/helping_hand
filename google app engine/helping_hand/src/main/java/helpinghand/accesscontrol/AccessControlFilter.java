@@ -23,6 +23,7 @@ public class AccessControlFilter implements ContainerRequestFilter{
 	
 	private static final String ACCESS_FILTER_START = "Verifying request permissions...";
 	private static final String ACCESS_DENIED_ERROR = "Insuficient permissions to execute operation";
+	private static final String TOKEN_INFO = "\n operationId = [%s]\n tokenId = (%d)";
 	
 	private static final String BACK_OFFICE_RESOURCE = BackOfficeResource.PATH.substring(1); //removing the '/'
 	
@@ -38,9 +39,9 @@ public class AccessControlFilter implements ContainerRequestFilter{
 		
 		UriInfo requestUriInfo = requestContext.getUriInfo();
 		List<String> tokenList = requestUriInfo.getQueryParameters().get(TOKEN_ID_PARAM);
-		String tokenId = null;
+		long tokenId = -1;
 		if(tokenList != null) { 
-			tokenId = tokenList.get(0);
+			tokenId = Long.parseLong(tokenList.get(0));
 		}
 		
 		String operationId = method;
@@ -58,7 +59,7 @@ public class AccessControlFilter implements ContainerRequestFilter{
 		}
 		
 		
-		log.info(String.format("\n operationId = [%s]\n tokenId = [%s]",operationId,tokenId));
+		log.info(String.format(TOKEN_INFO,operationId,tokenId));
 		
 		//check if RBAC Policy "table" is initialized
 		if(!AccessControlManager.RBACPolicyIntitalized()) {
