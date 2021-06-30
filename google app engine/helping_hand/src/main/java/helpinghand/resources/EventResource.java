@@ -314,7 +314,7 @@ public class EventResource {
 		}
 		long tokenId = Long.parseLong(token);
 		long eventId = Long.parseLong(event);
-		log.info(String.format(CANCEL_EVENT_START,tokenId));
+		log.info(String.format(CANCEL_EVENT_START,eventId,tokenId));
 		
 		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 		if(eventEntity == null) {
@@ -355,7 +355,7 @@ public class EventResource {
 			
 			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(CANCEL_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventEntity.getKey().getId(),tokenId));
+			log.info(String.format(CANCEL_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
