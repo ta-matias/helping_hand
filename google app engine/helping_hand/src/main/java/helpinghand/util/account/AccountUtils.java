@@ -43,9 +43,6 @@ public class AccountUtils {
 	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token (%d) does not exist";
 	private static final String PASSWORD_DENIED_ERROR = "[%s] is not the current password for the account [%s]";
 	public static final String ACCOUNT_NOT_FOUND_ERROR = "Account [%s] does not exist";
-	private static final String FOLLOW_CONFLICT_ERROR = "[%s] is already registered as following [%s]";
-	private static final String UNFOLLOW_NOT_FOUND_ERROR = "[%s] is not registered as following [%s]";
-	private static final String REPEATED_FOLLOWER_ERROR = "[%s] is registered as following [%s] multiple times";
 	
 	protected static final String CREATE_START = "Attempting to create account with id [%s] and role [%s]";
 	protected static final String CREATE_OK = "Successfuly created account [%s] and role [%s]";
@@ -110,13 +107,7 @@ public class AccountUtils {
 	protected static final String GET_PROFILE_OK = "Successfuly got profile of account [%s] with token (%d)";
 	protected static final String GET_PROFILE_BAD_DATA_ERROR = "Get profile attempt failed due to bad inputs";
 	
-	private static final String FOLLOW_START = "Attempting to follow account [%s] with token (%d)";
-	private static final String FOLLOW_OK = "Successfuly followed account [%s] with token (%d)";
-	private static final String FOLLOW_BAD_DATA_ERROR = "Follow attempt failed due to bad inputs";
 	
-	private static final String UNFOLLOW_START = "Attempting to unfollow account [%s] with token (%d)";
-	private static final String UNFOLLOW_OK = "Successfuly unfollowed account [%s] with token (%d)";
-	private static final String UNFOLLOW_BAD_DATA_ERROR = "Unfollow attempt failed due to bad inputs";
 	
 	public static final String ACCOUNT_KIND = "Account";
 	public static final String ACCOUNT_ID_PROPERTY = "id";
@@ -666,104 +657,6 @@ public class AccountUtils {
 		return Response.ok(g.toJson(info)).build();
 	}
 	
-	protected Response follow(String id, String token) {
-		if(badString(id) || badString(token)) {
-			log.warning(FOLLOW_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).build();
-		}
-		long tokenId = Long.parseLong(token);
-		log.info(String.format(FOLLOW_START, id,token));
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-		String user = AccessControlManager.getOwner(tokenId);
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		List<Entity> check = QueryUtils.getEntityChildrenByKindAndProperty(account, FOLLOWER_KIND, FOLLOWER_ID_PROPERTY, user);
-		if(check.size() >1 ) {
-			log.severe(String.format(REPEATED_FOLLOWER_ERROR,user,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		if(!check.isEmpty()) {
-			log.warning(String.format(FOLLOW_CONFLICT_ERROR, user,id));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		Key followerKey = datastore.allocateId(datastore.newKeyFactory().setKind(FOLLOWER_KIND).newKey());
-		Entity follower = Entity.newBuilder(followerKey)
-		.set(FOLLOWER_ID_PROPERTY,user)
-		.build();
-		
-		Transaction txn = datastore.newTransaction();
-		try {
-			txn.add(follower);
-			txn.commit();
-			log.info(String.format(FOLLOW_OK,id,tokenId));
-			return Response.ok().build();
-		}
-		catch(DatastoreException e) {
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}		
-	}
 	
-	protected Response unfollow(String id, String token) {
-		if(badString(id) || badString(token)) {
-			log.warning(UNFOLLOW_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).build();
-		}
-		long tokenId = Long.parseLong(token);
-		log.info(String.format(UNFOLLOW_START, id,token));
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-		String user = AccessControlManager.getOwner(tokenId);
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		List<Entity> check = QueryUtils.getEntityChildrenByKindAndProperty(account, FOLLOWER_KIND, FOLLOWER_ID_PROPERTY, user);
-		if(check.size() >1 ) {
-			log.severe(String.format(REPEATED_FOLLOWER_ERROR,user,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		if(check.isEmpty()) {
-			log.warning(String.format(UNFOLLOW_NOT_FOUND_ERROR, user,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-		Entity follower = check.get(0);
-		
-		Transaction txn = datastore.newTransaction();
-		try {
-			txn.delete(follower.getKey());
-			txn.commit();
-			log.info(String.format(UNFOLLOW_OK,id,tokenId));
-			return Response.ok().build();
-		}
-		catch(DatastoreException e) {
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
-	}
 	
 }

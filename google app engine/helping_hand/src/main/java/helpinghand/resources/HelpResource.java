@@ -51,6 +51,10 @@ import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.RATING_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.resources.UserResource.FOLLOWER_KIND;
+import static helpinghand.resources.UserResource.FOLLOWER_ID_PROPERTY;
 import static helpinghand.resources.UserResource.addNotificationToFeed;
 import static helpinghand.resources.UserResource.addRatingToStats;
 /**
@@ -63,6 +67,7 @@ public class HelpResource {
 	
 	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose, [%s], has left the help request";
 	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
+	private static final String HELP_CREATED_NOTIFICATION = "Help request '%s' has been created by '%s'";
 	
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in HelpResource: %s";
@@ -200,7 +205,14 @@ public class HelpResource {
 		long tokenId = Long.parseLong(token);
 		log.info(String.format(CREATE_HELP_START, tokenId));
 		
-		if(!AccessControlManager.getOwner(tokenId).equals(data.creator)) {
+		Entity creator = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, AccessControlManager.getOwner(tokenId));
+		
+		if(creator == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		if(!creator.getString(ACCOUNT_ID_PROPERTY).equals(data.creator)) {
 			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,data.creator));
 			return Response.status(Status.FORBIDDEN).build();
 		}
@@ -230,6 +242,10 @@ public class HelpResource {
 			
 			txn.add(help);
 			txn.commit();
+			List<String> followers = QueryUtils.getEntityChildrenByKind(creator, FOLLOWER_KIND).stream().map(entity->entity.getString(FOLLOWER_ID_PROPERTY)).collect(Collectors.toList());
+			String message = String.format(HELP_CREATED_NOTIFICATION,data.name,data.creator);
+			followers.forEach(id->addNotificationToFeed(id,message));
+			
 			log.info(String.format(CREATE_HELP_OK, tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {

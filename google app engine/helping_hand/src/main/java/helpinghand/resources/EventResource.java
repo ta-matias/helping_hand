@@ -51,6 +51,10 @@ import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 
 /**
  * @author PogChamp Software
@@ -60,6 +64,7 @@ import static helpinghand.util.GeneralUtils.badString;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class EventResource {
 	
+	private static final String EVENT_CREATED_NOTIFICATION = "Event '%s' has been created by '%s'";
 	private static final String EVENT_CANCELED_NOTIFICATION = "Event '%s' has been canceled";
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in EventResource: %s";
@@ -179,7 +184,16 @@ public class EventResource {
 		long tokenId = Long.parseLong(token);
 		log.info(String.format(CREATE_EVENT_START,tokenId));
 		
-		if(!AccessControlManager.getOwner(tokenId).equals(data.creator)) {
+		Entity creator = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, AccessControlManager.getOwner(tokenId));
+		
+		if(creator == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		
+		
+		if(!creator.getString(ACCOUNT_ID_PROPERTY).equals(data.creator)) {
 			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,data.creator));
 			return Response.status(Status.FORBIDDEN).build();
 		}
@@ -209,6 +223,10 @@ public class EventResource {
 			
 			txn.add(event);
 			txn.commit();
+			List<String> followers = QueryUtils.getEntityChildrenByKind(creator, FOLLOWER_KIND).stream().map(entity->entity.getString(FOLLOWER_ID_PROPERTY)).collect(Collectors.toList());
+			String message = String.format(EVENT_CREATED_NOTIFICATION,data.name,data.creator);
+			followers.forEach(id->addNotificationToFeed(id,message));
+			
 			log.info(String.format(CREATE_EVENT_OK, data.name,eventKey.getId(),tokenId));
 			
 			return Response.ok(eventKey.getId()).build();
