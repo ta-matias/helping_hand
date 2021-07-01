@@ -28,6 +28,8 @@ public enum RBACRule {
 	GET_USER_FEED("GET_user_feed",new Role[] {USER}),
 	UPDATE_USER_FEED("UPDATE_user_feed",new Role[] {USER}),
 	GET_USER_STATS("GET_user_stats",new Role[] {USER,INSTITUTION}),
+	FOLLOW("POST_user_follow",new Role[] {USER}),
+	UFOLLOW("DELETE_user_follow",new Role[] {USER}),
 	
 	//Institution Resource
 	GET_ALL_INSTITUTIONS("GET_institution",new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)

@@ -232,9 +232,9 @@ public class UserResource extends AccountUtils{
 		.build();
 		
 		Entity userStats = Entity.newBuilder(userStatsKey)
-		.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,USER_STATS_INITIAL_RATING)
+		.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,USER_STATS_INITIAL_REQUESTS)
 		.set(USER_STATS_REQUESTS_DONE_PROPERTY,USER_STATS_INITIAL_REQUESTS)
-		.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_REQUESTS)
+		.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_RATING)
 		.build();
 		
 		Transaction txn = datastore.newTransaction();
@@ -799,8 +799,8 @@ public class UserResource extends AccountUtils{
 		Entity stats = statList.get(0);
 		
 		double oldRating = stats.getDouble(USER_STATS_RATING_PROPERTY);
-		double oldDone = stats.getDouble(USER_STATS_REQUESTS_DONE_PROPERTY);
-		double oldPromised = stats.getDouble(USER_STATS_REQUESTS_PROMISED_PROPERTY);
+		double oldDone = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_DONE_PROPERTY)).doubleValue();
+		double oldPromised = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)).doubleValue();
 		
 		double newPromised = oldPromised++;
 		double newDone = oldDone;
@@ -815,8 +815,8 @@ public class UserResource extends AccountUtils{
 		
 		Entity updatedStats = Entity.newBuilder(stats)
 		.set(USER_STATS_RATING_PROPERTY, newRating)
-		.set(USER_STATS_REQUESTS_DONE_PROPERTY,newDone)
-		.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,newPromised)
+		.set(USER_STATS_REQUESTS_DONE_PROPERTY,Double.valueOf(newDone).longValue())
+		.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,Double.valueOf(newPromised).longValue())
 		.build();
 		
 		Transaction txn = datastore.newTransaction();

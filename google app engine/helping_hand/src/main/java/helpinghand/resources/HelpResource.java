@@ -321,6 +321,10 @@ public class HelpResource {
 	@Path(FINISH_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response finishHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token , @QueryParam(RATING_PARAM) String rating) {
+		if(badString(rating) ) {
+			log.warning(FINISH_HELP_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
 		int ratingValue = Integer.parseInt(rating);
 		if(badString(help) || badString(token) ||ratingValue<0 || ratingValue > 5) {
 			log.warning(FINISH_HELP_BAD_DATA_ERROR);
@@ -502,7 +506,7 @@ public class HelpResource {
 			log.severe(MULTIPLE_HELPER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		if(!checkList.isEmpty()) {
+		if(checkList.isEmpty()) {
 			log.warning(String.format(HELPER_NOT_FOUND_ERROR, helper,helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
@@ -589,7 +593,7 @@ public class HelpResource {
 		}
 		if(!checkList.isEmpty()) {
 			log.warning(String.format(HELPER_CONFLICT_ERROR, user,helpId));
-			return Response.status(Status.NOT_FOUND).build();
+			return Response.status(Status.FORBIDDEN).build();
 		}
 		
 		Key helperKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(HELP_KIND, helpEntity.getKey().getId())).setKind(HELPER_KIND).newKey());
