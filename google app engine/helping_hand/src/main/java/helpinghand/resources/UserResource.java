@@ -724,7 +724,7 @@ public class UserResource extends AccountUtils{
 	//owner of token starts following account with id
 	@POST
 	@Path(FOLLOW_PATH)
-	public Response follow(@PathParam(USER_ID_PARAM)String id, String token) {
+	public Response follow(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token) {
 		if(badString(id) || badString(token)) {
 			log.warning(FOLLOW_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -779,7 +779,7 @@ public class UserResource extends AccountUtils{
 	//owner of token stops following account with id
 	@DELETE
 	@Path(UNFOLLOW_PATH)
-	public Response unfollow(@PathParam(USER_ID_PARAM)String id, String token) {
+	public Response unfollow(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM)String token) {
 		if(badString(id) || badString(token)) {
 			log.warning(UNFOLLOW_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
