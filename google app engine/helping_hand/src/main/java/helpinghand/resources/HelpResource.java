@@ -496,14 +496,14 @@ public class HelpResource {
 			}
 		}
 		
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_ID_PROPERTY, tokenEntity.getString(TOKEN_OWNER_PROPERTY));
+		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_ID_PROPERTY, helper);
 		
 		if(checkList.size()>1) {
 			log.severe(MULTIPLE_HELPER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if(!checkList.isEmpty()) {
-			log.warning(String.format(HELPER_CONFLICT_ERROR, tokenEntity.getString(TOKEN_OWNER_PROPERTY),helpId));
+			log.warning(String.format(HELPER_NOT_FOUND_ERROR, helper,helpId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
