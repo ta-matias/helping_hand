@@ -24,6 +24,9 @@ public class AccessControlFilter implements ContainerRequestFilter{
 	private static final String ACCESS_FILTER_START = "Verifying request permissions...";
 	private static final String ACCESS_DENIED_ERROR = "Insuficient permissions to execute operation";
 	private static final String TOKEN_INFO = "\n operationId = [%s]\n tokenId = (%d)";
+	private static final String INITIALIZING_RBAC_POLICY_START  = "Creating RBACPolicy entities";
+	private static final String INITIALIZING_RBAC_POLICY_ERROR  = "Failed to create RBACPolicy entities";
+	private static final String INITIALIZING_RBAC_POLICY_OK = "Successfuly created RBACPolicy entities";
 	
 	private static final String BACK_OFFICE_RESOURCE = BackOfficeResource.PATH.substring(1); //removing the '/'
 	
@@ -64,14 +67,14 @@ public class AccessControlFilter implements ContainerRequestFilter{
 		//check if RBAC Policy "table" is initialized
 		if(!AccessControlManager.RBACPolicyIntitalized()) {
 			//if it is not initialized
-			log.info("Initializing RBAC Policy");
+			log.info(INITIALIZING_RBAC_POLICY_START);
 			if(!AccessControlManager.intitializeRBACPolicy()) {
 				//if it failed to initialize
-				log.info("Error initializing RBAC Policy");
-				requestContext.abortWith(Response.status(Status.INTERNAL_SERVER_ERROR).entity("RBAC Policy could not be initialized.").build());
+				log.info(INITIALIZING_RBAC_POLICY_ERROR);
+				requestContext.abortWith(Response.status(Status.INTERNAL_SERVER_ERROR).build());
 				return;
 			}
-			log.info("RBAC Policy initialized successfully");
+			log.info(INITIALIZING_RBAC_POLICY_OK);
 		}
 		
 		

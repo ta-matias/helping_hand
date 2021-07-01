@@ -88,11 +88,11 @@ public class UserResource extends AccountUtils{
 	private static final String ADD_RATING_BAD_DATA_ERROR = "Add rating failed due to bad input";
 	
 	private static final String FOLLOW_START = "Attempting to follow account [%s] with token (%d)";
-	private static final String FOLLOW_OK = "Successfuly followed account [%s] with token (%d)";
+	private static final String FOLLOW_OK = "Successfuly followed account [%s] with token (%d)[%s]";
 	private static final String FOLLOW_BAD_DATA_ERROR = "Follow attempt failed due to bad inputs";
 	
 	private static final String UNFOLLOW_START = "Attempting to unfollow account [%s] with token (%d)";
-	private static final String UNFOLLOW_OK = "Successfuly unfollowed account [%s] with token (%d)";
+	private static final String UNFOLLOW_OK = "Successfuly unfollowed account [%s] with token (%d)[%s]";
 	private static final String UNFOLLOW_BAD_DATA_ERROR = "Unfollow attempt failed due to bad inputs";
 	
 	public static final String USER_ID_PARAM = "userId";
@@ -730,7 +730,7 @@ public class UserResource extends AccountUtils{
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		long tokenId = Long.parseLong(token);
-		log.info(String.format(FOLLOW_START, id,token));
+		log.info(String.format(FOLLOW_START, id,tokenId));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
@@ -752,7 +752,7 @@ public class UserResource extends AccountUtils{
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
-		Key followerKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, id)).setKind(FOLLOWER_KIND).newKey());
+		Key followerKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).setKind(FOLLOWER_KIND).newKey());
 		Entity follower = Entity.newBuilder(followerKey)
 		.set(FOLLOWER_ID_PROPERTY,user)
 		.build();
@@ -761,7 +761,7 @@ public class UserResource extends AccountUtils{
 		try {
 			txn.add(follower);
 			txn.commit();
-			log.info(String.format(FOLLOW_OK,id,tokenId));
+			log.info(String.format(FOLLOW_OK,id,tokenId,user));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -785,7 +785,7 @@ public class UserResource extends AccountUtils{
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		long tokenId = Long.parseLong(token);
-		log.info(String.format(UNFOLLOW_START, id,token));
+		log.info(String.format(UNFOLLOW_START, id,tokenId));
 		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
 		if(account == null) {
 			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
@@ -812,7 +812,7 @@ public class UserResource extends AccountUtils{
 		try {
 			txn.delete(follower.getKey());
 			txn.commit();
-			log.info(String.format(UNFOLLOW_OK,id,tokenId));
+			log.info(String.format(UNFOLLOW_OK,id,tokenId,user));
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
@@ -862,7 +862,7 @@ public class UserResource extends AccountUtils{
 		notifications.forEach(notification->{
 			feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
 		});
-		
+		feedBuilder.addValue(StringValue.newBuilder(message).setExcludeFromIndexes(true).build());
 		ListValue completeFeed = feedBuilder.build();
 		
 		Entity updatedFeed = Entity.newBuilder(feed)
