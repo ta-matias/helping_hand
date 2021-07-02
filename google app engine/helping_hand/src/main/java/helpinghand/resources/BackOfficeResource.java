@@ -68,9 +68,9 @@ public class BackOfficeResource {
 	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token (%d)";
 	private static final String LIST_ROLE_BAD_DATA_ERROR = "List accounts by role attempt failed due to bad inputs";
 	
-	private static final String DAILY_STATS_START = "Attempting to get account creation stats with token (%d)";
-	private static final String DAILY_STATS_OK = "Successfulty to got account creation statswith token (%d)";
-	private static final String DAILY_STATS_BAD_DATA_ERROR = "List accounts by role attempt failed due to bad inputs";
+	private static final String DAILY_STATS_START = "Attempting to get account creation stats from [%s] to [%s] with token (%d)";
+	private static final String DAILY_STATS_OK = "Successfulty to got account creation stats from [%s] to [%s] with token (%d)";
+	private static final String DAILY_STATS_BAD_DATA_ERROR = "Get daily stats attempt failed due to bad inputs";
 	
 	
 	
@@ -210,7 +210,7 @@ public class BackOfficeResource {
 			List<String[]> data = map.keySet().stream().map(key -> new String[] {key.toString(),map.get(key).toString()}).collect(Collectors.toList());
 			
 			
-			log.info(String.format(DAILY_STATS_OK));
+			log.info(String.format(DAILY_STATS_OK,start,end,tokenId));
 			return Response.ok(g.toJson(data)).build();
 		}
 		catch (DatastoreException e) {
