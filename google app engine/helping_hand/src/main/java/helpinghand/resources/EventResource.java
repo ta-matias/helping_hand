@@ -21,6 +21,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -107,6 +108,8 @@ public class EventResource {
 	private static final String LIST_EVENTS_OK = "Successfuly got all events with token (%d)";
 	private static final String LIST_EVENTS_BAD_DATA_ERROR  = "Get all events attempt failed due to bad inputs";
 	
+	
+	
 	private static final String LIST_EVENT_PARTICIPANTS_START  = "Attempting to get event (%d) participants with token (%d)";
 	private static final String LIST_EVENT_PARTICIPANTS_OK = "Successfuly got event [%s](%d) participants with token (%d)";
 	private static final String LIST_EVENT_PARTICIPANTS_BAD_DATA_ERROR  = "Get event participants attempt failed due to bad inputs";
@@ -124,6 +127,7 @@ public class EventResource {
 	
 	public static final String PATH = "/event";
 	private static final String LIST_PATH = ""; // GET
+	private static final String LIST_BY_EVENT_PATH = "/{"+EVENT_ID_PARAM+"}/listUsers"; // GET
 	private static final String CREATE_PATH = ""; // POST
 	private static final String UPDATE_PATH = "/{"+EVENT_ID_PARAM+"}"; // PUT
 	private static final String CANCEL_PATH = "/{"+EVENT_ID_PARAM+"}"; // DELETE
@@ -131,11 +135,10 @@ public class EventResource {
 	private static final String GET_PATH = "/{"+EVENT_ID_PARAM+"}/get"; // GET
 	private static final String JOIN_PATH = "/{"+EVENT_ID_PARAM+"}/join"; // POST
 	private static final String LEAVE_PATH = "/{"+EVENT_ID_PARAM+"}/leave"; // DELETE
-	private static final String LIST_BY_EVENT_PATH = "/{"+EVENT_ID_PARAM+"}/list"; // GET
 	private static final String GET_STATUS_PATH = "/{"+EVENT_ID_PARAM+"}/status";//GET
 	private static final String UPDATE_STATUS_PATH = "/{"+EVENT_ID_PARAM+"}/status";//PUT
 	
-	private static final String EVENT_KIND = "Event";
+	public static final String EVENT_KIND = "Event";
 	private static final String EVENT_NAME_PROPERTY ="name";
 	private static final String EVENT_CREATOR_PROPERTY ="creator";
 	private static final String EVENT_DESCRIPTION_PROPERTY ="description";
@@ -143,7 +146,7 @@ public class EventResource {
 	private static final String EVENT_END_PROPERTY = "end";
 	private static final String EVENT_LOCATION_PROPERTY = "location";
 	private static final String EVENT_CONDITIONS_PROPERTY ="conditions";
-	private static final String EVENT_STATUS_PROPERTY ="status";
+	public static final String EVENT_STATUS_PROPERTY ="status";
 	private static final boolean EVENT_STATUS_DEFAULT = true;
 	private static final boolean EVENT_FINISHED_STATUS = false;
 	
@@ -205,13 +208,16 @@ public class EventResource {
 		}
 		ListValue conditions = builder.build();
 		
-		Key eventKey = datastore.allocateId(datastore.newKeyFactory().setKind(EVENT_KIND).newKey());
+		Timestamp start = Timestamp.parseTimestamp(data.start);
+		Timestamp end = Timestamp.parseTimestamp(data.end);
+		
+		Key eventKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND,creator.getKey().getId())).setKind(EVENT_KIND).newKey());
 		Entity event = Entity.newBuilder(eventKey)
 		.set(EVENT_NAME_PROPERTY, data.name)
 		.set(EVENT_CREATOR_PROPERTY, data.creator)
 		.set(EVENT_DESCRIPTION_PROPERTY, data.description)
-		.set(EVENT_START_PROPERTY, data.start)
-		.set(EVENT_END_PROPERTY, data.end)
+		.set(EVENT_START_PROPERTY,start)
+		.set(EVENT_END_PROPERTY, end)
 		.set(EVENT_LOCATION_PROPERTY, location)
 		.set(EVENT_CONDITIONS_PROPERTY,conditions)
 		.set(EVENT_STATUS_PROPERTY, EVENT_STATUS_DEFAULT)
@@ -439,12 +445,15 @@ public class EventResource {
 		}
 		ListValue conditions = builder.build();
 		
+		Timestamp start = Timestamp.parseTimestamp(data.start);
+		Timestamp end = Timestamp.parseTimestamp(data.end);
+		
 		Entity updatedEvent = Entity.newBuilder(eventEntity)
 		.set(EVENT_NAME_PROPERTY, data.name)
 		.set(EVENT_CREATOR_PROPERTY, data.creator)
 		.set(EVENT_DESCRIPTION_PROPERTY, data.description)
-		.set(EVENT_START_PROPERTY, data.start)
-		.set(EVENT_END_PROPERTY, data.end)
+		.set(EVENT_START_PROPERTY, start)
+		.set(EVENT_END_PROPERTY, end)
 		.set(EVENT_LOCATION_PROPERTY, location)
 		.set(EVENT_CONDITIONS_PROPERTY,conditions)
 		.build();
@@ -501,8 +510,8 @@ public class EventResource {
 		eventEntity.getString(EVENT_NAME_PROPERTY),
 		eventEntity.getString(EVENT_CREATOR_PROPERTY),
 		eventEntity.getString(EVENT_DESCRIPTION_PROPERTY),
-		eventEntity.getString(EVENT_START_PROPERTY),
-		eventEntity.getString(EVENT_END_PROPERTY),
+		eventEntity.getTimestamp(EVENT_START_PROPERTY).toString(),
+		eventEntity.getTimestamp(EVENT_END_PROPERTY).toString(),
 		new double[] {location.getLatitude(),location.getLongitude()},
 		conditions
 		);

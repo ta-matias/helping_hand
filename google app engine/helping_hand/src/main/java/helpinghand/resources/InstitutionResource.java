@@ -101,6 +101,8 @@ public class InstitutionResource extends AccountUtils{
 	private static final String UPDATE_VISIBILITY_PATH="/{"+INSTITUTION_ID_PARAM+"}/visibility";//PUT
 	private static final String UPDATE_INFO_PATH="/{"+INSTITUTION_ID_PARAM+"}/info"; //PUT
 	private static final String GET_INFO_PATH="/{"+INSTITUTION_ID_PARAM+"}/info"; //GET
+	private static final String GET_EVENTS_PATH="/{"+INSTITUTION_ID_PARAM+"}/events"; //GET
+	private static final String GET_HELP_PATH="/{"+INSTITUTION_ID_PARAM+"}/help"; //GET
 	private static final String UPDATE_PROFILE_PATH="/{"+INSTITUTION_ID_PARAM+"}/profile"; //PUT
 	private static final String GET_PROFILE_PATH="/{"+INSTITUTION_ID_PARAM+"}/profile"; //GET
 	private static final String ADD_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //PUT
@@ -402,6 +404,19 @@ public class InstitutionResource extends AccountUtils{
 		return super.updateAccountInfo(id, data, token);
 	}
 
+	@GET
+	@Path(GET_EVENTS_PATH)
+	public Response getAccountEvents(@PathParam(INSTITUTION_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.getAccountEvents(id, token);
+	}
+	
+	@GET
+	@Path(GET_HELP_PATH)
+	public Response getAccountHelpRequests(@PathParam(INSTITUTION_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.getAccountHelpRequests(id, token);
+	}
+	
+	
 	/**
 	 * Obtains the institution profile.
 	 * @param instId - The institution id that is going to be used to obtain its data.

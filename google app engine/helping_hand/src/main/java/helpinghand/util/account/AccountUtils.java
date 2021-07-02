@@ -15,6 +15,7 @@ import helpinghand.util.QueryUtils;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -29,6 +30,9 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
+import static helpinghand.resources.EventResource.EVENT_KIND;
+import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
+import static helpinghand.resources.HelpResource.HELP_KIND;
 
 
 
@@ -96,7 +100,6 @@ public class AccountUtils {
 	private static final String GET_ACCOUNT_INFO_OK = "Successfuly got account info of account [%s] with token (%d)";
 	private static final String GET_ACCOUNT_INFO_BAD_DATA_ERROR = "Get account info attempt failed due to bad inputs";
 	
-	
 	protected static final String UPDATE_PROFILE_START ="Attempting to update profile with token (%d)";
 	protected static final String UPDATE_PROFILE_OK = "Successfuly updated prfile of account [%s] with token (%d)";
 	protected static final String UPDATE_PROFILE_BAD_DATA_ERROR = "Change profile attempt failed due to bad inputs";
@@ -106,6 +109,14 @@ public class AccountUtils {
 	protected static final String GET_PROFILE_START = "Attempting to get profile of account [%s] with token (%d)";
 	protected static final String GET_PROFILE_OK = "Successfuly got profile of account [%s] with token (%d)";
 	protected static final String GET_PROFILE_BAD_DATA_ERROR = "Get profile attempt failed due to bad inputs";
+	
+	private static final String GET_EVENTS_START  = "Attempting to get all events of account [%s] with token (%d)";
+	private static final String GET_EVENTS_OK = "Successfuly got all events of account [%s] with token (%d)";
+	private static final String GET_EVENTS_BAD_DATA_ERROR  = "Get all events of account attempt failed due to bad inputs";
+
+	private static final String GET_HELP_START  = "Attempting to get all events of account [%s] with token (%d)";
+	private static final String GET_HELP_OK = "Successfuly got all events of account [%s] with token (%d)";
+	private static final String GET_HELP_BAD_DATA_ERROR  = "Get all events of account attempt failed due to bad inputs";
 	
 	
 	
@@ -657,6 +668,72 @@ public class AccountUtils {
 		return Response.ok(g.toJson(info)).build();
 	}
 	
+	protected Response getAccountEvents(String id,String token) {
+		if(badString(id)|| badString(token)) {
+			log.info(GET_EVENTS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_EVENTS_START,id,tokenId));
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY)||!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+		}
+		List<String[]> events = QueryUtils.getEntityChildrenByKind(account, EVENT_KIND).stream()
+				.map(event->new String[] {Long.toString(event.getKey().getId()),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))})
+				.collect(Collectors.toList());
+		log.info(String.format(GET_EVENTS_OK,id,token));
+		return Response.ok(g.toJson(events)).build();
+		
+	}
 	
+	protected Response getAccountHelpRequests(String id,String token) {
+		if(badString(id)|| badString(token)) {
+			log.info(GET_HELP_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_HELP_START,id,tokenId));
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY)||!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+		}
+		List<String> helps = QueryUtils.getEntityChildrenByKind(account, HELP_KIND).stream()
+				.map(help->Long.toString(help.getKey().getId()))
+				.collect(Collectors.toList());
+		log.info(String.format(GET_HELP_OK,id,token));
+		return Response.ok(g.toJson(helps)).build();
+		
+	}
 	
 }

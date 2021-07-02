@@ -5,4 +5,4 @@ project.bucket=
 project.id=hh-deployment
 project.previousVersion.stop=true
 project.promote=true
-project.version=beta-86
+project.version=beta-89

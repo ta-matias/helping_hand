@@ -5,7 +5,6 @@
 
 package helpinghand.resources;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -175,25 +174,22 @@ public class BackOfficeResource {
 
 	@GET
 	@Path(DAILY_USERS_PATH)
-	public Response dailyStatistics(@QueryParam(TOKEN_ID_PARAM) String token,@QueryParam(START_DATE_PARAM)String startDate,@QueryParam(END_DATE_PARAM)String endDate) {
-		if(badString(token) || badString(startDate) || badString(endDate)) {
+	public Response dailyStatistics(@QueryParam(TOKEN_ID_PARAM) String token,@QueryParam(START_DATE_PARAM)String start,@QueryParam(END_DATE_PARAM)String end) {
+		if(badString(token) || badString(start) || badString(end)) {
 			log.warning(DAILY_STATS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		long tokenId = Long.parseLong(token);
-		log.info(String.format(DAILY_STATS_START,startDate,endDate,tokenId));
+		log.info(String.format(DAILY_STATS_START,start,end,tokenId));
 		
-		Instant startInstant = Instant.parse(startDate);
-		Instant endInstant = Instant.parse(endDate);
-		
-		Timestamp startTimestamp = Timestamp.of(Date.from(startInstant));
-		Timestamp endTimestamp = Timestamp.of(Date.from(endInstant));
+		Timestamp startTimestamp = Timestamp.parseTimestamp(start);
+		Timestamp endTimestamp = Timestamp.parseTimestamp(end);
 		
 		Query<ProjectionEntity> query = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_CREATION_PROPERTY)
 		.setFilter(CompositeFilter.and(PropertyFilter.gt(ACCOUNT_CREATION_PROPERTY, startTimestamp),PropertyFilter.lt(ACCOUNT_CREATION_PROPERTY,endTimestamp))).build();
 		
 		
-		Map<LocalDate,Integer> map = initializeMap(startDate,endDate);
+		Map<LocalDate,Integer> map = initializeMap(start,end);
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		
 		try {

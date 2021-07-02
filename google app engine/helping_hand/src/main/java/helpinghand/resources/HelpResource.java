@@ -21,12 +21,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
@@ -126,7 +126,7 @@ public class HelpResource {
 	private static final String HELP_ID_PARAM = "helpId";
 	private static final String RATING_PARAM = "rating";
 	
-	private static final String HELP_KIND = "Help";
+	public static final String HELP_KIND = "Help";
 	private static final String HELP_NAME_PROPERTY = "name";
 	private static final String HELP_CREATOR_PROPERTY = "creator";
 	private static final String HELP_DESCRIPTION_PROPERTY = "description";
@@ -145,8 +145,6 @@ public class HelpResource {
 	
 	private static final Logger log = Logger.getLogger(HelpResource.class.getName());
 	private final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-	
-	private final KeyFactory helpKeyFactory = datastore.newKeyFactory().setKind(HELP_KIND);
 	
 	private final Gson g = new Gson();
 	
@@ -224,12 +222,14 @@ public class HelpResource {
 		}
 		ListValue conditions = builder.build();
 		
-		Key helpKey = datastore.allocateId(helpKeyFactory.newKey());
+		Timestamp time = Timestamp.parseTimestamp(data.time);
+		
+		Key helpKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, creator.getKey().getId())).newKey());
 		Entity help = Entity.newBuilder(helpKey)
 		.set(HELP_NAME_PROPERTY, data.name)
 		.set(HELP_CREATOR_PROPERTY,data.creator)
 		.set(HELP_DESCRIPTION_PROPERTY, data.description)
-		.set(HELP_TIME_PROPERTY,data.time)
+		.set(HELP_TIME_PROPERTY,time)
 		.set(HELP_PERMANENT_PROPERTY, data.permanent)
 		.set(HELP_LOCATION_PROPERTY,location)
 		.set(HELP_CONDITIONS_PROPERTY,conditions)
@@ -300,11 +300,13 @@ public class HelpResource {
 		}
 		ListValue conditions = builder.build();
 		
+		Timestamp time = Timestamp.parseTimestamp(data.time);
+		
 		Entity updatedHelp = Entity.newBuilder(helpEntity)
 		.set(HELP_NAME_PROPERTY, data.name)
 		.set(HELP_CREATOR_PROPERTY,data.creator)
 		.set(HELP_DESCRIPTION_PROPERTY, data.description)
-		.set(HELP_TIME_PROPERTY,data.time)
+		.set(HELP_TIME_PROPERTY,time)
 		.set(HELP_PERMANENT_PROPERTY, data.permanent)
 		.set(HELP_LOCATION_PROPERTY,location)
 		.set(HELP_CONDITIONS_PROPERTY,conditions)

@@ -122,6 +122,8 @@ public class UserResource extends AccountUtils{
 	private static final String UPDATE_VISIBILITY_PATH="/{"+USER_ID_PARAM+"}/visibility";//PUT
 	private static final String UPDATE_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//PUT
 	private static final String GET_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//GET
+	private static final String GET_EVENTS_PATH = "/{" + USER_ID_PARAM + "}/events";//GET
+	private static final String GET_HELP_PATH = "/{" + USER_ID_PARAM + "}/help";//GET
 	private static final String UPDATE_PROFILE_PATH ="/{" + USER_ID_PARAM + "}/profile";//PUT
 	private static final String GET_PROFILE_PATH = "/{" + USER_ID_PARAM + "}/profile";//GET
 	private static final String GET_FEED_PATH = "/{" + USER_ID_PARAM + "}/feed";//GET
@@ -433,6 +435,18 @@ public class UserResource extends AccountUtils{
 		return super.updateAccountInfo(id,data, token);
 	}
 	
+	@GET
+	@Path(GET_EVENTS_PATH)
+	public Response getAccountEvents(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.getAccountEvents(id, token);
+	}
+	
+	@GET
+	@Path(GET_HELP_PATH)
+	public Response getAccountHelpRequests(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.getAccountHelpRequests(id, token);
+	}
+	
 	/**
 	 * Obtains the profile of the user.
 	 * @param userId - The user who has the profile.
@@ -614,8 +628,8 @@ public class UserResource extends AccountUtils{
 	@PUT
 	@Path(UPDATE_FEED_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateFeed(@PathParam(USER_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, String[] feed) {
-		if(badString(token) || feed == null || badString(id)) {
+	public Response updateFeed(@PathParam(USER_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, UserFeed feed) {
+		if(badString(token) || badString(id) || feed.badData()) {
 			log.info(UPDATE_FEED_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
@@ -655,7 +669,7 @@ public class UserResource extends AccountUtils{
 		
 		ListValue.Builder feedBuilder = ListValue.newBuilder();
 		
-		for(String notification:feed){
+		for(String notification:feed.feed){
 			feedBuilder.addValue(StringValue.newBuilder(notification).setExcludeFromIndexes(true).build());
 		}
 		
@@ -713,7 +727,14 @@ public class UserResource extends AccountUtils{
 		
 		Entity statsEntity = statList.get(0);
 		
-		double reliability = statsEntity.getDouble(USER_STATS_REQUESTS_DONE_PROPERTY) / statsEntity.getDouble(USER_STATS_REQUESTS_PROMISED_PROPERTY);
+		double promised = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY));
+		double done = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_DONE_PROPERTY));
+		double reliability;
+		if(promised == 0.0) {
+			reliability = 0;
+		}else {
+			reliability = done/promised;
+		}
 		
 		UserStats stats = new UserStats(statsEntity.getDouble(USER_STATS_RATING_PROPERTY),reliability);
 		

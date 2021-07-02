@@ -23,6 +23,8 @@ public enum RBACRule {
 	UPDATE_USER_VISIBILITY("PUT_user_visibility",new Role[] {USER,GBO}), // update a user's visibility
 	UPDATE_USER_INFO("PUT_user_info",new Role[] {USER,GBO}), // update a user's account info
 	GET_USER_INFO("GET_user_info",new Role[] {USER,INSTITUTION,GBO}), //get a user's account info
+	GET_USER_EVENTS("GET_user_events",new Role[] {USER,INSTITUTION,GBO}), 
+	GET_USER_HELP("GET_user_help",new Role[] {USER,INSTITUTION,GBO}), 
 	UPDATE_USER_PROFILE("PUT_user_profile",new Role[] {USER,GBO}), // update a user's profile
 	GET_USER_PROFILE("GET_user_profile",new Role[] {USER,INSTITUTION,GBO}), //get a user's profile
 	GET_USER_FEED("GET_user_feed",new Role[] {USER}),
@@ -44,6 +46,8 @@ public enum RBACRule {
 	UPDATE_INSTITUTION_VISIBILITY("PUT_institution_visibility",new Role[] {INSTITUTION,GBO}),// update an institution's visibility
 	UPDATE_INSTITUTION_INFO("PUT_institution_info",new Role[] {INSTITUTION,GBO}),// update an institution's account info
 	GET_INSTITUTION_INFO("GET_institution_info",new Role[] {USER,INSTITUTION,GBO}), // get an institution's account info
+	GET_INSTITUTION_EVENTS("GET_institution_events",new Role[] {USER,INSTITUTION,GBO}), 
+	GET_INSTITUTION_HELP("GET_institution_help",new Role[] {USER,INSTITUTION,GBO}), 
 	UPDATE_INSTITUTION_PROFILE("PUT_institution_profile",new Role[] {INSTITUTION,GBO}),// update an institution's profile
 	GET_INSTITUTION_PROFILE("GET_institution_profile",new Role[] {USER,INSTITUTION,GBO}),  // get an institution's profile
 	GET_INSTITUTION_MEMBERS("GET_institution_members",new Role[] {USER,INSTITUTION,GBO}), //list an institution's members
