@@ -714,22 +714,17 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		List<Entity> check2List = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
-		if(check2List.size() > 1) {
+		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		if(checkList.size() > 1) {
 			log.severe(REPEATED_MEMBER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		if(check2List.isEmpty()) {
+		if(checkList.isEmpty()) {
 			log.severe(String.format(REMOVE_MEMBER_NOT_FOUND_ERROR, memberId,id));
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		Entity check2 = check2List.get(0);
+		Entity check = checkList.get(0);
 		
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
 		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
@@ -748,7 +743,7 @@ public class InstitutionResource extends AccountUtils{
 		
 		Transaction txn = datastore.newTransaction();
 		try {
-			txn.delete(check2.getKey());
+			txn.delete(check.getKey());
 			txn.commit();
 			log.info(String.format(REMOVE_MEMBER_OK,memberId,id,tokenId));
 			return Response.ok().build();
