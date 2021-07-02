@@ -149,11 +149,13 @@ public class InstitutionResource extends AccountUtils{
 			return Response.ok(g.toJson(institutions)).build();
 		}
 		catch(DatastoreException e) {
+			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
+				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -237,11 +239,13 @@ public class InstitutionResource extends AccountUtils{
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
+			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
+				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -561,11 +565,13 @@ public class InstitutionResource extends AccountUtils{
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
+			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
+				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -685,11 +691,13 @@ public class InstitutionResource extends AccountUtils{
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
+			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
+				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -756,11 +764,13 @@ public class InstitutionResource extends AccountUtils{
 			return Response.ok().build();
 		}
 		catch(DatastoreException e) {
+			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		finally {
 			if(txn.isActive()) {
+				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
