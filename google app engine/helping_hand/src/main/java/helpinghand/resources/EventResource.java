@@ -46,7 +46,6 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
-import static helpinghand.resources.UserResource.addNotificationToFeed;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
@@ -57,6 +56,7 @@ import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
+import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 
 /**
  * @author PogChamp Software
@@ -151,8 +151,8 @@ public class EventResource {
 	private static final boolean EVENT_STATUS_DEFAULT = true;
 	private static final boolean EVENT_FINISHED_STATUS = false;
 	
-	private static final String PARTICIPANT_KIND = "Participant";
-	private static final String PARTICIPANT_ID_PROPERTY = "id";
+	public static final String PARTICIPANT_KIND = "Participant";
+	public static final String PARTICIPANT_ID_PROPERTY = "id";
 	
 	
 	

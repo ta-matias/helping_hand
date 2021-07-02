@@ -54,9 +54,9 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
+import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 import static helpinghand.resources.UserResource.FOLLOWER_KIND;
 import static helpinghand.resources.UserResource.FOLLOWER_ID_PROPERTY;
-import static helpinghand.resources.UserResource.addNotificationToFeed;
 import static helpinghand.resources.UserResource.addRatingToStats;
 /**
  * @author PogChamp Software
@@ -139,9 +139,9 @@ public class HelpResource {
 	private static final boolean HELP_STATUS_INITIAL = true;
 	
 	private static final String HELPER_ID_PARAM ="helperId";
-	private static final String HELPER_KIND ="Helper";
-	private static final String HELPER_ID_PROPERTY = "id";
-	private static final String HELPER_CURRENT_PROPERTY = "current";
+	public static final String HELPER_KIND ="Helper";
+	public static final String HELPER_ID_PROPERTY = "id";
+	public static final String HELPER_CURRENT_PROPERTY = "current";
 
 	
 	private static final Logger log = Logger.getLogger(HelpResource.class.getName());

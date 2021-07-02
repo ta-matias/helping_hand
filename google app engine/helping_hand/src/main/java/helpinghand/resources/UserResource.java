@@ -16,13 +16,11 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
-import com.google.cloud.datastore.Value;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
@@ -38,14 +36,12 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
-import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 @Path(UserResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
@@ -61,23 +57,11 @@ public class UserResource extends AccountUtils{
 	private static final String GET_ALL_OK ="Successfuly got all users with token (%d)";
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 	
-	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
-	private static final String FEED_NOT_FOUND_ERROR = "User [%s] has no notification feeds";
 	
 	private static final String MULTIPLE_STATS_ERROR = "User [%s] has multiple stats";
 	private static final String STATS_NOT_FOUND_ERROR = "User [%s] has no stats";
 	
-	private static final String GET_FEED_START ="Attempting to get notification with token (%d)";
-	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token (%d)";
-	private static final String GET_FEED_BAD_DATA_ERROR = "Get notification feed failed due to bad input";
 	
-	private static final String UPDATE_FEED_START ="Attempting to update notification list with token (%d)";
-	private static final String UPDATE_FEED_OK ="Successfuly updated notification feed  of [%s] with token (%d)";
-	private static final String UPDATE_FEED_BAD_DATA_ERROR = "Update notification feed failed due to bad input";
-
-	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to [%s]'s feed";
-	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
-	private static final String ADD_NOTIFICATION_FEED_BAD_DATA_ERROR = "Add notification to feed failed due to bad input";
 	
 	private static final String GET_STATS_START ="Attempting to get stats of [%s] with token (%d)";
 	private static final String	GET_STATS_OK ="Successfuly got stats of [%s] with token (%d)";
@@ -104,8 +88,7 @@ public class UserResource extends AccountUtils{
 	public static final double USER_STATS_INITIAL_RATING = 0.0;
 	public static final int USER_STATS_INITIAL_REQUESTS = 0;
 	
-	public static final String USER_FEED_KIND = "UserFeed";
-	public static final String USER_FEED_NOTIFICATIONS_PROPERTY = "notification";
+	
 	
 	
 	//Paths
@@ -212,8 +195,8 @@ public class UserResource extends AccountUtils{
 		
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
+		Key accountFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey());
 		Key userProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey());
-		Key userFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_FEED_KIND).newKey());
 		Key userStatsKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_STATS_KIND).newKey());
 		
 		Timestamp now = Timestamp.now();
@@ -241,8 +224,8 @@ public class UserResource extends AccountUtils{
 		.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
 		.build();
 		
-		Entity userFeed = Entity.newBuilder(userFeedKey)
-		.set(USER_FEED_NOTIFICATIONS_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
+		Entity accountFeed = Entity.newBuilder(accountFeedKey)
+		.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
 		.build();
 		
 		Entity userStats = Entity.newBuilder(userStatsKey)
@@ -253,7 +236,7 @@ public class UserResource extends AccountUtils{
 		
 		Transaction txn = datastore.newTransaction();
 		try {
-			txn.add(account,accountInfo,userProfile,userFeed,userStats);
+			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
 			txn.commit();
 			return Response.ok().build();
 		}
@@ -583,120 +566,14 @@ public class UserResource extends AccountUtils{
 	@GET
 	@Path(GET_FEED_PATH)
 	public Response getFeed(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
-		if(badString(token) || badString(id)) {
-			log.info(GET_FEED_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).build();
-		}
-		long tokenId = Long.parseLong(token);
-		log.info(String.format(GET_FEED_START, tokenId));
-		
-		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
-		if(feedList.isEmpty()) {
-			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		if( feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		
-		Entity feed = feedList.get(0);
-		
-		List<Value<String>> notifications = feed.getList(USER_FEED_NOTIFICATIONS_PROPERTY);
-		List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
-		
-		log.info(String.format(GET_FEED_OK,id,tokenId));
-		return Response.ok(g.toJson(notificationList)).build();
+		return super.getFeed(id, token);
 	}
 	
 	@PUT
 	@Path(UPDATE_FEED_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateFeed(@PathParam(USER_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, UserFeed feed) {
-		if(badString(token) || badString(id) || feed.badData()) {
-			log.info(UPDATE_FEED_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).build();
-		}
-		long tokenId = Long.parseLong(token);
-		log.info(String.format(UPDATE_FEED_START, tokenId));
-		
-		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-		
-		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
-		if(feedList.isEmpty()) {
-			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		if( feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		
-		
-		
-		Entity feedEntity = feedList.get(0);
-		
-		ListValue.Builder feedBuilder = ListValue.newBuilder();
-		
-		for(String notification:feed.feed){
-			feedBuilder.addValue(StringValue.newBuilder(notification).setExcludeFromIndexes(true).build());
-		}
-		
-		ListValue completeFeed = feedBuilder.build(); 
-		
-		Entity updatedFeed = Entity.newBuilder(feedEntity)
-		.set(USER_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
-		.build();
-		
-		Transaction txn = datastore.newTransaction();
-		try {
-			txn.update(updatedFeed);
-			txn.commit();
-		
-			log.info(String.format(UPDATE_FEED_OK,id,tokenId));
-			return Response.ok().build();
-		}
-		catch(DatastoreException e) {
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		finally {
-			if(txn.isActive()) {
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
+	public Response updateFeed(@PathParam(USER_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, AccountFeed data) {
+		return super.updateFeed(id,token,data);
 	}
 	
 	@GET
@@ -849,68 +726,7 @@ public class UserResource extends AccountUtils{
 	}
 	
 	
-	public static boolean addNotificationToFeed(String user,String message) {
-		if(badString(user)||badString(message)) {
-			log.warning(ADD_NOTIFICATION_FEED_BAD_DATA_ERROR);
-			return false;
-		}
-		
-		log.info(String.format(ADD_NOTIFICATION_FEED_START,user));
-		
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
-			return false;
-		}
-		
-		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, USER_FEED_KIND);
-		if(feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
-			return false;
-		}
-		if(feedList.isEmpty()) {
-			log.severe(String.format(FEED_NOT_FOUND_ERROR,user));
-			return false;
-		}
-		
-		
-		Entity feed = feedList.get(0);
-		
-		List<Value<String>> notifications = feed.getList(USER_FEED_NOTIFICATIONS_PROPERTY);
-		
-		ListValue.Builder feedBuilder = ListValue.newBuilder();
-		
-		notifications.forEach(notification->{
-			feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
-		});
-		feedBuilder.addValue(StringValue.newBuilder(message).setExcludeFromIndexes(true).build());
-		ListValue completeFeed = feedBuilder.build();
-		
-		Entity updatedFeed = Entity.newBuilder(feed)
-		.set(USER_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
-		.build();
-		
-		Transaction txn = datastore.newTransaction();
-		try {
-			txn.update(updatedFeed);
-			txn.commit();
-			log.info(String.format(ADD_NOTIFICATION_FEED_OK,user));
-			return true;
-		}
-		catch(DatastoreException e) {
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-			return false;
-		}
-		finally {
-			if(txn.isActive()) {
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return false;
-			}
-		}
-		
-		
-		
-	}
+	
 	
 	public static boolean addRatingToStats(String user,boolean finished,int rating) {
 		if(badString(user)|| rating < 0 || rating > 5) {

@@ -108,6 +108,8 @@ public class InstitutionResource extends AccountUtils{
 	private static final String ADD_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //PUT
 	private static final String REMOVE_MEMBER_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //PUT
 	private static final String GET_MEMBERS_PATH="/{"+INSTITUTION_ID_PARAM+"}/members"; //GET
+	private static final String GET_FEED_PATH = "/{" + INSTITUTION_ID_PARAM + "}/feed";//GET
+	private static final String UPDATE_FEED_PATH = "/{" + INSTITUTION_ID_PARAM + "}/feed";//PUT
 
 	
 	private static final Logger log = Logger.getLogger(InstitutionResource.class.getName());
@@ -192,6 +194,7 @@ public class InstitutionResource extends AccountUtils{
 		
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
+		Key accountFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey());
 		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
 		
 		Timestamp now = Timestamp.now();
@@ -214,6 +217,10 @@ public class InstitutionResource extends AccountUtils{
 		.set(ACCOUNT_INFO_CITY_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
 		.build();
 		
+		Entity accountFeed = Entity.newBuilder(accountFeedKey)
+		.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
+		.build();
+		
 		Entity institutionProfile = Entity.newBuilder(institutionProfileKey)
 		.set(PROFILE_NAME_PROPERTY, data.name)
 		.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
@@ -224,7 +231,7 @@ public class InstitutionResource extends AccountUtils{
 		
 		Transaction txn = datastore.newTransaction();
 		try {
-			txn.add(account,accountInfo,institutionProfile);
+			txn.add(account,accountInfo,accountFeed,institutionProfile);
 			txn.commit();
 			log.info(String.format(CREATE_OK,data.id,Role.USER.name()));
 			return Response.ok().build();
@@ -602,8 +609,8 @@ public class InstitutionResource extends AccountUtils{
 			}
 		}
 		
-		List<Entity> entityList = QueryUtils.getEntityChildrenByKind(account, INSTITUTION_MEMBERS_KIND);
-		List<String> memberList = entityList.stream().map(entity->entity.getString(INSTITUTION_MEMBERS_ID_PROPERTY)).collect(Collectors.toList());
+		List<Entity> entityList = QueryUtils.getEntityChildrenByKind(account, INSTITUTION_MEMBER_KIND);
+		List<String> memberList = entityList.stream().map(entity->entity.getString(INSTITUTION_MEMBER_ID_PROPERTY)).collect(Collectors.toList());
 		
 		log.info(String.format(GET_MEMBERS_OK,id,token));
 		return Response.ok(g.toJson(memberList)).build();
@@ -640,7 +647,7 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		List<Entity> mermberList = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		List<Entity> mermberList = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBER_KIND,INSTITUTION_MEMBER_ID_PROPERTY,memberId);
 		if(mermberList.size() > 1) {
 			log.severe(REPEATED_MEMBER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -664,10 +671,10 @@ public class InstitutionResource extends AccountUtils{
 			}
 		}
 		
-		Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, institutionAccount.getKey().getId())).setKind(INSTITUTION_MEMBERS_KIND).newKey());
+		Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, institutionAccount.getKey().getId())).setKind(INSTITUTION_MEMBER_KIND).newKey());
 		
 		Entity member = Entity.newBuilder(memberKey)
-		.set(INSTITUTION_MEMBERS_ID_PROPERTY,memberId)
+		.set(INSTITUTION_MEMBER_ID_PROPERTY,memberId)
 		.build();
 	
 		Transaction txn = datastore.newTransaction();
@@ -714,7 +721,7 @@ public class InstitutionResource extends AccountUtils{
 			return Response.status(Status.NOT_FOUND).build();
 		}
 		
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,memberId);
+		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(institutionAccount, INSTITUTION_MEMBER_KIND,INSTITUTION_MEMBER_ID_PROPERTY,memberId);
 		if(checkList.size() > 1) {
 			log.severe(REPEATED_MEMBER_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -758,6 +765,19 @@ public class InstitutionResource extends AccountUtils{
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+	}
+	
+	@GET
+	@Path(GET_FEED_PATH)
+	public Response getFeed(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.getFeed(id, token);
+	}
+	
+	@PUT
+	@Path(UPDATE_FEED_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateFeed(@PathParam(INSTITUTION_ID_PARAM) String id,@QueryParam(TOKEN_ID_PARAM) String token, AccountFeed data) {
+		return super.updateFeed(id,token,data);
 	}
 	
 }

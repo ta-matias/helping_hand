@@ -1,11 +1,11 @@
-package helpinghand.util.user;
+package helpinghand.util.account;
 
-public class UserFeed {
+public class AccountFeed {
 	public String[] feed;
 	
-	public UserFeed() {}
+	public AccountFeed() {}
 	
-	public UserFeed(String[] feed) {
+	public AccountFeed(String[] feed) {
 		this.feed= feed;
 	}
 	

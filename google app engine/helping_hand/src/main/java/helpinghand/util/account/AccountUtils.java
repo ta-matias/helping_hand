@@ -4,7 +4,9 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.ListValue;
+import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.Value;
 import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.AccessControlManager;
@@ -28,11 +30,18 @@ import com.google.cloud.datastore.DatastoreException;
 import static helpinghand.util.GeneralUtils.badPassword;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_KIND;
 import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
+import static helpinghand.resources.EventResource.PARTICIPANT_KIND;
+import static helpinghand.resources.EventResource.PARTICIPANT_ID_PROPERTY;
 import static helpinghand.resources.HelpResource.HELP_KIND;
+import static helpinghand.resources.HelpResource.HELPER_KIND;
+import static helpinghand.resources.HelpResource.HELPER_ID_PROPERTY;
+import static helpinghand.resources.HelpResource.HELPER_CURRENT_PROPERTY;
 
 
 
@@ -47,6 +56,8 @@ public class AccountUtils {
 	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token (%d) does not exist";
 	private static final String PASSWORD_DENIED_ERROR = "[%s] is not the current password for the account [%s]";
 	public static final String ACCOUNT_NOT_FOUND_ERROR = "Account [%s] does not exist";
+	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
+	private static final String FEED_NOT_FOUND_ERROR = "User [%s] has no notification feeds";
 	
 	protected static final String CREATE_START = "Attempting to create account with id [%s] and role [%s]";
 	protected static final String CREATE_OK = "Successfuly created account [%s] and role [%s]";
@@ -118,7 +129,17 @@ public class AccountUtils {
 	private static final String GET_HELP_OK = "Successfuly got all events of account [%s] with token (%d)";
 	private static final String GET_HELP_BAD_DATA_ERROR  = "Get all events of account attempt failed due to bad inputs";
 	
+	private static final String GET_FEED_START ="Attempting to get notification with token (%d)";
+	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token (%d)";
+	private static final String GET_FEED_BAD_DATA_ERROR = "Get notification feed failed due to bad input";
 	
+	private static final String UPDATE_FEED_START ="Attempting to update notification list with token (%d)";
+	private static final String UPDATE_FEED_OK ="Successfuly updated notification feed  of [%s] with token (%d)";
+	private static final String UPDATE_FEED_BAD_DATA_ERROR = "Update notification feed failed due to bad input";
+
+	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to [%s]'s feed";
+	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
+	private static final String ADD_NOTIFICATION_FEED_BAD_DATA_ERROR = "Add notification to feed failed due to bad input";
 	
 	public static final String ACCOUNT_KIND = "Account";
 	public static final String ACCOUNT_ID_PROPERTY = "id";
@@ -143,12 +164,14 @@ public class AccountUtils {
 	public static final String INSTITUTION_PROFILE_INITIALS_PROPERTY = "initials";
 	public static final String INSTITUTION_PROFILE_CATEGORIES_PROPERTY = "categories";
 	
-	public static final String INSTITUTION_MEMBERS_KIND = "InstMember";
-	public static final String INSTITUTION_MEMBERS_ID_PROPERTY = "id";
+	public static final String INSTITUTION_MEMBER_KIND = "InstMember";
+	public static final String INSTITUTION_MEMBER_ID_PROPERTY = "id";
 	
 	public static final String FOLLOWER_KIND ="Follower";
 	public static final String FOLLOWER_ID_PROPERTY = "id";
 	
+	public static final String ACCOUNT_FEED_KIND = "AccountFeed";
+	public static final String ACCOUNT_FEED_NOTIFICATIONS_PROPERTY = "notifications";
 	
 	
 	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = true;
@@ -191,9 +214,22 @@ public class AccountUtils {
 		
 		List<Key> toDelete = new LinkedList<>();
 		toDelete.add(account.getKey());
-		QueryUtils.getEntityChildren(account).stream().forEach(c->toDelete.add(c.getKey()));
+		QueryUtils.getEntityChildren(account).stream().forEach(c->{
+			if(!c.getKey().getKind().equals(EVENT_KIND))toDelete.add(c.getKey());
+		});
+		
+		
+		
 		if(!Role.getRole(account.getString(ACCOUNT_ROLE_PROPERTY)).equals(Role.INSTITUTION)) {
-			QueryUtils.getEntityListByProperty(INSTITUTION_MEMBERS_KIND,INSTITUTION_MEMBERS_ID_PROPERTY,id).stream().forEach(m->toDelete.add(m.getKey()));
+			
+			QueryUtils.getEntityListByProperty(INSTITUTION_MEMBER_KIND, INSTITUTION_MEMBER_ID_PROPERTY, id).stream().forEach(p->toDelete.add(p.getKey()));
+			QueryUtils.getEntityListByProperty(PARTICIPANT_KIND, PARTICIPANT_ID_PROPERTY, id).stream().forEach(p->toDelete.add(p.getKey()));
+			QueryUtils.getEntityListByProperty(HELPER_KIND, HELPER_ID_PROPERTY, id).stream().forEach(h->{
+				toDelete.add(h.getKey());
+				if(h.getBoolean(HELPER_CURRENT_PROPERTY)) {
+					//TODO:notify help creator
+				}
+			});
 		}
 		
 		if(!AccessControlManager.endAllSessions(id)) {
@@ -735,5 +771,185 @@ public class AccountUtils {
 		return Response.ok(g.toJson(helps)).build();
 		
 	}
+	
+	protected Response getFeed(String id, String token) {
+		if(badString(token) || badString(id)) {
+			log.info(GET_FEED_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(GET_FEED_START, tokenId));
+		
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, ACCOUNT_FEED_KIND);
+		if(feedList.isEmpty()) {
+			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} 
+		if( feedList.size() > 1) {
+			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		Entity feed = feedList.get(0);
+		
+		List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
+		List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
+		
+		log.info(String.format(GET_FEED_OK,id,tokenId));
+		return Response.ok(g.toJson(notificationList)).build();
+	}
+	
+	protected Response updateFeed(String token, String id, AccountFeed data) {
+		if(badString(token) || badString(id) || data.badData()) {
+			log.info(UPDATE_FEED_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(UPDATE_FEED_START, tokenId));
+		
+		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2,tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+			return Response.status(Status.FORBIDDEN).build();
+		}
+		
+		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, ACCOUNT_FEED_KIND);
+		if(feedList.isEmpty()) {
+			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} 
+		if( feedList.size() > 1) {
+			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		
+		
+		Entity feedEntity = feedList.get(0);
+		
+		ListValue.Builder feedBuilder = ListValue.newBuilder();
+		
+		for(String notification:data.feed){
+			feedBuilder.addValue(StringValue.newBuilder(notification).setExcludeFromIndexes(true).build());
+		}
+		
+		ListValue completeFeed = feedBuilder.build(); 
+		
+		Entity updatedFeed = Entity.newBuilder(feedEntity)
+		.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedFeed);
+			txn.commit();
+		
+			log.info(String.format(UPDATE_FEED_OK,id,tokenId));
+			return Response.ok().build();
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	
+	
+	public static boolean addNotificationToFeed(String user,String message) {
+		if(badString(user)||badString(message)) {
+			log.warning(ADD_NOTIFICATION_FEED_BAD_DATA_ERROR);
+			return false;
+		}
+		
+		log.info(String.format(ADD_NOTIFICATION_FEED_START,user));
+		
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		if(account == null) {
+			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+			return false;
+		}
+		
+		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, ACCOUNT_FEED_KIND);
+		if(feedList.size() > 1) {
+			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
+			return false;
+		}
+		if(feedList.isEmpty()) {
+			log.severe(String.format(FEED_NOT_FOUND_ERROR,user));
+			return false;
+		}
+		
+		
+		Entity feed = feedList.get(0);
+		
+		List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
+		
+		ListValue.Builder feedBuilder = ListValue.newBuilder();
+		
+		notifications.forEach(notification->{
+			feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
+		});
+		feedBuilder.addValue(StringValue.newBuilder(message).setExcludeFromIndexes(true).build());
+		ListValue completeFeed = feedBuilder.build();
+		
+		Entity updatedFeed = Entity.newBuilder(feed)
+		.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
+		.build();
+		
+		Transaction txn = datastore.newTransaction();
+		try {
+			txn.update(updatedFeed);
+			txn.commit();
+			log.info(String.format(ADD_NOTIFICATION_FEED_OK,user));
+			return true;
+		}
+		catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return false;
+		}
+		finally {
+			if(txn.isActive()) {
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return false;
+			}
+		}
+		
+		
+		
+	}
+	
 	
 }
