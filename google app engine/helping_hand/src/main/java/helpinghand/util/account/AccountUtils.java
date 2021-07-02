@@ -60,7 +60,7 @@ public class AccountUtils {
 	private static final String FEED_NOT_FOUND_ERROR = "User [%s] has no notification feeds";
 	
 	protected static final String CREATE_START = "Attempting to create account with id [%s] and role [%s]";
-	protected static final String CREATE_OK = "Successfuly created account [%s] and role [%s]";
+	protected static final String CREATE_OK = "Successfuly created account [%s] with role [%s]";
 	protected static final String CREATE_ID_CONFLICT_ERROR = "Account with id [%s] already exists";
 	protected static final String CREATE_EMAIL_CONFLICT_ERROR = "Account with id [%s] already exists";
 	protected static final String CREATE_BAD_DATA_ERROR = "Account creation attempt failed due to bad inputs";
@@ -183,6 +183,16 @@ public class AccountUtils {
 	
 	public AccountUtils() {}
 	
+	/**
+	 * Deletes an existing account either user or institution.
+	 * @param id - The identification of the user/institution to be deleted.
+	 * @param token - The token of the account performing this operation
+	 * @return 200, if the account was successfully deleted.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	protected Response deleteAccount(String id,String token) {
 		
 		if(badString(id)||badString(token)) {
@@ -264,6 +274,13 @@ public class AccountUtils {
 		
 	}
 	
+	/**
+	 * It performs a login on the user/institution account.
+	 * @param data - The requested data to perform login.
+	 * @return 200, if the login was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the login failed.
+	 */
 	protected Response login(Login data) {
 		if(data.badData()) {
 			log.warning(LOGIN_BAD_DATA_ERROR);
@@ -283,6 +300,13 @@ public class AccountUtils {
 		
 	}
 	
+	/**
+	 * It performs a logout on the user/institution account.
+	 * @param token - The token of the user/institution requesting the logout.
+	 * @return 200, if the logout was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the logout failed.
+	 */
 	protected Response logout(String token) {
 		if(badString(token)) {
 			log.warning(LOGOUT_BAD_DATA_ERROR);
@@ -299,6 +323,19 @@ public class AccountUtils {
 		return Response.ok().build();
 	}
 
+	/**
+	 * Updates the identification of the user/institution.
+	 * @param id - The identification of the user/institution to be updated
+	 * @param data - The updated id data for the user/institution.
+	 * @param token - The token of the user/institution requesting the change of the id.
+	 * @return 200, if the identification change was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the password is not the current password for the account or the token cannot execute the operation
+	 * 		   with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   409, if there is already an account with this id.
+	 * 		   500, otherwise.
+	 */
 	protected Response updateId(String id,ChangeId data, String token) {
 		if(data.badData()|| badString(id)||badString(token)) {
 			log.warning(UPDATE_ID_BAD_DATA_ERROR);
@@ -362,6 +399,18 @@ public class AccountUtils {
 		}
 	}
 	
+	/**
+	 * Updates the password of the user/institution account.
+	 * @param id - The identification of the user/institution.
+	 * @param data - The updated password data for the user/institution account.
+	 * @param token - The token that is used to perform the operation
+	 * @return 200, if the password was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the password is not the current password for the account or the token cannot execute the operation
+	 * 		   with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	protected Response updatePassword(String id,ChangePassword data, String token) {
 		if(data.badData()|| badString(id)||badString(token)) {
 			log.warning(UPDATE_PASSWORD_BAD_DATA_ERROR);
@@ -421,6 +470,19 @@ public class AccountUtils {
 		}
 	}
 	
+	/**
+	 * Updates the email of the user/institution account.
+	 * @param id - The identification of the user/identification.
+	 * @param data - The updated email data for user/institution.
+	 * @param token - The token of the account requesting this operation.
+	 * @return 200, if the email was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
+	 * 		   with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   409, if there is already an account with the email.
+	 * 		   500, otherwise.
+	 */
 	protected Response updateEmail(String id, ChangeEmail data, String token) {
 		if(data.badData() || badString(id) ||badString(token)) {
 			log.warning(UPDATE_EMAIL_BAD_DATA_ERROR);
@@ -483,6 +545,18 @@ public class AccountUtils {
 		}
 	}
 	
+	/**
+	 * Updates the status of the user/institution account.
+	 * @param id - The identification of the user/institution.
+	 * @param data - The updated status data for user/institution.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @return 200, if the status was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
+	 * 		   with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	protected Response updateStatus(String id, ChangeStatus data, String token) {
 		if(data.badData()||badString(id) || badString(token)) {
 			log.warning(UPDATE_STATUS_BAD_DATA_ERROR);
@@ -541,6 +615,18 @@ public class AccountUtils {
 		}
 	}
 	
+	/**
+	 * Updates the visibility of the user/institution account.
+	 * @param id - The user/institution identification.
+	 * @param data - The updated visibility data for user/institution.
+	 * @param token - The token requesting this operation.
+	 * @return 200, if the visibility was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
+	 * 		   with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	protected Response updateVisibility(String id, ChangeVisibility data, String token) {
 		if(data.badData()||badString(id) || badString(token)) {
 			log.warning(UPDATE_VISIBILITY_BAD_DATA_ERROR);
@@ -599,6 +685,17 @@ public class AccountUtils {
 		}
 	}
 	
+	/**
+	 * Updates the user/institution account info.
+	 * @param id - The identification of the user/institution.
+	 * @param data - The updated account info data for user/institution.
+	 * @param token - The token requesting this operation.
+	 * @return 200, if the account info was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	protected Response updateAccountInfo(String id, AccountInfo data, String token) {
 		if(data.badData() ||badString(id)|| badString(token)) {
 			log.warning(UPDATE_ACCOUNT_INFO_BAD_DATA_ERROR);
@@ -668,6 +765,16 @@ public class AccountUtils {
 		
 	}
 	
+	/**
+	 * Obtains the account info of the user/institution.
+	 * @param id - The identification of the user/institution.
+	 * @param token - The token requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise
+	 */
 	protected Response getAccountInfo(String id,String token) {
 		if(badString(id) || badString(token)) {
 			log.warning(GET_ACCOUNT_INFO_BAD_DATA_ERROR);
@@ -718,6 +825,15 @@ public class AccountUtils {
 		return Response.ok(g.toJson(info)).build();
 	}
 	
+	/**
+	 * Obtains the list of the events created by the user/institution.
+	 * @param id - The identification of the user/institution.
+	 * @param token - The token of the user/institution.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 */
 	protected Response getAccountEvents(String id,String token) {
 		if(badString(id)|| badString(token)) {
 			log.info(GET_EVENTS_BAD_DATA_ERROR);
@@ -752,6 +868,15 @@ public class AccountUtils {
 		
 	}
 	
+	/**
+	 * Obtains the list of help requests created by the user/institution.
+	 * @param id - The identification of the user/institution.
+	 * @param token - The token of the user/institution.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the user/institution account does not exist or the token does not exist.
+	 */
 	protected Response getAccountHelpRequests(String id,String token) {
 		if(badString(id)|| badString(token)) {
 			log.info(GET_HELP_BAD_DATA_ERROR);
@@ -786,6 +911,15 @@ public class AccountUtils {
 		
 	}
 	
+	/**
+	 * Obtains the feed of the user/institution account.
+	 * @param id - The identification of the user/institution.
+	 * @param token - The token of the user/institution.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not belong to the user/institution account.
+	 * 		   404, if the user/institution account does not exist or the token does not exist. 
+	 */
 	protected Response getFeed(String id, String token) {
 		if(badString(token) || badString(id)) {
 			log.info(GET_FEED_BAD_DATA_ERROR);
@@ -829,6 +963,17 @@ public class AccountUtils {
 		return Response.ok(g.toJson(notificationList)).build();
 	}
 	
+	/**
+	 * Updates the feed of the user/institution account.
+	 * @param token - The token of the user/institution.
+	 * @param id - The identification of the user/institution account.
+	 * @param data - The updated feed data.
+	 * @return 200, if the feed was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not belong to the user/institution account.
+	 * 		   404, if the user/institution account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	protected Response updateFeed(String token, String id, AccountFeed data) {
 		if(badString(token) || badString(id) || data.badData()) {
 			log.info(UPDATE_FEED_BAD_DATA_ERROR);
@@ -902,8 +1047,13 @@ public class AccountUtils {
 		}
 	}
 	
-	
-	
+	/**
+	 * Adds a notification to feed of the user/institution.
+	 * @param user - The identification of the user/institution.
+	 * @param message - The message to be added to the feed.
+	 * @return true, if the message was successfully added to the feed.
+	 * 		   false, otherwise.
+	 */
 	public static boolean addNotificationToFeed(String user,String message) {
 		if(badString(user)||badString(message)) {
 			log.warning(ADD_NOTIFICATION_FEED_BAD_DATA_ERROR);
