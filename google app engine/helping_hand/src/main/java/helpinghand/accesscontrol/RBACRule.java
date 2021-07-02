@@ -53,6 +53,8 @@ public enum RBACRule {
 	GET_INSTITUTION_MEMBERS("GET_institution_members",new Role[] {USER,INSTITUTION,GBO}), //list an institution's members
 	ADD_INSTITUTION_MEMBER("POST_institution_members",new Role[] {INSTITUTION}), // add a member to an institution 
 	REMOVE_INSTITUTION_MEMBER("DELETE_institution_members",new Role[] {INSTITUTION}), // remove a member from an institution
+	GET_INSTITUTION_FEED("GET_institution_feed",new Role[] {INSTITUTION}),
+	UPDATE_INSTITUTION_FEED("UPDATE_institution_feed",new Role[] {INSTITUTION}),
 	
 	//BackofficeResource
 	UPDATE_USER_ROLE("PUT_restricted_updateAccountRole",new Role[] {SU}), // update a user account's role
