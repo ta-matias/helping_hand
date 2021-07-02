@@ -54,6 +54,7 @@ import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 
@@ -190,7 +191,7 @@ public class EventResource {
 		Entity creator = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, AccessControlManager.getOwner(tokenId));
 		
 		if(creator == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,data.creator));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		

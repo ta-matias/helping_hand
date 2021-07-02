@@ -53,6 +53,7 @@ import static helpinghand.util.GeneralUtils.RATING_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.resources.UserResource.FOLLOWER_KIND;
 import static helpinghand.resources.UserResource.FOLLOWER_ID_PROPERTY;
 import static helpinghand.resources.UserResource.addNotificationToFeed;
@@ -206,7 +207,7 @@ public class HelpResource {
 		Entity creator = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, AccessControlManager.getOwner(tokenId));
 		
 		if(creator == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,data.creator));
 			return Response.status(Status.FORBIDDEN).build();
 		}
 		
@@ -392,10 +393,6 @@ public class HelpResource {
 			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,tokenId));
 			return Response.ok().build();
 		}
-		
-		//TODO:do something to current helper
-		
-		
 		
 		List<Key> toDelete = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND).stream().map(helper->helper.getKey()).collect(Collectors.toList());
 		toDelete.add(helpEntity.getKey());
@@ -684,7 +681,7 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
-			//TODO:This should be optional
+			//TODO:This should be optional?
 			 
 			if(!addRatingToStats(user,false,0)) {
 				log.severe(String.format(RATING_ERROR, user));
