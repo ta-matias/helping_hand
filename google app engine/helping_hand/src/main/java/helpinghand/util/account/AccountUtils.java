@@ -35,10 +35,12 @@ import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_KIND;
+import static helpinghand.resources.EventResource.EVENT_CREATOR_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
 import static helpinghand.resources.EventResource.PARTICIPANT_KIND;
 import static helpinghand.resources.EventResource.PARTICIPANT_ID_PROPERTY;
 import static helpinghand.resources.HelpResource.HELP_KIND;
+import static helpinghand.resources.HelpResource.HELP_CREATOR_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_KIND;
 import static helpinghand.resources.HelpResource.HELPER_ID_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_CURRENT_PROPERTY;
@@ -860,7 +862,7 @@ public class AccountUtils {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
-		List<String[]> events = QueryUtils.getEntityChildrenByKind(account, EVENT_KIND).stream()
+		List<String[]> events = QueryUtils.getEntityListByProperty(EVENT_KIND, EVENT_CREATOR_PROPERTY,id).stream()
 				.map(event->new String[] {Long.toString(event.getKey().getId()),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))})
 				.collect(Collectors.toList());
 		log.info(String.format(GET_EVENTS_OK,id,token));
@@ -903,7 +905,7 @@ public class AccountUtils {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		}
-		List<String> helps = QueryUtils.getEntityChildrenByKind(account, HELP_KIND).stream()
+		List<String> helps = QueryUtils.getEntityListByProperty(HELP_KIND, HELP_CREATOR_PROPERTY, id).stream()
 				.map(help->Long.toString(help.getKey().getId()))
 				.collect(Collectors.toList());
 		log.info(String.format(GET_HELP_OK,id,token));

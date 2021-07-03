@@ -127,7 +127,7 @@ public class HelpResource {
 
 	public static final String HELP_KIND = "Help";
 	private static final String HELP_NAME_PROPERTY = "name";
-	private static final String HELP_CREATOR_PROPERTY = "creator";
+	public static final String HELP_CREATOR_PROPERTY = "creator";
 	private static final String HELP_DESCRIPTION_PROPERTY = "description";
 	private static final String HELP_TIME_PROPERTY = "time";
 	private static final String HELP_PERMANENT_PROPERTY = "permanent";
@@ -241,7 +241,7 @@ public class HelpResource {
 
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
-		Key helpKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, creator.getKey().getId())).newKey());
+		Key helpKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELPER_KIND).newKey());
 
 		Entity help = Entity.newBuilder(helpKey)
 				.set(HELP_NAME_PROPERTY, data.name)

@@ -136,7 +136,7 @@ public class EventResource {
 
 	public static final String EVENT_KIND = "Event";
 	private static final String EVENT_NAME_PROPERTY ="name";
-	private static final String EVENT_CREATOR_PROPERTY ="creator";
+	public static final String EVENT_CREATOR_PROPERTY ="creator";
 	private static final String EVENT_DESCRIPTION_PROPERTY ="description";
 	private static final String EVENT_START_PROPERTY = "start";
 	private static final String EVENT_END_PROPERTY = "end";
@@ -202,7 +202,7 @@ public class EventResource {
 		Timestamp start = Timestamp.parseTimestamp(data.start);
 		Timestamp end = Timestamp.parseTimestamp(data.end);
 
-		Key eventKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND,creator.getKey().getId())).setKind(EVENT_KIND).newKey());
+		Key eventKey = datastore.allocateId(datastore.newKeyFactory().setKind(EVENT_KIND).newKey());
 
 		Entity event = Entity.newBuilder(eventKey)
 				.set(EVENT_NAME_PROPERTY, data.name)
