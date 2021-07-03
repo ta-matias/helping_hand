@@ -241,7 +241,7 @@ public class HelpResource {
 
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
-		Key helpKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELPER_KIND).newKey());
+		Key helpKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELP_KIND).newKey());
 
 		Entity help = Entity.newBuilder(helpKey)
 				.set(HELP_NAME_PROPERTY, data.name)
