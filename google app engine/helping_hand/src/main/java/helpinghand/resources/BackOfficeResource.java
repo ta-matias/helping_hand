@@ -1,12 +1,10 @@
 package helpinghand.resources;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -68,6 +66,7 @@ public class BackOfficeResource {
 	private static final String DAILY_STATS_START = "Attempting to get account creation stats from [%s] to [%s] with token (%d)";
 	private static final String DAILY_STATS_OK = "Successfulty to got account creation stats from [%s] to [%s] with token (%d)";
 	private static final String DAILY_STATS_BAD_DATA_ERROR = "Get daily stats attempt failed due to bad inputs";
+	private static final String DAILY_STATS_BAD_DATA_ERROR_DATES = "Get daily stats attempt failed due to bad date inputs [%s] and [%s]";
 
 	private static final String USER_ROLE_PARAM = "role";
 	private static final String START_DATE_PARAM = "startDate";
@@ -222,41 +221,47 @@ public class BackOfficeResource {
 	@GET
 	@Path(DAILY_USERS_PATH)
 	public Response dailyStatistics(@QueryParam(TOKEN_ID_PARAM) String token,@QueryParam(START_DATE_PARAM)String start,@QueryParam(END_DATE_PARAM)String end) {
-		if(badString(token) || badString(start) || badString(end)) {
+		if(badString(token)||badString(start)||badString(end)) {
 			log.warning(DAILY_STATS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		} 
+
+		long tokenId = Long.parseLong(token);
+		
+		Timestamp startTimestamp ;
+		Timestamp endTimestamp;
+		try {
+			startTimestamp = Timestamp.parseTimestamp(start);
+			endTimestamp = Timestamp.parseTimestamp(end);
+		}catch(Exception e) {
+			log.warning(String.format(DAILY_STATS_BAD_DATA_ERROR_DATES,start,end));
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 
-		long tokenId = Long.parseLong(token);
-
 		log.info(String.format(DAILY_STATS_START,start,end,tokenId));
-
-		Timestamp startTimestamp = Timestamp.parseTimestamp(start);
-		Timestamp endTimestamp = Timestamp.parseTimestamp(end);
 
 		Query<ProjectionEntity> query = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_CREATION_PROPERTY)
 				.setFilter(CompositeFilter.and(PropertyFilter.gt(ACCOUNT_CREATION_PROPERTY, startTimestamp),PropertyFilter.lt(ACCOUNT_CREATION_PROPERTY,endTimestamp))).build();
 
-		Map<LocalDate,Integer> map = initializeMap(start,end);
+		Map<Instant,Integer> map = initializeMap(Instant.parse(start).truncatedTo(ChronoUnit.DAYS),Instant.parse(end).truncatedTo(ChronoUnit.DAYS));
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
 			QueryResults<ProjectionEntity> creationTimestamps = txn.run(query);
 			txn.commit();
-
 			creationTimestamps.forEachRemaining(projectionEntity -> {
 
 				Timestamp creationTimestamp = projectionEntity.getTimestamp(ACCOUNT_CREATION_PROPERTY);
 
-				LocalDate creation = LocalDateTime.parse(creationTimestamp.toString()).toLocalDate();
-
+				Instant creation = creationTimestamp.toDate().toInstant().truncatedTo(ChronoUnit.DAYS);
+				
 				int counter = map.get(creation);
 				counter++;
 				map.put(creation, counter);
 			});
 
-			List<String[]> data = map.keySet().stream().map(key -> new String[] {key.toString(),map.get(key).toString()}).collect(Collectors.toList());
+			List<String[]> data = map.keySet().stream().map(key -> new String[] {key.toString().substring(0,10),map.get(key).toString()}).collect(Collectors.toList());
 
 			log.info(String.format(DAILY_STATS_OK, start, end, tokenId));
 			return Response.ok(g.toJson(data)).build();
@@ -280,15 +285,15 @@ public class BackOfficeResource {
 	 * @param endDate - The end date of the statistics.
 	 * @return data
 	 */
-	private Map<LocalDate, Integer> initializeMap(String startDate, String endDate) {
-		Map<LocalDate, Integer> data = new HashMap<LocalDate, Integer>();
-
-		LocalDate start = LocalDate.parse(startDate);
-		LocalDate end = LocalDate.parse(endDate);
-
-		long numOfDays = ChronoUnit.DAYS.between(start, end)+1;
-
-		Stream.iterate(start, date -> date.plusDays(1)).limit(numOfDays).forEach(k -> data.put(k, 0));
+	private Map<Instant, Integer> initializeMap( Instant start, Instant end) {
+		Map<Instant, Integer> data = new HashMap<>();
+		
+		Instant current = Instant.from(start);
+		do {
+			data.put(current,0);
+			current = current.plus(1,ChronoUnit.DAYS);
+		}while(!current.isAfter(end));
+		
 
 		return data;
 	}
