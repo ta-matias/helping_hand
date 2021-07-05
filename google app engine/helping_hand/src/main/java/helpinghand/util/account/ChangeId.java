@@ -4,8 +4,7 @@ import static helpinghand.util.GeneralUtils.badString;
 
 public class ChangeId {
 	
-	public String id;
-	public String password;
+	public String id, password;
 	
 	public ChangeId() {}
 	
@@ -15,8 +14,10 @@ public class ChangeId {
 	}
 	
 	public boolean badData() {
-		if(badString(id)) return true;
-		if(badString(password)) return true;
+		if(badString(id)) 
+			return true;
+		if(badString(password)) 
+			return true;
 		return false;
 	}
 	

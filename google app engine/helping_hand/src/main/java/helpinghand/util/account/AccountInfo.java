@@ -1,13 +1,8 @@
 package helpinghand.util.account;
 
-
 public class AccountInfo {
 
-	public String phone;
-	public String address1;
-	public String address2;
-	public String zipcode;
-	public String city;
+	public String phone, address1, address2, zipcode, city;
 	
 	public AccountInfo() {}
 	
@@ -20,11 +15,16 @@ public class AccountInfo {
 	}
 	
 	public boolean badData() {
-		if(phone == null) return true;
-		if(address1 == null) return true;
-		if(address2 == null) return true;
-		if(zipcode == null) return true;
-		if(city == null) return true;
+		if(phone == null) 
+			return true;
+		if(address1 == null) 
+			return true;
+		if(address2 == null) 
+			return true;
+		if(zipcode == null) 
+			return true;
+		if(city == null)
+			return true;
 		return false;
 	}
 	

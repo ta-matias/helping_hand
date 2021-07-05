@@ -16,8 +16,9 @@ public class ChangeVisibility {
 	}
 
 	public boolean badData() {
-		if(badString(password)) return true;
+		if(badString(password)) 
+			return true;
 		return false;
 	}
+	
 }
-

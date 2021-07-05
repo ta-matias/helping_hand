@@ -54,7 +54,6 @@ import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
-
 /**
  * @author PogChamp Software
  *
@@ -242,7 +241,7 @@ public class EventResource {
 	}
 
 	/**
-	 * Finishes the event.
+	 * Ends the event.
 	 * @param event - The identification of the event to be finished.
 	 * @param token - The token id of the user or the institution who is going to finish the event.
 	 * @return 200, if the event was finished with success.
@@ -298,8 +297,8 @@ public class EventResource {
 
 		try {
 			txn.update(updatedEvent);
-			log.info(String.format(END_EVENT_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			txn.commit();
+			log.info(String.format(END_EVENT_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -366,7 +365,7 @@ public class EventResource {
 
 		for(Entity participant: participants) {
 			if(!addNotificationToFeed(participant.getString(PARTICIPANT_ID_PROPERTY),String.format(EVENT_CANCELED_NOTIFICATION, eventEntity.getString(EVENT_NAME_PROPERTY)))) {
-				log.severe(NOTIFICATION_ERROR);
+				log.severe(String.format(NOTIFICATION_ERROR, participant));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
@@ -511,6 +510,11 @@ public class EventResource {
 		log.fine(String.format(GET_EVENT_START,eventId,tokenId));
 
 		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
+		
+		if(eventEntity == null) {
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
+			return Response.status(Status.NOT_FOUND).build();
+		}
 
 		LatLng location = eventEntity.getLatLng(EVENT_LOCATION_PROPERTY);
 		List<String> conditionsList = eventEntity.getList(EVENT_CONDITIONS_PROPERTY).stream().map(value -> ((String)value.get())).collect(Collectors.toList());
@@ -695,7 +699,7 @@ public class EventResource {
 	}
 
 	/**
-	 * Obtains the list of the events given the tokenId.
+	 * Obtains the list of the events given the token.
 	 * @param token - The token id of the user or the institution requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
@@ -800,7 +804,7 @@ public class EventResource {
 		Entity eventEntity = QueryUtils.getEntityById(EVENT_KIND,eventId);
 
 		if(eventEntity == null) {
-			log.warning(String.format(EVENT_NAME_PROPERTY, eventId));
+			log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 

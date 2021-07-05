@@ -814,7 +814,7 @@ public class InstitutionResource extends AccountUtils {
 		
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.FORBIDDEN).build();
+			return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {

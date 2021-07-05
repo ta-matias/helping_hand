@@ -21,10 +21,14 @@ public class UserCreationData {
 	}
 	
 	public boolean badData() {
-		if(badString(id)) return true;
-		if(!confirmation.equals(password))return true;
-		if(!email.matches(EMAIL_REGEX))return true;
-		if(!password.matches(PASSWORD_REGEX))return true;
+		if(badString(id)) 
+			return true;
+		if(!confirmation.equals(password))
+			return true;
+		if(!email.matches(EMAIL_REGEX))
+			return true;
+		if(!password.matches(PASSWORD_REGEX))
+			return true;
 		return false;
 	}
 	

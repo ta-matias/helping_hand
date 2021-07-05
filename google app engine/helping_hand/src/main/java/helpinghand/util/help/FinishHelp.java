@@ -15,8 +15,10 @@ public class FinishHelp {
 	}
 	
 	public boolean badData() {
-		if(rating > 5 || rating < 0)return true;
-		if(badString(helper))return true;
+		if(rating > 5 || rating < 0)
+			return true;
+		if(badString(helper))
+			return true;
 		return false;
 	}
 	

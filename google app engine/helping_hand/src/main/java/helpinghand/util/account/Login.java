@@ -4,6 +4,7 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.PASSWORD_REGEX;
 
 public class Login {
+	
 	public String id;
 	public String password;
 	
@@ -15,8 +16,11 @@ public class Login {
 	}
 	
 	public boolean badData() {
-		if(badString(id))return true;
-		if(!password.matches(PASSWORD_REGEX))return true;
+		if(badString(id))
+			return true;
+		if(!password.matches(PASSWORD_REGEX))
+			return true;
 		return false;
 	}
+	
 }

@@ -1,6 +1,7 @@
 package helpinghand.util.account;
 
 public class AccountFeed {
+	
 	public String[] feed;
 	
 	public AccountFeed() {}
@@ -10,7 +11,8 @@ public class AccountFeed {
 	}
 	
 	public boolean badData() {
-		if(feed == null)return true;
+		if(feed == null)
+			return true;
 		return false;
 	}
 }

@@ -22,7 +22,7 @@ public class EventData {
 	
 	public EventData() {}
 	
-	public EventData(long id, String name, String creator, String description,String start, String end, double[] location, String[] conditions) {
+	public EventData(long id, String name, String creator, String description, String start, String end, double[] location, String[] conditions) {
 		this.id = id;
 		this.name = name;
 		this.creator = creator;
@@ -39,16 +39,21 @@ public class EventData {
 	 * 		   false, otherwise.
 	 */
 	public boolean badData() {
-		if(badString(name)) return true;
-		if(badString(creator)) return true;
-		if(badString(description)) return true;
-		if(badString(start)) return true;
-		if(badString(end)) return true;
-		if(location == null || location.length != 2)return false;
-		if(conditions == null) return true;
+		if(badString(name)) 
+			return true;
+		if(badString(creator)) 
+			return true;
+		if(badString(description)) 
+			return true;
+		if(badString(start)) 
+			return true;
+		if(badString(end)) 
+			return true;
+		if(location == null || location.length != 2)
+			return false;
+		if(conditions == null) 
+			return true;
 		return false;
-		
-			
 	}
 
 }

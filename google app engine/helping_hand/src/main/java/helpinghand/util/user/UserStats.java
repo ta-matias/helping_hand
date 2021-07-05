@@ -11,4 +11,5 @@ public class UserStats {
 		this.rating = rating;
 		this.reliability = reliability;
 	}
+	
 }

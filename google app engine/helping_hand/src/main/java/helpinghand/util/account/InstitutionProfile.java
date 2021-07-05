@@ -17,10 +17,14 @@ public class InstitutionProfile {
 	}
 	 
 	public boolean badData() {
-		if(name == null) return true;
-		if(initials == null) return true;
-		if(bio ==null) return true;
-		if(categories == null) return true;
+		if(name == null) 
+			return true;
+		if(initials == null) 
+			return true;
+		if(bio ==null) 
+			return true;
+		if(categories == null) 
+			return true;
 		return false;
 	}
 	 

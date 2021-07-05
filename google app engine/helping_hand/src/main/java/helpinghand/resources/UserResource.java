@@ -114,6 +114,7 @@ public class UserResource extends AccountUtils {
 	 * Obtains a list with the id and current status of all users
 	 * @param token - token of the user doing this operation
 	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
 	 * 		   500, otherwise.
 	 */
 	@GET
@@ -255,7 +256,7 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Deletes an existing user account
 	 * @param id - The identification of the user to be deleted.
-	 * @param token - The token of the account performing this operation
+	 * @param token - The token of the account performing this operation.
 	 * @return 200, if the account was successfully deleted.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the token cannot execute the operation with the current access level.
@@ -808,7 +809,7 @@ public class UserResource extends AccountUtils {
 		String user = AccessControlManager.getOwner(tokenId);
 
 		if(user == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR_2, tokenId));
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 			return Response.status(Status.NOT_FOUND).build();
 		}
 

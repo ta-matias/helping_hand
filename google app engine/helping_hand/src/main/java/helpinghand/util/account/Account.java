@@ -4,10 +4,9 @@ import static helpinghand.util.GeneralUtils.EMAIL_REGEX;
 import static helpinghand.util.GeneralUtils.badString;
 
 public class Account {
-	public String id;
-	public String email;
-	public boolean status;
-	public boolean visible;
+	
+	public String id, email;
+	public boolean status, visible;
 	
 	public Account() {}
 	
@@ -19,8 +18,11 @@ public class Account {
 	}
 	
 	public boolean badData() {
-		if(badString(id))return true;
-		if(!email.matches(EMAIL_REGEX)) return true;
+		if(badString(id))
+			return true;
+		if(!email.matches(EMAIL_REGEX)) 
+			return true;
 		return false;
 	}
+	
 }

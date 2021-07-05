@@ -5,8 +5,7 @@ import static helpinghand.util.GeneralUtils.badString;
 
 public class ChangeEmail {
 	
-	public String email;
-	public String password;
+	public String email, password;
 	
 	public ChangeEmail() {}
 	
@@ -16,8 +15,11 @@ public class ChangeEmail {
 	}
 	
 	public boolean badData() {
-		if(!email.matches(EMAIL_REGEX))return false;
-		if(badString(password))return false;
+		if(!email.matches(EMAIL_REGEX))
+			return false;
+		if(badString(password))
+			return false;
 		return false;
 	}
+	
 }

@@ -26,12 +26,19 @@ public class InstitutionCreationData {
 	}
 	
 	public boolean badData() {
-		if(badString(id)) return true;
-		if(badString(name)) return true;
-		if(badString(initials))return true;
-		if(!password.equals(confirmation)) return true;
-		if(!email.matches(EMAIL_REGEX)) return true;
-		if(!password.matches(PASSWORD_REGEX)) return true;
+		if(badString(id)) 
+			return true;
+		if(badString(name)) 
+			return true;
+		if(badString(initials))
+			return true;
+		if(!password.equals(confirmation)) 
+			return true;
+		if(!email.matches(EMAIL_REGEX)) 
+			return true;
+		if(!password.matches(PASSWORD_REGEX)) 
+			return true;
 		return false;
 	}
+	
 }

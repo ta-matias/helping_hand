@@ -4,6 +4,7 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.PASSWORD_REGEX;
 
 public class ChangePassword {
+	
 	public String oldPassword, newPassword, confirmation;
 	
 	public ChangePassword() {}
@@ -15,13 +16,15 @@ public class ChangePassword {
 	}
 	
 	public boolean badData() {
-		if(badString(oldPassword)) return true;
-		if(newPassword.equals(oldPassword))return true;
-		if(!confirmation.equals(newPassword))return true;
-		if(!newPassword.matches(PASSWORD_REGEX))return true;
+		if(badString(oldPassword)) 
+			return true;
+		if(newPassword.equals(oldPassword))
+			return true;
+		if(!confirmation.equals(newPassword))
+			return true;
+		if(!newPassword.matches(PASSWORD_REGEX))
+			return true;
 		return false;
 	}
-	
-	
 	
 }

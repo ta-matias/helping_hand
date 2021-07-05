@@ -4,7 +4,6 @@
 package helpinghand.util.help;
 
 import static helpinghand.util.GeneralUtils.badString;
-
 /**
  * @author PogChamp Software
  *
@@ -32,12 +31,18 @@ public class CreateHelp {
 	}
 	
 	public boolean badData() {
-		if(badString(name))return true;
-		if(badString(creator))return true;
-		if(badString(description))return true;
-		if(badString(time))return true;
-		if(location == null || location.length != 2)return true;
-		if(conditions == null) return true;
+		if(badString(name))
+			return true;
+		if(badString(creator))
+			return true;
+		if(badString(description))
+			return true;
+		if(badString(time))
+			return true;
+		if(location == null || location.length != 2)
+			return true;
+		if(conditions == null) 
+			return true;
 		return false;
 	}
 

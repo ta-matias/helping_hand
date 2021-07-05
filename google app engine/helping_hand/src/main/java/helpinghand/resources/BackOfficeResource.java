@@ -95,9 +95,8 @@ public class BackOfficeResource {
 	 * @param token - The token of the account that is performing this operation.
 	 * @return 200, if the update was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot alter higher or same level account or the token does not exist
-	 * 		   or the token cannot change the role to a higher level.
-	 * 		   404, if the account does not exist.
+	 * 		   403, if the token cannot alter higher or same level account or the token cannot change the role to a higher level.
+	 * 		   404, if the account does not exist or the token does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -125,7 +124,7 @@ public class BackOfficeResource {
 
 		if(tokenEntity == null) {
 			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return Response.status(Status.FORBIDDEN).build();
+			return Response.status(Status.NOT_FOUND).build();
 		}
 
 		Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
@@ -215,25 +214,26 @@ public class BackOfficeResource {
 	 * @param startDate - The start date of the statistics.
 	 * @param endDate - The end date of the statistics.
 	 * @return 200, if the operation was successful.
-	 * 		   400, if the data is invalid.
+	 * 		   400, if the data is invalid or the date inputs are invalid.
 	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(DAILY_USERS_PATH)
 	public Response dailyStatistics(@QueryParam(TOKEN_ID_PARAM) String token,@QueryParam(START_DATE_PARAM)String start,@QueryParam(END_DATE_PARAM)String end) {
-		if(badString(token)||badString(start)||badString(end)) {
+		if(badString(token) || badString(start) || badString(end)) {
 			log.warning(DAILY_STATS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
-		} 
+		}
 
 		long tokenId = Long.parseLong(token);
-		
+
 		Timestamp startTimestamp ;
 		Timestamp endTimestamp;
+		
 		try {
 			startTimestamp = Timestamp.parseTimestamp(start);
 			endTimestamp = Timestamp.parseTimestamp(end);
-		}catch(Exception e) {
+		} catch(Exception e) {
 			log.warning(String.format(DAILY_STATS_BAD_DATA_ERROR_DATES,start,end));
 			return Response.status(Status.BAD_REQUEST).build();
 		}
@@ -244,7 +244,7 @@ public class BackOfficeResource {
 				.setFilter(CompositeFilter.and(PropertyFilter.gt(ACCOUNT_CREATION_PROPERTY, startTimestamp),PropertyFilter.lt(ACCOUNT_CREATION_PROPERTY,endTimestamp))).build();
 
 		Map<Instant,Integer> map = initializeMap(Instant.parse(start).truncatedTo(ChronoUnit.DAYS),Instant.parse(end).truncatedTo(ChronoUnit.DAYS));
-		
+
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
@@ -255,7 +255,7 @@ public class BackOfficeResource {
 				Timestamp creationTimestamp = projectionEntity.getTimestamp(ACCOUNT_CREATION_PROPERTY);
 
 				Instant creation = creationTimestamp.toDate().toInstant().truncatedTo(ChronoUnit.DAYS);
-				
+
 				int counter = map.get(creation);
 				counter++;
 				map.put(creation, counter);
@@ -281,19 +281,19 @@ public class BackOfficeResource {
 
 	/**
 	 * Initializes the map that is going to be used to list the daily statistics.
-	 * @param startDate - The start date of the statistics.
-	 * @param endDate - The end date of the statistics.
+	 * @param start - The start date of the statistics.
+	 * @param end - The end date of the statistics.
 	 * @return data
 	 */
-	private Map<Instant, Integer> initializeMap( Instant start, Instant end) {
+	private Map<Instant, Integer> initializeMap(Instant start, Instant end) {
 		Map<Instant, Integer> data = new HashMap<>();
-		
+
 		Instant current = Instant.from(start);
+
 		do {
 			data.put(current,0);
 			current = current.plus(1,ChronoUnit.DAYS);
-		}while(!current.isAfter(end));
-		
+		} while(!current.isAfter(end));
 
 		return data;
 	}

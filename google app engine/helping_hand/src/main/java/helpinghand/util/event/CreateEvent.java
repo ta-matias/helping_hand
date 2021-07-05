@@ -4,7 +4,6 @@
 package helpinghand.util.event;
 
 import static helpinghand.util.GeneralUtils.badString;
-
 /**
  * @author PogChamp Software
  *
@@ -21,7 +20,7 @@ public class CreateEvent {
 	
 	public CreateEvent() {}
 	
-	public CreateEvent( String name, String creator, String description,String start, String end, double[] location, String[] conditions) {
+	public CreateEvent(String name, String creator, String description, String start, String end, double[] location, String[] conditions) {
 		this.name = name;
 		this.creator = creator;
 		this.description = description;
@@ -37,16 +36,21 @@ public class CreateEvent {
 	 * 		   false, otherwise.
 	 */
 	public boolean badData() {
-		if(badString(name)) return true;
-		if(badString(creator)) return true;
-		if(badString(description)) return true;
-		if(badString(start)) return true;
-		if(badString(end)) return true;
-		if(location == null || location.length != 2)return false;
-		if(conditions == null) return true;
-		return false;
-		
-			
+		if(badString(name)) 
+			return true;
+		if(badString(creator)) 
+			return true;
+		if(badString(description)) 
+			return true;
+		if(badString(start)) 
+			return true;
+		if(badString(end)) 
+			return true;
+		if(location == null || location.length != 2)
+			return false;
+		if(conditions == null) 
+			return true;
+		return false;	
 	}
 
 }

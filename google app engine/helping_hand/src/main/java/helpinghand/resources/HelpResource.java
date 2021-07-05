@@ -432,7 +432,7 @@ public class HelpResource {
 		}
 
 		if(helperList.size() > 1) {
-			log.severe(MULTIPLE_CURRENT_HELPER_ERROR);
+			log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR, helpId));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 
@@ -444,7 +444,7 @@ public class HelpResource {
 		}
 
 		if(helpEntity.getBoolean(HELP_PERMANENT_PROPERTY)) {
-			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),help,tokenId));
+			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok().build();
 		}
 
@@ -526,7 +526,7 @@ public class HelpResource {
 
 		for(Entity helper: helpers) {
 			if(!addNotificationToFeed(helper.getString(HELPER_ID_PROPERTY),String.format(HELP_CANCELED_NOTIFICATION, helpEntity.getString(HELP_NAME_PROPERTY)))) {
-				log.severe(NOTIFICATION_ERROR);
+				log.severe(String.format(NOTIFICATION_ERROR, helper.getString(HELPER_ID_PROPERTY)));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}

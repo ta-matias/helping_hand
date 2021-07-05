@@ -1,5 +1,11 @@
+/**
+ * 
+ */
 package helpinghand.accesscontrol;
-
+/**
+ * @author PogChamp Software
+ *
+ */
 public class LoginInfo {
 	
 	public String name;
@@ -13,7 +19,5 @@ public class LoginInfo {
 		this.token = token;
 		this.expires = expires;
 	}
-	
-	
 	
 }
