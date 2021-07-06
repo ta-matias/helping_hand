@@ -1,14 +1,18 @@
+/**
+ * 
+ */
 package helpinghand.accesscontrol;
-
+/**
+ * @author PogChamp Software
+ *
+ */
 public enum Role {
+	
 	ALL(-1),
 	USER(0),
 	INSTITUTION(0),
 	GBO(1),
 	SU(2);
-	
-	
-	
 	
 	private int access;
 	
@@ -19,12 +23,13 @@ public enum Role {
 	public int getAccess() {
 		return access;
 	}
-
 	
-	public static Role getRole(String role_name) {
-		for(Role role: Role.values()) {
-			if(role.name().equals(role_name)) return role;
-		}
+	public static Role getRole(String roleName) {
+		String normalized = roleName.trim().toUpperCase();
+		for(Role role: Role.values())
+			if(role.name().equals(normalized)) 
+				return role;
 		return null;
 	}
+	
 }

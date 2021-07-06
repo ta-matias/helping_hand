@@ -1,3 +1,6 @@
+/**
+ * 
+ */
 package helpinghand.accesscontrol;
 
 import java.io.IOException;
@@ -12,92 +15,80 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 
+import helpinghand.resources.BackOfficeResource;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
+/**
+ * @author PogChamp Software
+ *
+ */
 @Provider
-public class AccessControlFilter implements ContainerRequestFilter{
-	
+public class AccessControlFilter implements ContainerRequestFilter {
 	
 	private Logger log = Logger.getLogger(AccessControlFilter.class.getName());
 	
-	public AccessControlFilter() {}
+	private static final String ACCESS_FILTER_START = "Verifying request permissions...";
+	private static final String ACCESS_DENIED_ERROR = "Insuficient permissions to execute operation";
+	private static final String TOKEN_INFO = "\n operationId = [%s]\n tokenId = (%d)";
+	private static final String INITIALIZING_RBAC_POLICY_START = "Creating RBACPolicy entities";
+	private static final String INITIALIZING_RBAC_POLICY_ERROR = "Failed to create RBACPolicy entities";
+	private static final String INITIALIZING_RBAC_POLICY_OK = "Successfuly created RBACPolicy entities";
 	
+	private static final String BACK_OFFICE_RESOURCE = BackOfficeResource.PATH.substring(1); //removing the '/'
+	
+	public AccessControlFilter() {}
 	
 	@Override
 	public void filter(ContainerRequestContext requestContext) throws IOException {
-		log.info("Entetred Access control filter");
-		boolean allAccess = false; //true if request was done without a token
-		boolean hasClient = false; //true if the request sent along the id of the client and needs it to be the owner of the token
-		
+		log.info(ACCESS_FILTER_START);
 		
 		String method = requestContext.getMethod();
-		if(method.equals("OPTIONS")) return;//to allow CORS
+		
+		if(method.equals("OPTIONS")) 
+			return;//to allow CORS
 		
 		UriInfo requestUriInfo = requestContext.getUriInfo();
-		List<String> tokenList = requestUriInfo.getQueryParameters().get("tokenId");
-		String tokenId = "";
-		if(tokenList == null) { //no tokens were provided
-			allAccess = true;
-		}else {
-			tokenId = tokenList.get(0);//there should only be one "token" query parameter, others will be ignored
+		List<String> tokenList = requestUriInfo.getQueryParameters().get(TOKEN_ID_PARAM);
+		
+		long tokenId = -1;
+		
+		if(tokenList != null)
+			tokenId = Long.parseLong(tokenList.get(0));
+		
+		String operationId = method;
+		
+		List<PathSegment> pathSegs = requestUriInfo.getPathSegments();
+		
+		String resource = pathSegs.get(0).getPath();
+		
+		operationId += "_"+resource;
+		
+		if(pathSegs.size() > 1) {
+			if(resource.equals(BACK_OFFICE_RESOURCE))
+				operationId += "_"+pathSegs.get(1).getPath();
+			else {
+				for(int i = 2; i < pathSegs.size(); i++)
+					operationId += "_"+pathSegs.get(i).getPath();
+			}
 		}
 		
-		String clientId = "";
-		String operationId = method;
-		List<PathSegment> pathSegs = requestUriInfo.getPathSegments();
-		switch(pathSegs.size()) {
-			case 2:
-				operationId += "_"+pathSegs.get(0).getPath();
-				clientId = pathSegs.get(1).getPath();
-				if(!clientId.equals(""))hasClient = true; //in case clientId is not really passed as parameter (ex: createUser, createInst)
-				break;
-			case 3:
-				operationId += "_"+pathSegs.get(0).getPath()+"_"+pathSegs.get(2).getPath();
-				clientId = pathSegs.get(1).getPath();
-				hasClient = true;
-				break;
-			default:
-				//not implemented
-				break;
-		}
-		log.info(String.format("allAccess = [%s]\n hasClient = [%s]\n operationId = [%s]\n clientId = [%s]\n tokenId = [%s]",
-				allAccess,
-				hasClient,
-				operationId,
-				clientId,
-				tokenId));
+		log.info(String.format(TOKEN_INFO,operationId,tokenId));
 		
 		//check if RBAC Policy "table" is initialized
 		if(!AccessControlManager.RBACPolicyIntitalized()) {
 			//if it is not initialized
-			log.info("Initializing RBAC Policy");
+			log.info(INITIALIZING_RBAC_POLICY_START);
 			if(!AccessControlManager.intitializeRBACPolicy()) {
 				//if it failed to initialize
-				log.info("Error initializing RBAC Policy");
-				requestContext.abortWith(Response.status(Status.INTERNAL_SERVER_ERROR).entity("RBAC Policy could not be initialized.").build());
+				log.info(INITIALIZING_RBAC_POLICY_ERROR);
+				requestContext.abortWith(Response.status(Status.INTERNAL_SERVER_ERROR).build());
 				return;
 			}
-			log.info("RBAC Policy initialized successfully");
+			log.info(INITIALIZING_RBAC_POLICY_OK);
 		}
 		
-		
-		
-		//if the was no token provided
-		if(allAccess)log.info("Using allHasAccess()");
-		if(allAccess && !AccessControlManager.allHasAccess(operationId)) {
-			requestContext.abortWith(Response.status(Status.FORBIDDEN).entity("Access denied in filter.").build());
-			return;
-		}
-		
-		//if the token and clientId were provided
-		if(!allAccess && hasClient)log.info("Using clientHasAccess()");
-		if(!allAccess && hasClient && !AccessControlManager.clientHasAccess(clientId, tokenId, operationId)) {
-			requestContext.abortWith(Response.status(Status.FORBIDDEN).entity("Access denied in filter.").build());
-			return;
-		}
-		
-		// if only the token was provided, not used in ALPHA
-		if(!allAccess && !hasClient)log.info("Using tokenHasAccess()");
-		if(!allAccess && !hasClient && !AccessControlManager.tokenHasAccess(tokenId, operationId)) {
-			requestContext.abortWith(Response.status(Status.FORBIDDEN).entity("Access Denied in filter.").build());
+		if(!AccessControlManager.hasAccess(tokenId, operationId)) {
+			log.severe(ACCESS_DENIED_ERROR);
+			requestContext.abortWith(Response.status(Status.FORBIDDEN).build());
 			return;
 		}
 		
