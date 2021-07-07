@@ -5,22 +5,15 @@ import android.util.Log;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.io.IOException;
 
-import okhttp3.Authenticator;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.Route;
 import pt.unl.fct.di.apdc.helpinghand.HelpingHandApp;
-import pt.unl.fct.di.apdc.helpinghand.data.model.RefreshTokenRequestModel;
-import pt.unl.fct.di.apdc.helpinghand.data.model.TokenModel;
 import pt.unl.fct.di.apdc.helpinghand.utility.AppPreferenceTools;
 import pt.unl.fct.di.apdc.helpinghand.utility.ClientConfigs;
-import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -48,7 +41,7 @@ public class HelpingHandProvider {
                     requestBuilder.addHeader("Accept","application/json");
                     if(mAppPreferenceTools.isAuthorized())
                         requestBuilder.addHeader("Authorization", "bearer" +
-                                mAppPreferenceTools.getAccesToken());
+                                mAppPreferenceTools.getAccessToken());
                     requestBuilder.method(original.method(), original.body());
                     Request request = requestBuilder.build();
                     return chain.proceed(request);

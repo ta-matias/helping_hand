@@ -1,7 +1,5 @@
 package pt.unl.fct.di.apdc.helpinghand.data.model;
 
-import java.util.Date;
-
 public class UserAuthenticated {
 
     String username;
@@ -22,8 +20,8 @@ public class UserAuthenticated {
         return tokenID;
     }
 
-    public long getCreationDate(){
-        return tokenID.getCreationDate();
+    public String getExpires(){
+        return tokenID.getExpires();
     }
 
     public String getRole() {

@@ -15,7 +15,7 @@
     <string name="login">Login</string>
 
     <!-- register strings -->
-    <string name="username">Username</string>
+    <string name="username">Nome de Utilizador</string>
     <string name="prompt_confirm_password">Confirme Password</string>
     <string name="name">Nome da instituição</string>
     <string name="initials">Sigla da Instituição</string>
@@ -34,9 +34,35 @@
     <string name="bem_vindo">"Bem-Vindo, "</string>
     <string name="maps">Mapa</string>
     <string name="events">Eventos</string>
+    <string name="update_user">Atualizar perfil</string>
+    <string name="phone">Número de Telefone</string>
+    <string name="address">Morada</string>
+    <string name="address2">Morada 2</string>
+    <string name="city">Cidade</string>
+    <string name="zipcode">Código Postal</string>
+    <string name="change_password">Mudar Password</string>
+    <string name="institution_name">Nome da Instituição</string>
+    <string name="inst_id_txt">Id da Instituição</string>
+    <string name="status">Estado</string>
+    <string name="old_password">Password Antiga</string>
+    <string name="new_password">Password Nova</string>
+    <string name="confirm">Confirmar</string>
+    <string name="delete_account">Apagar Conta</string>
 
     <string-array name="usertype">
         <item>Utilizador</item>
         <item>Instituição</item>
     </string-array>
+    <string name="title_activity_maps">Map</string>
+    <string name="create_event">Criar evento</string>
+    <string name="join_event">Juntar-se a evento</string>
+    <string name="mine_events">Meus Eventos</string>
+    <string name="event_name">Nome do Evento</string>
+    <string name="description">Descrição</string>
+    <string name="start">Inicio</string>
+    <string name="end">Fim</string>
+    <string name="date">Data</string>
+    <string name="hour">Hora</string>
+    <string name="location">Localização</string>
+    <string name="conditions">Condições</string>
 </resources>

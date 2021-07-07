@@ -4,7 +4,7 @@ import java.util.regex.Pattern;
 
 public class LoginCredentials {
 
-    String clientId;
+    String id;
     String password;
 
     private static final Pattern PASSWORD_REGEX = Pattern.compile("^"
@@ -20,13 +20,13 @@ public class LoginCredentials {
 
     //Constructor with credentials
     public LoginCredentials(String clientId, String password) {
-        this.clientId = clientId;
+        this.id = clientId;
         this.password = password;
     }
 
     /*GETTERS*/
     public String getClientId() {
-        return clientId;
+        return id;
     }
 
     public String getPassword() {
@@ -36,7 +36,7 @@ public class LoginCredentials {
     /*SETTERS*/
 
     public void setClientId(String clientId){
-        this.clientId = clientId;
+        this.id = clientId;
     }
 
     public void setPassword(String password){
@@ -46,7 +46,7 @@ public class LoginCredentials {
     /*Validating data*/
 
     public boolean validate(){
-        if(clientId == null)
+        if(id == null)
             return false;
         else if(!PASSWORD_REGEX.matcher(password).matches())
             return false;

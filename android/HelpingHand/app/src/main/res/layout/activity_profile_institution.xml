@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/inst_id_txt"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_id_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prompt_email"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_email_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/institution_name"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_name_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/initials"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+        
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_init_txt"
+            />
+        
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/address"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_addr_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/address2"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_addr2_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/city"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_city_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/phone"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_phone_txt"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/status"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:id="@+id/inst_status_txt"
+            />
+
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/activity_horizontal_margin">
+
+            <Button
+                android:id="@+id/inst_update_btn"
+                android:layout_height="50dp"
+                android:layout_width="wrap_content"
+                android:text="@string/update_user"
+                android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                android:layout_marginRight="@dimen/activity_horizontal_margin"
+                />
+
+            <Button
+                android:id="@+id/inst_change_pass_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:text="@string/change_password"
+                android:layout_toRightOf="@+id/inst_update_btn"
+                />
+
+            <Button
+                android:id="@+id/delete_inst_acc_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:layout_centerInParent="true"
+                android:layout_marginTop="100dp"
+                android:text="@string/delete_account"
+                android:backgroundTint="#FF0000"
+                />
+        </RelativeLayout>
+
+    </LinearLayout>
+
+</ScrollView>

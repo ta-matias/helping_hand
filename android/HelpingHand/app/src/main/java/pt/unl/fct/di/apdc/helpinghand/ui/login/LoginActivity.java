@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
+import pt.unl.fct.di.apdc.helpinghand.data.model.LoginInfo;
 import pt.unl.fct.di.apdc.helpinghand.data.model.TokenModel;
 import pt.unl.fct.di.apdc.helpinghand.data.model.UserAuthenticated;
 import pt.unl.fct.di.apdc.helpinghand.data.model.LoginCredentials;
@@ -137,22 +138,23 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.i("USER LOGIN", "Trying to login user: " + clientId);
-                Call<String> call;
+                Call<LoginInfo> call;
                 if(userType.equals("Utilizador")){
                     call = mService.authenticateUser(clientId, userCredentials);
                 }else{
                     call= mService.authenticateInstitution(clientId, userCredentials);
                 }
 
-                call.enqueue(new Callback<String>() {
+                call.enqueue(new Callback<LoginInfo>() {
                     @Override
-                    public void onResponse(Call<String> call, Response<String> response) {
+                    public void onResponse(Call<LoginInfo> call, Response<LoginInfo> response) {
                         if(response.isSuccessful())
                         { //if response status is OK
                             Log.i("Success", "User logged in with success.");
-                            String token = response.message();
+                            LoginInfo info = response.body();
                             UserAuthenticated user = new UserAuthenticated(clientId,
-                                    new TokenModel(token, System.currentTimeMillis(), token),
+                                    new TokenModel(info.token, info.expires,
+                                            info.token),
                                     userType);
                             mPreferences.saveAuthenticatedInfo(user);
 
@@ -171,9 +173,9 @@ public class LoginActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onFailure(Call<String> call, Throwable t) {
+                    public void onFailure(Call<LoginInfo> call, Throwable t) {
 
-                        Toast.makeText(LoginActivity.this, t.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, t.getMessage(), Toast.LENGTH_LONG).show();
 
                     }
                 });

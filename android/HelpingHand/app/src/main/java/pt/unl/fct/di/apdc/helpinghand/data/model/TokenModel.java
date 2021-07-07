@@ -1,16 +1,14 @@
 package pt.unl.fct.di.apdc.helpinghand.data.model;
 
-import java.util.Date;
-
 public class TokenModel {
 
     String tokenId;
-    long creationDate;
+    String expires;
     String refresh_token;
 
-    public TokenModel(String tokenId, long creationDate, String refresh_token) {
+    public TokenModel(String tokenId, String creationDate, String refresh_token) {
         this.tokenId = tokenId;
-        this.creationDate = creationDate;
+        this.expires = creationDate;
         this.refresh_token = refresh_token;
     }
 
@@ -18,8 +16,8 @@ public class TokenModel {
         return tokenId;
     }
 
-    public long getCreationDate() {
-        return creationDate;
+    public String getExpires() {
+        return expires;
     }
 
     public String getRefresh_token() {

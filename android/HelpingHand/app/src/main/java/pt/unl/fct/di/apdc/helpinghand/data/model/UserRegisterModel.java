@@ -4,7 +4,7 @@ public class UserRegisterModel {
 
     private String name;
     //User's username
-    public String userId;
+    public String id;
 
     //User's email
     public String email;
@@ -13,13 +13,13 @@ public class UserRegisterModel {
     public String password;
 
     //User's confirmation password
-    public String confPassword;
+    public String confirmation;
 
     //Constructor
     public UserRegisterModel(String username, String email, String password, String confirmPassword) {
-        this.userId = username;
+        this.id = username;
         this.password = password;
         this.email = email;
-        this.confPassword = confirmPassword;
+        this.confirmation = confirmPassword;
     }
 }

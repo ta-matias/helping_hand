@@ -1,11 +1,12 @@
 package pt.unl.fct.di.apdc.helpinghand.ui.home;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.logging.Logger;
@@ -13,7 +14,10 @@ import java.util.logging.Logger;
 import pt.unl.fct.di.apdc.helpinghand.R;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandProvider;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandService;
+import pt.unl.fct.di.apdc.helpinghand.ui.events.EventsActivity;
 import pt.unl.fct.di.apdc.helpinghand.ui.loading.StartUserActivity;
+import pt.unl.fct.di.apdc.helpinghand.ui.maps.MapsActivity;
+import pt.unl.fct.di.apdc.helpinghand.ui.profile.ProfileActivity;
 import pt.unl.fct.di.apdc.helpinghand.utility.AppPreferenceTools;
 
 
@@ -49,30 +53,24 @@ public class HomePageActivity extends AppCompatActivity {
     public void onClick(View v){
         Intent i;
         switch(v.getId()) {
+            //Profile Button
             case R.id.home_profile:
-                if(mPreferences.getRole().equals("Utilizador")){
-
-                }else{
-
-                }
+                i = new Intent(HomePageActivity.this, ProfileActivity.class);
+                startActivity(i);
                 break;
-
+            //Events Button
             case R.id.home_events:
-                if(mPreferences.getRole().equals("Utilizador")){
-
-                }else{
-
-                }
+                i = new Intent(HomePageActivity.this, EventsActivity.class);
+                startActivity(i);
                 break;
 
+            //Map button
             case R.id.home_maps:
-                if(mPreferences.getRole().equals("Utilizador")){
-
-                }else{
-
-                }
+                i = new Intent(HomePageActivity.this, MapsActivity.class);
+                startActivity(i);
                 break;
 
+            //Search button
             case R.id.home_search:
                 if(mPreferences.getRole().equals("Utilizador")){
 
@@ -81,12 +79,30 @@ public class HomePageActivity extends AppCompatActivity {
                 }
                 break;
 
+            //Logout Button
             case R.id.btn_logout:
                 if(mPreferences.isAuthorized()){
-                    mPreferences.removeAllPrefs();
-                    i = new Intent(HomePageActivity.this, StartUserActivity.class);
-                    startActivity(i);
-                    finish();
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Tem a certeza que pretende sair?");
+                    builder.setIcon(R.drawable.ic_baseline_warning_24);
+                    builder.setPositiveButton("Sim", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mPreferences.removeAllPrefs();
+                            Intent i = new Intent(HomePageActivity.this, StartUserActivity.class);
+                            startActivity(i);
+
+                        }
+                    });
+                    builder.setNeutralButton("Não", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                        }
+                    });
+                    AlertDialog alert = builder.create();
+                    alert.show();
                 }
                 break;
         }

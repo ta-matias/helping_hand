@@ -56,7 +56,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:background="#F0F0F0">
+                    >
 
                     <ImageView
                         android:layout_gravity="center"
@@ -94,7 +94,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:background="#F0F0F0"
                     >
 
                     <ImageView
@@ -133,7 +132,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:background="#F0F0F0">
+                    >
 
                     <ImageView
                         android:layout_gravity="center"
@@ -172,7 +171,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:background="#F0F0F0">
+                    >
 
                     <ImageView
                         android:layout_gravity="center"
@@ -199,16 +198,19 @@
             android:id="@+id/btn_logout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:padding="12dp"
             android:layout_gravity="end"
             android:layout_marginTop="60dp"
             android:layout_marginRight="@dimen/activity_horizontal_margin"
             android:onClick="onClick"
+            app:cardElevation="12dp"
+            app:cardCornerRadius="6dp"
             >
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#F0F0F0">
+                >
 
                 <ImageView
                     android:layout_width="match_parent"

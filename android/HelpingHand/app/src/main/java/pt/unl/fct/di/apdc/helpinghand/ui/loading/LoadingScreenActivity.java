@@ -52,13 +52,11 @@ public class LoadingScreenActivity extends AppCompatActivity {
             Intent start;
             if(!mPreferences.isAuthorized()) {
                 start = new Intent(LoadingScreenActivity.this, StartUserActivity.class);
-                startActivity(start);
-                finish();
             }else{
                 start = new Intent(LoadingScreenActivity.this, HomePageActivity.class);
-                startActivity(start);
-                finish();
             }
+            startActivity(start);
+            finish();
         }, SPLASH_TIMEOUT);
 
 

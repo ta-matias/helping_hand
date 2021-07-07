@@ -4,11 +4,11 @@ public class InstitutionRegisterModel {
 
     /**Variables**/
 
+    //Username of the institution
+    public String id;
+
     //Name of the institution
     public String name;
-
-    //Username of the institution
-    public String instId;
 
     //Initials of the institution
     public String initials;
@@ -20,17 +20,17 @@ public class InstitutionRegisterModel {
     public String password;
 
     //Confirm password of the institution
-    public String confPassword;
+    public String confirmation;
 
     /**Constructor**/
 
     public InstitutionRegisterModel(String name, String username, String initials, String email, String password, String confirmPassword){
+        this.id = username;
         this.name = name;
         this.initials = initials;
-        this.instId = username;
         this.email = email;
         this.password = password;
-        this.confPassword = confirmPassword;
+        this.confirmation = confirmPassword;
     }
 
 }

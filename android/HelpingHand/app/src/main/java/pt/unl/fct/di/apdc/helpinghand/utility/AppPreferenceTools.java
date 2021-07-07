@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
+import pt.unl.fct.di.apdc.helpinghand.data.model.UpdateUserModel;
 import pt.unl.fct.di.apdc.helpinghand.data.model.UserAuthenticated;
 
 /**
@@ -31,7 +32,7 @@ public class AppPreferenceTools {
                 .putString(this.mContext.getString(R.string.user_username), userAuthenticated.getUsername())
                 .putString(this.mContext.getString(R.string.token_id), userAuthenticated.getTokenID().getTokenId())
                 .putString(this.mContext.getString(R.string.role), userAuthenticated.getRole())
-                .putLong(this.mContext.getString(R.string.creation_date), userAuthenticated.getCreationDate())
+                .putString(this.mContext.getString(R.string.creation_date), userAuthenticated.getExpires())
                 .putString(this.mContext.getString(R.string.refresh_token), userAuthenticated.getTokenID().getRefresh_token())
                 .commit();
     }
@@ -43,20 +44,33 @@ public class AppPreferenceTools {
                 .apply();
     }
 
+    public void updateUserInfo(String userId, String token_id, String role, String creationDate,
+                               String refresh_token, UpdateUserModel updateUserModel){
+        mPreferences.edit()
+                .putString(this.mContext.getString(R.string.user_username), userId)
+                .putString(this.mContext.getString(R.string.token_id), token_id)
+                .putString(this.mContext.getString(R.string.role), role)
+                .putString(this.mContext.getString(R.string.creation_date), creationDate)
+                .putString(this.mContext.getString(R.string.refresh_token), refresh_token)
+                .putString(this.mContext.getString(R.string.phone), updateUserModel.phone)
+                .putString(this.mContext.getString(R.string.address), updateUserModel.address1)
+                .putString(this.mContext.getString(R.string.address2), updateUserModel.address2)
+                .putString(this.mContext.getString(R.string.city), updateUserModel.city)
+                .putString(this.mContext.getString(R.string.zipcode), updateUserModel.zipcode)
+                .commit();
+    }
+
     /**
      * get acess token
      */
-    public String getAccesToken(){
+    public String getAccessToken(){
         return mPreferences.getString(this.mContext.getString(R.string.token_id), STRING_PREF_UNAVAILABLE);
     }
 
     public boolean isAuthorized(){
-        return !getAccesToken().equals(STRING_PREF_UNAVAILABLE);
+        return !getAccessToken().equals(STRING_PREF_UNAVAILABLE);
     }
 
-    /**
-     * TODO: GETTERS and logout
-     */
 
     /**
      * getter for username
