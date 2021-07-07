@@ -83,7 +83,7 @@ public class AccountUtils {
 	private static final String LOGOUT_START = "Attempting to logout with token (%d)";
 	private static final String LOGOUT_FAILED = "Logout failed for token (%d)";
 	private static final String LOGOUT_OK = "Logout successful for token (%d)";
-	private static final String LOGOUT_BAD_DATA_ERROR ="LOgout attempt failed due to bad inputs";
+	private static final String LOGOUT_BAD_DATA_ERROR ="Logout attempt failed due to bad inputs";
 
 	private static final String UPDATE_ID_START = "Attempting to update id with token (%d)";
 	private static final String UPDATE_ID_OK = "Successfuly updated id from [%s] to [%s] with token (%d)";
