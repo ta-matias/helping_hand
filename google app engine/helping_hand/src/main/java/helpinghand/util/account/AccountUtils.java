@@ -6,16 +6,21 @@ package helpinghand.util.account;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.ListValue;
+import com.google.cloud.datastore.ProjectionEntity;
+import com.google.cloud.datastore.Query;
+import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.cloud.datastore.Transaction;
 import com.google.cloud.datastore.Value;
+import com.google.datastore.v1.TransactionOptions;
+import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
-import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.LoginInfo;
 import helpinghand.accesscontrol.Role;
-import helpinghand.util.QueryUtils;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -37,16 +42,20 @@ import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
+import static helpinghand.accesscontrol.AccessControlManager.endAllSessions;
+import static helpinghand.accesscontrol.AccessControlManager.startSession;
+import static helpinghand.accesscontrol.AccessControlManager.endSession;
 import static helpinghand.resources.EventResource.EVENT_KIND;
+import static helpinghand.resources.EventResource.EVENT_NAME_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
 import static helpinghand.resources.EventResource.PARTICIPANT_KIND;
 import static helpinghand.resources.EventResource.PARTICIPANT_ID_PROPERTY;
-import static helpinghand.resources.EventResource.EVENT_CREATOR_PROPERTY;
 import static helpinghand.resources.HelpResource.HELP_KIND;
+import static helpinghand.resources.HelpResource.HELP_NAME_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_KIND;
 import static helpinghand.resources.HelpResource.HELPER_ID_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_CURRENT_PROPERTY;
-import static helpinghand.resources.HelpResource.HELP_CREATOR_PROPERTY;
 /**
  * @author PogChamp Software
  *
@@ -55,6 +64,7 @@ public class AccountUtils {
 
 	protected static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
+	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
 	protected static final Gson g = new Gson();
 
 	protected static final String DATASTORE_EXCEPTION_ERROR = "Error in AccountUtils: %s";
@@ -62,6 +72,7 @@ public class AccountUtils {
 	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token (%d) does not exist";
 	private static final String PASSWORD_DENIED_ERROR = "[%s] is not the current password for the account [%s]";
 	public static final String ACCOUNT_NOT_FOUND_ERROR = "Account [%s] does not exist";
+	public static final String ACCOUNT_ID_CONFLICT_ERROR = "Multiple accounts [%s] registered";
 	private static final String MULTIPLE_FEED_ERROR = "User [%s] has multiple notification feeds";
 	private static final String FEED_NOT_FOUND_ERROR = "User [%s] has no notification feeds";
 
@@ -118,7 +129,7 @@ public class AccountUtils {
 	private static final String GET_ACCOUNT_INFO_BAD_DATA_ERROR = "Get account info attempt failed due to bad inputs";
 
 	protected static final String UPDATE_PROFILE_START ="Attempting to update profile with token (%d)";
-	protected static final String UPDATE_PROFILE_OK = "Successfuly updated prfile of account [%s] with token (%d)";
+	protected static final String UPDATE_PROFILE_OK = "Successfuly updated profile of account [%s] with token (%d)";
 	protected static final String UPDATE_PROFILE_BAD_DATA_ERROR = "Change profile attempt failed due to bad inputs";
 	protected static final String MULTIPLE_PROFILE_ERROR = "There are multiple account profiles for the account [%s]";
 	protected static final String PROFILE_NOT_FOUND_ERROR = "There is no account profile for the account [%s]";
@@ -197,7 +208,7 @@ public class AccountUtils {
 	 * 		   404, if the account does not exist or the token does not exist.
 	 * 		   500, otherwise.
 	 */
-	protected Response deleteAccount(String id,String token) {
+	protected Response deleteAccount(String id,String token,Role role) {
 		if(badString(id)||badString(token)) {
 			log.warning(DELETE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -206,60 +217,93 @@ public class AccountUtils {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(DELETE_START,id,tokenId));
-
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		List<Key> toDelete = new LinkedList<>();
-		toDelete.add(account.getKey());
-
-		QueryUtils.getEntityChildren(account).stream().forEach(c->{
-			if(!c.getKey().getKind().equals(EVENT_KIND))
-				toDelete.add(c.getKey());
-		});
-
-		if(!Role.getRole(account.getString(ACCOUNT_ROLE_PROPERTY)).equals(Role.INSTITUTION)) {
-			QueryUtils.getEntityListByProperty(INSTITUTION_MEMBER_KIND, INSTITUTION_MEMBER_ID_PROPERTY, id).stream().forEach(p->toDelete.add(p.getKey()));
-			QueryUtils.getEntityListByProperty(PARTICIPANT_KIND, PARTICIPANT_ID_PROPERTY, id).stream().forEach(p->toDelete.add(p.getKey()));
-			QueryUtils.getEntityListByProperty(HELPER_KIND, HELPER_ID_PROPERTY, id).stream().forEach(h->{
-				toDelete.add(h.getKey());
-				if(h.getBoolean(HELPER_CURRENT_PROPERTY)) {
-					//TODO:notify help creator
-				}
-			});
-		}
-
-		if(!AccessControlManager.endAllSessions(id)) {
-			log.warning(String.format(LOGOUT_FAILED, tokenId));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		Key[] keys = new Key[toDelete.size()];
-		toDelete.toArray(keys);
-
+		
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, id)).build();
+		Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, id)).build();
+	
+		
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+			QueryResults<Key> keyList = txn.run(accountQuery);
+	
+			if(!keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = keyList.next();
+			
+			if(keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			Query<Key> childrenQuery = Query.newKeyQueryBuilder().setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+	
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role tokenRole  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(tokenRole.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			List<Key> toDelete = new LinkedList<>();
+			toDelete.add(accountKey);
+	
+			QueryResults<Key> childrenList = txn.run(childrenQuery);
+			while(childrenList.hasNext()) {
+				Key childKey = childrenList.next();
+				if(!childKey.getKind().equals(EVENT_KIND)) {
+					toDelete.add(childKey);
+				}
+			}
+	
+			if(!role.equals(Role.INSTITUTION)) {
+				QueryResults<Key> memberList = txn.run(memberQuery);
+				QueryResults<Key> participantList = txn.run(participantQuery);
+				QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+				
+				while(memberList.hasNext()) {
+					toDelete.add(memberList.next());
+				}
+				while(participantList.hasNext()) {
+					toDelete.add(participantList.next());
+				}
+				while(helperList.hasNext()) {
+					ProjectionEntity helper =helperList.next();
+					toDelete.add(helper.getKey());
+					if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
+						//TODO:notify help creator
+					}
+				}
+			}
+	
+			if(!endAllSessions(id)) {
+				log.warning(String.format(LOGOUT_FAILED, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+	
+			Key[] keys = new Key[toDelete.size()];
+			toDelete.toArray(keys);
+
+		
 			txn.delete(keys);
 			txn.commit();
 			log.info(String.format(DELETE_OK,tokenId));
@@ -291,7 +335,7 @@ public class AccountUtils {
 
 		log.info(String.format(LOGIN_START,data.id));
 
-		LoginInfo info = AccessControlManager.startSession(data.id,data.password);
+		LoginInfo info = startSession(data.id,data.password);
 
 		if(info == null) {
 			log.warning(String.format(LOGIN_FAILED, data.id));
@@ -319,7 +363,7 @@ public class AccountUtils {
 
 		log.info(String.format(LOGOUT_START,tokenId));
 
-		if(!AccessControlManager.endSession(tokenId)) {
+		if(!endSession(tokenId)) {
 			log.warning(String.format(LOGOUT_FAILED, tokenId));
 			return Response.status(Status.FORBIDDEN).build();
 		}
@@ -350,47 +394,67 @@ public class AccountUtils {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(UPDATE_ID_START,tokenId));
-
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		if(badPassword(account,data.password)) {
-			log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
-			return Response.status(Status.FORBIDDEN).build(); 
-		}
-
-		if(QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, data.id) != null) {
-			log.warning(String.format(UPDATE_ID_CONFLICT_ERROR,data.id));
-			return Response.status(Status.CONFLICT).build(); 
-		}
-
-		Entity updatedAccount = Entity.newBuilder(account)
-				.set(ACCOUNT_ID_PROPERTY,data.id)
-				.build();
-
+		
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			if(badPassword(account,data.password)) {
+				txn.rollback();
+				log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
+				return Response.status(Status.FORBIDDEN).build(); 
+			}
+			
+			Query<Key> checkQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, data.id)).build();
+			
+			
+			if(txn.run(checkQuery).hasNext()) {
+				txn.rollback();
+				log.warning(String.format(UPDATE_ID_CONFLICT_ERROR,data.id));
+				return Response.status(Status.CONFLICT).build(); 
+			}
+	
+			Entity updatedAccount = Entity.newBuilder(account)
+					.set(ACCOUNT_ID_PROPERTY,data.id)
+					.build();
+
+		
 			txn.update(updatedAccount);
 			txn.commit();
 			log.info(String.format(UPDATE_ID_OK,id,data.id,tokenId));
@@ -430,42 +494,59 @@ public class AccountUtils {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(UPDATE_PASSWORD_START,tokenId));
-
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		if(badPassword(account,data.oldPassword)) {
-			log.severe(String.format(PASSWORD_DENIED_ERROR,data.oldPassword,id));
-			return Response.status(Status.FORBIDDEN).build(); 
-		}
-
-		Entity updatedAccount = Entity.newBuilder(account)
-				.set(ACCOUNT_PASSWORD_PROPERTY,DigestUtils.sha512Hex(data.newPassword))
-				.build();
-
+		
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			if(badPassword(account,data.oldPassword)) {
+				txn.rollback();
+				log.severe(String.format(PASSWORD_DENIED_ERROR,data.oldPassword,id));
+				return Response.status(Status.FORBIDDEN).build(); 
+			}
+		
+	
+			Entity updatedAccount = Entity.newBuilder(account)
+					.set(ACCOUNT_PASSWORD_PROPERTY,DigestUtils.sha512Hex(data.newPassword))
+					.build();
+
+		
 			txn.update(updatedAccount);
 			txn.commit();
 			log.info(String.format(UPDATE_PASSWORD_OK,data.oldPassword,data.newPassword,tokenId));
@@ -507,46 +588,65 @@ public class AccountUtils {
 
 		log.info(String.format(UPDATE_EMAIL_START,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		if(badPassword(account,data.password)) {
-			log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
-			return Response.status(Status.FORBIDDEN).build(); 
-		}
-
-		if(QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_EMAIL_PROPERTY, data.email) != null) {
-			log.warning(String.format(UPDATE_EMAIL_CONFLICT_ERROR,data.email));
-			return Response.status(Status.CONFLICT).build(); 
-		}
-
-		Entity updatedAccount = Entity.newBuilder(account)
-				.set(ACCOUNT_EMAIL_PROPERTY,data.email)
-				.build();
-
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			if(badPassword(account,data.password)) {
+				txn.rollback();
+				log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
+				return Response.status(Status.FORBIDDEN).build(); 
+			}
+			
+			Query<Key> checkQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY, data.email)).build();
+			
+			
+			if(txn.run(checkQuery).hasNext()) {
+				txn.rollback();
+				log.warning(String.format(UPDATE_EMAIL_CONFLICT_ERROR,data.email));
+				return Response.status(Status.CONFLICT).build(); 
+			}
+
+			Entity updatedAccount = Entity.newBuilder(account)
+					.set(ACCOUNT_EMAIL_PROPERTY,data.email)
+					.build();
+
 			txn.update(updatedAccount);
 			txn.commit();
 			log.info(String.format(UPDATE_EMAIL_OK,data.email,tokenId));
@@ -587,41 +687,56 @@ public class AccountUtils {
 
 		log.info(String.format(UPDATE_STATUS_START,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		if(badPassword(account,data.password)) {
-			log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
-			return Response.status(Status.FORBIDDEN).build(); 
-		}
-
-		Entity updatedAccount = Entity.newBuilder(account)
-				.set(ACCOUNT_STATUS_PROPERTY,data.status)
-				.build();
-
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			if(badPassword(account,data.password)) {
+				txn.rollback();
+				log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
+				return Response.status(Status.FORBIDDEN).build(); 
+			}
+
+			Entity updatedAccount = Entity.newBuilder(account)
+					.set(ACCOUNT_STATUS_PROPERTY,data.status)
+					.build();
+
 			txn.update(updatedAccount);
 			txn.commit();
 			log.info(String.format(UPDATE_STATUS_OK,data.status,tokenId));
@@ -662,41 +777,56 @@ public class AccountUtils {
 
 		log.info(String.format(UPDATE_VISIBILITY_START,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		if(badPassword(account,data.password)) {
-			log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
-			return Response.status(Status.FORBIDDEN).build(); 
-		}
-
-		Entity updatedAccount = Entity.newBuilder(account)
-				.set(ACCOUNT_VISIBILITY_PROPERTY,data.visibility)
-				.build();
-
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			if(badPassword(account,data.password)) {
+				txn.rollback();
+				log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
+				return Response.status(Status.FORBIDDEN).build(); 
+			}
+
+			Entity updatedAccount = Entity.newBuilder(account)
+					.set(ACCOUNT_VISIBILITY_PROPERTY,data.visibility)
+					.build();
+
 			txn.update(updatedAccount);
 			txn.commit();
 			log.info(String.format(UPDATE_VISIBILITY_OK,data.visibility,tokenId));
@@ -735,53 +865,88 @@ public class AccountUtils {
 
 		log.info(String.format(GET_ACCOUNT_INFO_START,id,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY)
+				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			ProjectionEntity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			Query<Entity> infoQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_INFO_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
+			
+			QueryResults<Entity> infoList = txn.run(infoQuery);
+			txn.commit();
 
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
+			if(!infoList.hasNext()) {
+				log.severe(String.format(ACCOUNT_INFO_NOT_FOUND_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			Entity accountInfo = infoList.next();
+			if(infoList.hasNext()) {
+				log.severe(String.format(MULTIPLE_ACCOUNT_INFO_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
 
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
+			AccountInfo info = new AccountInfo(
+					accountInfo.getString(ACCOUNT_INFO_PHONE_PROPERTY),
+					accountInfo.getString(ACCOUNT_INFO_ADDRESS_1_PROPERTY),
+					accountInfo.getString(ACCOUNT_INFO_ADDRESS_2_PROPERTY),
+					accountInfo.getString(ACCOUNT_INFO_ZIPCODE_PROPERTY),
+					accountInfo.getString(ACCOUNT_INFO_CITY_PROPERTY)
+					);
+			
+			log.info(String.format(GET_ACCOUNT_INFO_OK,id,tokenId));
+			return Response.ok(g.toJson(info)).build();
+			
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 
-		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,ACCOUNT_INFO_KIND);
-
-		if(lst.size() > 1) {
-			log.severe(String.format(MULTIPLE_ACCOUNT_INFO_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(lst.isEmpty()) {
-			log.severe(String.format(ACCOUNT_INFO_NOT_FOUND_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity accountInfo = lst.get(0);
-
-		AccountInfo info = new AccountInfo(
-				accountInfo.getString(ACCOUNT_INFO_PHONE_PROPERTY),
-				accountInfo.getString(ACCOUNT_INFO_ADDRESS_1_PROPERTY),
-				accountInfo.getString(ACCOUNT_INFO_ADDRESS_2_PROPERTY),
-				accountInfo.getString(ACCOUNT_INFO_ZIPCODE_PROPERTY),
-				accountInfo.getString(ACCOUNT_INFO_CITY_PROPERTY)
-				);
-
-		log.info(String.format(GET_ACCOUNT_INFO_OK,id,tokenId));
-		return Response.ok(g.toJson(info)).build();
+		
 	}
 
 	/**
@@ -805,54 +970,69 @@ public class AccountUtils {
 
 		log.info(String.format(UPDATE_ACCOUNT_INFO_START,tokenId));
 
-		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,ACCOUNT_INFO_KIND);
-
-		if(lst.size() > 1) {
-			log.severe(String.format(MULTIPLE_ACCOUNT_INFO_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(lst.isEmpty()) {
-			log.severe(String.format(ACCOUNT_INFO_NOT_FOUND_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity accountInfo = lst.get(0);
-
-		Entity updatedAccountInfo = Entity.newBuilder(accountInfo)
-				.set(ACCOUNT_INFO_PHONE_PROPERTY, data.phone)
-				.set(ACCOUNT_INFO_ADDRESS_1_PROPERTY,data.address1)
-				.set(ACCOUNT_INFO_ADDRESS_2_PROPERTY,data.address2)
-				.set(ACCOUNT_INFO_ZIPCODE_PROPERTY,data.zipcode)
-				.set(ACCOUNT_INFO_CITY_PROPERTY,data.city)
-				.build();
-
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
-
 		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			Query<Entity> infoQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_INFO_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> infoList = txn.run(infoQuery);
+
+			if(!infoList.hasNext()) {
+				log.severe(String.format(ACCOUNT_INFO_NOT_FOUND_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			Entity accountInfo = infoList.next();
+			if(infoList.hasNext()) {
+				log.severe(String.format(MULTIPLE_ACCOUNT_INFO_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+			Entity updatedAccountInfo = Entity.newBuilder(accountInfo)
+					.set(ACCOUNT_INFO_PHONE_PROPERTY, data.phone)
+					.set(ACCOUNT_INFO_ADDRESS_1_PROPERTY,data.address1)
+					.set(ACCOUNT_INFO_ADDRESS_2_PROPERTY,data.address2)
+					.set(ACCOUNT_INFO_ZIPCODE_PROPERTY,data.zipcode)
+					.set(ACCOUNT_INFO_CITY_PROPERTY,data.city)
+					.build();
+
+		
 			txn.update(updatedAccountInfo);
 			txn.commit();
 			log.info(String.format(UPDATE_ACCOUNT_INFO_OK,id,tokenId));
@@ -889,37 +1069,75 @@ public class AccountUtils {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(GET_EVENTS_START,id,tokenId));
-
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY)||!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
+		
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			Query<Entity> eventQuery = Query.newEntityQueryBuilder().setKind(EVENT_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> eventList = txn.run(eventQuery);
+			txn.commit();
+			
+			List<String[]> events = new LinkedList<>();
+			while(eventList.hasNext()) {
+				Entity event = eventList.next();
+				events.add(new String[] {Long.toString(event.getKey().getId()),
+						event.getString(EVENT_NAME_PROPERTY),
+						Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))});
+			}
+	
+			log.info(String.format(GET_EVENTS_OK,id,tokenId));
+	
+			return Response.ok(g.toJson(events)).build();
+		
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
-
-		List<String[]> events = QueryUtils.getEntityListByProperty(EVENT_KIND, EVENT_CREATOR_PROPERTY,id).stream()
-				.map(event->new String[] {Long.toString(event.getKey().getId()),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))})
-				.collect(Collectors.toList());
-
-		log.info(String.format(GET_EVENTS_OK,id,tokenId));
-
-		return Response.ok(g.toJson(events)).build();
 	}
 
 	/**
@@ -941,36 +1159,73 @@ public class AccountUtils {
 
 		log.info(String.format(GET_HELP_START,id,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY)||!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			Query<Entity> helpQuery = Query.newEntityQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> helpList = txn.run(helpQuery);
+			txn.commit();
+			
+			List<String[]> helps = new LinkedList<>();
+			while(helpList.hasNext()) {
+				Entity help = helpList.next();
+				helps.add(new String[] {Long.toString(help.getKey().getId()),
+						help.getString(HELP_NAME_PROPERTY)});
+			}
+	
+			log.info(String.format(GET_HELP_OK,id,tokenId));
+			return Response.ok(g.toJson(helps)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
-
-		List<String> helps = QueryUtils.getEntityListByProperty(HELP_KIND, HELP_CREATOR_PROPERTY, id).stream()
-				.map(help->Long.toString(help.getKey().getId()))
-				.collect(Collectors.toList());
-
-		log.info(String.format(GET_HELP_OK,id,tokenId));
-
-		return Response.ok(g.toJson(helps)).build();
+		
+		
 	}
 
 	/**
@@ -992,44 +1247,76 @@ public class AccountUtils {
 		
 		log.info(String.format(GET_FEED_START, tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
 		
-		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, ACCOUNT_FEED_KIND);
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
 		
-		if(feedList.isEmpty()) {
-			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Query<Entity> feedQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_FEED_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> feedList = txn.run(feedQuery);
+			txn.commit();
+			
+			if(!feedList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			} 
+			Entity feed = feedList.next();
+			
+			if(feedList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_FEED_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+	
+			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
+			List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
+	
+			log.info(String.format(GET_FEED_OK,id,tokenId));
+			return Response.ok(g.toJson(notificationList)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		
-		if( feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 		}
-
-		Entity feed = feedList.get(0);
-
-		List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
-		List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
-
-		log.info(String.format(GET_FEED_OK,id,tokenId));
-		return Response.ok(g.toJson(notificationList)).build();
 	}
 
 	/**
@@ -1053,38 +1340,10 @@ public class AccountUtils {
 		
 		log.info(String.format(UPDATE_FEED_START, tokenId));
 
-		Entity account =  QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, ACCOUNT_FEED_KIND);
-		
-		if(feedList.isEmpty()) {
-			log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		
-		if(feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity feedEntity = feedList.get(0);
 
 		ListValue.Builder feedBuilder = ListValue.newBuilder();
 
@@ -1092,14 +1351,62 @@ public class AccountUtils {
 			feedBuilder.addValue(StringValue.newBuilder(notification).setExcludeFromIndexes(true).build());
 
 		ListValue completeFeed = feedBuilder.build(); 
-
-		Entity updatedFeed = Entity.newBuilder(feedEntity)
-				.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
-				.build();
-
-		Transaction txn = datastore.newTransaction();
 		
+		Transaction txn = datastore.newTransaction();
 		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+		
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Query<Entity> feedQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_FEED_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> feedList = txn.run(feedQuery);
+			txn.commit();
+			
+			if(!feedList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			} 
+			Entity feed = feedList.next();
+			
+			if(feedList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_FEED_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+
+	
+			Entity updatedFeed = Entity.newBuilder(feed)
+					.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
+					.build();
+
+		
 			txn.update(updatedFeed);
 			txn.commit();
 			log.info(String.format(UPDATE_FEED_OK,id,tokenId));
@@ -1125,57 +1432,73 @@ public class AccountUtils {
 	 * @return true, if the message was successfully added to the feed.
 	 * 		   false, otherwise.
 	 */
-	public static boolean addNotificationToFeed(String user,String message) {
-		if(badString(user)||badString(message)) {
+	public static boolean addNotificationToFeed(String id,String message) {
+		if(badString(id)||badString(message)) {
 			log.warning(ADD_NOTIFICATION_FEED_BAD_DATA_ERROR);
 			return false;
 		}
 
-		log.info(String.format(ADD_NOTIFICATION_FEED_START,user));
-
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
+		log.info(String.format(ADD_NOTIFICATION_FEED_START,id));
 		
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
-			return false;
-		}
-
-		List<Entity> feedList = QueryUtils.getEntityChildrenByKind(account, ACCOUNT_FEED_KIND);
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
-		if(feedList.size() > 1) {
-			log.severe(String.format(MULTIPLE_FEED_ERROR,user));
-			return false;
-		}
-		
-		if(feedList.isEmpty()) {
-			log.severe(String.format(FEED_NOT_FOUND_ERROR,user));
-			return false;
-		}
-
-		Entity feed = feedList.get(0);
-
-		List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
-
-		ListValue.Builder feedBuilder = ListValue.newBuilder();
-
-		notifications.forEach(notification->{
-			feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
-		});
-		
-		feedBuilder.addValue(StringValue.newBuilder(message).setExcludeFromIndexes(true).build());
-		
-		ListValue completeFeed = feedBuilder.build();
-
-		Entity updatedFeed = Entity.newBuilder(feed)
-				.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
-				.build();
-
 		Transaction txn = datastore.newTransaction();
-
 		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return false;
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return false;
+			}
+
+			Query<Entity> feedQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_FEED_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> feedList = txn.run(feedQuery);
+			txn.commit();
+			
+			if(!feedList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
+				return false;
+			} 
+			Entity feed = feedList.next();
+			
+			if(feedList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_FEED_ERROR,id));
+				return false;
+			}
+
+	
+			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
+	
+			ListValue.Builder feedBuilder = ListValue.newBuilder();
+	
+			notifications.forEach(notification->{
+				feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
+			});
+			
+			feedBuilder.addValue(StringValue.newBuilder(message).setExcludeFromIndexes(true).build());
+			
+			ListValue completeFeed = feedBuilder.build();
+	
+			Entity updatedFeed = Entity.newBuilder(feed)
+					.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
+					.build();
+
+		
 			txn.update(updatedFeed);
 			txn.commit();
-			log.info(String.format(ADD_NOTIFICATION_FEED_OK,user));
+			log.info(String.format(ADD_NOTIFICATION_FEED_OK,id));
 			return true;
 		} catch(DatastoreException e) {
 			txn.rollback();

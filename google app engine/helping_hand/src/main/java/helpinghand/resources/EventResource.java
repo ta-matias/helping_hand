@@ -134,7 +134,7 @@ public class EventResource {
 	private static final String UPDATE_STATUS_PATH = "/{"+EVENT_ID_PARAM+"}/status";//PUT
 
 	public static final String EVENT_KIND = "Event";
-	private static final String EVENT_NAME_PROPERTY ="name";
+	public static final String EVENT_NAME_PROPERTY ="name";
 	public static final String EVENT_CREATOR_PROPERTY ="creator";
 	private static final String EVENT_DESCRIPTION_PROPERTY ="description";
 	private static final String EVENT_START_PROPERTY = "start";

@@ -7,28 +7,33 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
+
 import com.google.cloud.Timestamp;
+import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
+import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 
-import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
-import helpinghand.util.QueryUtils;
 import helpinghand.util.account.*;
 import helpinghand.util.user.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
@@ -106,7 +111,10 @@ public class UserResource extends AccountUtils {
 	private static final String FOLLOW_PATH = "/{" + USER_ID_PARAM + "}/follow";//POST
 	private static final String UNFOLLOW_PATH = "/{" + USER_ID_PARAM + "}/follow";//DELETE
 
+	
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
+	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
 
 	public UserResource() {super();}
 
@@ -177,19 +185,7 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(CREATE_START,data.id,Role.USER.name()));
 
-		Entity check = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, data.id);
-
-		if(check != null) {
-			log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
-			return Response.status(Status.CONFLICT).build();
-		} 
 		
-		Entity check2 = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_EMAIL_PROPERTY, data.email);
-		
-		if(check2 != null) {
-			log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
-			return Response.status(Status.CONFLICT).build();
-		}
 
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
@@ -231,10 +227,31 @@ public class UserResource extends AccountUtils {
 				.set(USER_STATS_REQUESTS_DONE_PROPERTY,USER_STATS_INITIAL_REQUESTS)
 				.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_RATING)
 				.build();
-
+		
+		Query<Key> idQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
+		Query<Key> emailQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+			
+			QueryResults<Key> idCheck = txn.run(idQuery);
+
+			if(idCheck.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
+				return Response.status(Status.CONFLICT).build();
+			} 
+			
+			QueryResults<Key> emailCheck = txn.run(emailQuery);
+			
+			if(emailCheck.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
+				return Response.status(Status.CONFLICT).build();
+			}
+			
+			
 			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
 			txn.commit();
 			log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
@@ -266,7 +283,7 @@ public class UserResource extends AccountUtils {
 	@DELETE
 	@Path(DELETE_PATH)
 	public Response deleteAccount(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.deleteAccount(id,token);
+		return super.deleteAccount(id,token,Role.USER);
 	}
 
 	/**
@@ -478,50 +495,85 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(GET_PROFILE_START,id,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY,ACCOUNT_VISIBILITY_PROPERTY)
+				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			ProjectionEntity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) &&!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			Query<Entity> profileQuery = Query.newEntityQueryBuilder().setKind(USER_PROFILE_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
+			
+			QueryResults<Entity> profileList = txn.run(profileQuery);
+			txn.commit();
+			
+			if(!profileList.hasNext()) {
+				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
+			Entity userProfile = profileList.next();
+			
+			if(profileList.hasNext()) {
+				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+	
+	
+			UserProfile profile = new UserProfile(
+					userProfile.getString(PROFILE_NAME_PROPERTY),
+					userProfile.getString(PROFILE_BIO_PROPERTY)
+					);
+			
+			
+			log.info(String.format(GET_PROFILE_OK,id,tokenId));
+			return Response.ok(g.toJson(profile)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
-
-		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
-
-		if(lst.size() > 1) {
-			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(lst.isEmpty()) {
-			log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity userProfile = lst.get(0);
-
-		UserProfile profile = new UserProfile(
-				userProfile.getString(PROFILE_NAME_PROPERTY),
-				userProfile.getString(PROFILE_BIO_PROPERTY)
-				);
-
-		log.info(String.format(GET_PROFILE_OK,id,tokenId));
-		return Response.ok(g.toJson(profile)).build();
 	}
 
 	/**
@@ -548,54 +600,73 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(UPDATE_PROFILE_START,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;//minimum access level required do execute this operation
-			if(role.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		List<Entity> lst = QueryUtils.getEntityChildrenByKind(account,USER_PROFILE_KIND);
-
-		if(lst.size() > 1) {
-			log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(lst.isEmpty()) {
-			log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity userProfile = lst.get(0);
-
-		Entity updatedUserProfile = Entity.newBuilder(userProfile)
-				.set(PROFILE_NAME_PROPERTY, data.name)
-				.set(PROFILE_BIO_PROPERTY,data.bio)
-				.build();
-
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
-
 		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+
+			Query<Entity> profileQuery = Query.newEntityQueryBuilder().setKind(USER_PROFILE_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> profileList = txn.run(profileQuery);
+	
+			if(!profileList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+
+			Entity userProfile = profileList.next();
+			
+			if(profileList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+			Entity updatedUserProfile = Entity.newBuilder(userProfile)
+					.set(PROFILE_NAME_PROPERTY, data.name)
+					.set(PROFILE_BIO_PROPERTY,data.bio)
+					.build();
+
+		
 			txn.update(updatedUserProfile);
 			txn.commit();
-			log.info(String.format(UPDATE_PROFILE_OK,account.getString(ACCOUNT_EMAIL_PROPERTY),tokenId));
+			log.info(String.format(UPDATE_PROFILE_OK,id,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -665,40 +736,71 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(GET_STATS_START, id, tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 
-		if(account == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
 
-		List<Entity> statList = QueryUtils.getEntityChildrenByKind(account, USER_STATS_KIND);
+			Query<Entity> statsQuery = Query.newEntityQueryBuilder().setKind(USER_STATS_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> statsList = txn.run(statsQuery);
+			txn.commit();
+			
+			if(!statsList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 
-		if(statList.isEmpty()) {
-			log.severe(String.format(STATS_NOT_FOUND_ERROR,id));
+			Entity statsEntity = statsList.next();
+			
+			if(statsList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+			double promised = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY));
+			double done = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_DONE_PROPERTY));
+			double reliability;
+	
+			if(promised == 0.0) {
+				reliability = 0;
+			}else {
+				reliability = done/promised;
+			}
+			
+			UserStats stats = new UserStats(statsEntity.getDouble(USER_STATS_RATING_PROPERTY),reliability);
+	
+			log.info(String.format(GET_STATS_OK,id,tokenId));
+			return Response.ok(g.toJson(stats)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-
-		if(statList.size() > 1) {
-			log.severe(String.format(MULTIPLE_STATS_ERROR,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 		}
-
-		Entity statsEntity = statList.get(0);
-
-		double promised = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY));
-		double done = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_DONE_PROPERTY));
-		double reliability;
-
-		if(promised == 0.0)
-			reliability = 0;
-		else
-			reliability = done/promised;
-
-		UserStats stats = new UserStats(statsEntity.getDouble(USER_STATS_RATING_PROPERTY),reliability);
-
-		log.info(String.format(GET_STATS_OK,id,tokenId));
-		return Response.ok(g.toJson(stats)).build();
 	}
 
 	/**
@@ -723,41 +825,75 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(FOLLOW_START, id,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		String user = AccessControlManager.getOwner(tokenId);
-
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		List<Entity> check = QueryUtils.getEntityChildrenByKindAndProperty(account, FOLLOWER_KIND, FOLLOWER_ID_PROPERTY, user);
-
-		if(check.size() > 1) {
-			log.severe(String.format(REPEATED_FOLLOWER_ERROR,user,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(!check.isEmpty()) {
-			log.warning(String.format(FOLLOW_CONFLICT_ERROR, user,id));
-			return Response.status(Status.CONFLICT).build();
-		}
-
-		Key followerKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).setKind(FOLLOWER_KIND).newKey());
-
-		Entity follower = Entity.newBuilder(followerKey)
-				.set(FOLLOWER_ID_PROPERTY,user)
-				.build();
-
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
-
 		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			
+			
+			accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			
+			accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Query<Key> followerQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND)
+					.setFilter(CompositeFilter.and(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, user), PropertyFilter.hasAncestor(accountKey)))
+					.build();
+			
+			QueryResults<Key> followerCheck = txn.run(followerQuery);
+
+			if(followerCheck.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(FOLLOW_CONFLICT_ERROR, user,id));
+				return Response.status(Status.CONFLICT).build();
+			}
+
+
+			
+			Key followerKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(FOLLOWER_KIND).newKey());
+	
+			Entity follower = Entity.newBuilder(followerKey)
+					.set(FOLLOWER_ID_PROPERTY,user)
+					.build();
+
 			txn.add(follower);
 			txn.commit();
 			log.info(String.format(FOLLOW_OK,id,tokenId,user));
@@ -799,38 +935,76 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(UNFOLLOW_START, id,tokenId));
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		String user = AccessControlManager.getOwner(tokenId);
-
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		List<Entity> check = QueryUtils.getEntityChildrenByKindAndProperty(account, FOLLOWER_KIND, FOLLOWER_ID_PROPERTY, user);
-
-		if(check.size() > 1) {
-			log.severe(String.format(REPEATED_FOLLOWER_ERROR,user,id));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(check.isEmpty()) {
-			log.warning(String.format(UNFOLLOW_NOT_FOUND_ERROR, user,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity follower = check.get(0);
-
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Transaction txn = datastore.newTransaction();
-
 		try {
-			txn.delete(follower.getKey());
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			
+			
+			accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			
+			accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Query<Key> followerQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND)
+					.setFilter(CompositeFilter.and(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, user), PropertyFilter.hasAncestor(accountKey)))
+					.build();
+			
+			QueryResults<Key> followerList = txn.run(followerQuery);
+			
+			if(!followerList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(UNFOLLOW_NOT_FOUND_ERROR, user,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Key followerKey = followerList.next();
+			
+			if(followerList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(REPEATED_FOLLOWER_ERROR, user,id));
+				return Response.status(Status.CONFLICT).build();
+			}
+
+			txn.delete(followerKey);
 			txn.commit();
 			log.info(String.format(UNFOLLOW_OK,id,tokenId,user));
 			return Response.ok().build();
@@ -863,50 +1037,61 @@ public class UserResource extends AccountUtils {
 		}
 
 		log.info(String.format(ADD_RATING_START,user));
-
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, user);
-
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
-			return false;
-		}
-
-		List<Entity> statList = QueryUtils.getEntityChildrenByKind(account, USER_STATS_KIND);
-
-		if(statList.isEmpty()) {
-			log.severe(String.format(STATS_NOT_FOUND_ERROR,user));
-			return false;
-		} 
-
-		if(statList.size() > 1) {
-			log.severe(String.format(MULTIPLE_STATS_ERROR,user));
-			return false;
-		}
-
-		Entity stats = statList.get(0);
-
-		double oldRating = stats.getDouble(USER_STATS_RATING_PROPERTY);
-		double oldDone = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_DONE_PROPERTY)).doubleValue();
-		double oldPromised = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)).doubleValue();
-
-		double newPromised = oldPromised++;
-		double newDone = oldDone;
-		double newRating = oldRating;
-
-		if(finished) {
-			newDone++;
-			newRating = ((oldRating * oldDone)+rating)/newDone;
-		}
-
-		Entity updatedStats = Entity.newBuilder(stats)
-				.set(USER_STATS_RATING_PROPERTY, newRating)
-				.set(USER_STATS_REQUESTS_DONE_PROPERTY,Double.valueOf(newDone).longValue())
-				.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,Double.valueOf(newPromised).longValue())
-				.build();
-
-		Transaction txn = datastore.newTransaction();
-
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
+		
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,user));
+				return false;
+			}
+			Key accountKey = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,user));
+				return false;
+			}
+
+			Query<Entity> statsQuery = Query.newEntityQueryBuilder().setKind(USER_STATS_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
+			QueryResults<Entity> statsList = txn.run(statsQuery);
+			
+			if(!statsList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(STATS_NOT_FOUND_ERROR,user));
+				return false;
+			}
+			Entity stats = statsList.next();
+			if(statsList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_STATS_ERROR,user));
+				return false;
+			}
+	
+			double oldRating = stats.getDouble(USER_STATS_RATING_PROPERTY);
+			double oldDone = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_DONE_PROPERTY)).doubleValue();
+			double oldPromised = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)).doubleValue();
+	
+			double newPromised = oldPromised++;
+			double newDone = oldDone;
+			double newRating = oldRating;
+	
+			if(finished) {
+				newDone++;
+				newRating = ((oldRating * oldDone)+rating)/newDone;
+			}
+	
+			Entity updatedStats = Entity.newBuilder(stats)
+					.set(USER_STATS_RATING_PROPERTY, newRating)
+					.set(USER_STATS_REQUESTS_DONE_PROPERTY,Double.valueOf(newDone).longValue())
+					.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,Double.valueOf(newPromised).longValue())
+					.build();
+
 			txn.update(updatedStats);
 			txn.commit();
 			log.info(String.format(ADD_RATING_OK,user));

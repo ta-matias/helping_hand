@@ -126,7 +126,7 @@ public class HelpResource {
 	private static final String RATING_PARAM = "rating";
 
 	public static final String HELP_KIND = "Help";
-	private static final String HELP_NAME_PROPERTY = "name";
+	public static final String HELP_NAME_PROPERTY = "name";
 	public static final String HELP_CREATOR_PROPERTY = "creator";
 	private static final String HELP_DESCRIPTION_PROPERTY = "description";
 	private static final String HELP_TIME_PROPERTY = "time";
