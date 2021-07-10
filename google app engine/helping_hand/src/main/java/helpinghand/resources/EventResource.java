@@ -134,13 +134,12 @@ public class EventResource {
 	private static final String UPDATE_STATUS_PATH = "/{"+EVENT_ID_PARAM+"}/status";//PUT
 
 	public static final String EVENT_KIND = "Event";
-	private static final String EVENT_NAME_PROPERTY ="name";
+	public static final String EVENT_NAME_PROPERTY ="name";
 	public static final String EVENT_CREATOR_PROPERTY ="creator";
-	private static final String EVENT_DESCRIPTION_PROPERTY ="description";
-	private static final String EVENT_START_PROPERTY = "start";
-	private static final String EVENT_END_PROPERTY = "end";
-	private static final String EVENT_LOCATION_PROPERTY = "location";
-	private static final String EVENT_CONDITIONS_PROPERTY ="conditions";
+	public static final String EVENT_DESCRIPTION_PROPERTY ="description";
+	public static final String EVENT_START_PROPERTY = "start";
+	public static final String EVENT_END_PROPERTY = "end";
+	public static final String EVENT_LOCATION_PROPERTY = "location";
 	public static final String EVENT_STATUS_PROPERTY ="status";
 	private static final boolean EVENT_STATUS_DEFAULT = true;
 	private static final boolean EVENT_FINISHED_STATUS = false;
@@ -196,8 +195,6 @@ public class EventResource {
 		for(String condition: data.conditions)
 			builder.addValue(condition);
 
-		ListValue conditions = builder.build();
-
 		Timestamp start = Timestamp.parseTimestamp(data.start);
 		Timestamp end = Timestamp.parseTimestamp(data.end);
 
@@ -210,7 +207,6 @@ public class EventResource {
 				.set(EVENT_START_PROPERTY,start)
 				.set(EVENT_END_PROPERTY, end)
 				.set(EVENT_LOCATION_PROPERTY, location)
-				.set(EVENT_CONDITIONS_PROPERTY,conditions)
 				.set(EVENT_STATUS_PROPERTY, EVENT_STATUS_DEFAULT)
 				.build();
 
@@ -451,8 +447,6 @@ public class EventResource {
 		
 		for(String condition: data.conditions)
 			builder.addValue(condition);
-		
-		ListValue conditions = builder.build();
 
 		Timestamp start = Timestamp.parseTimestamp(data.start);
 		Timestamp end = Timestamp.parseTimestamp(data.end);
@@ -464,7 +458,6 @@ public class EventResource {
 				.set(EVENT_START_PROPERTY, start)
 				.set(EVENT_END_PROPERTY, end)
 				.set(EVENT_LOCATION_PROPERTY, location)
-				.set(EVENT_CONDITIONS_PROPERTY,conditions)
 				.build();
 		
 		Transaction txn = datastore.newTransaction();
@@ -516,22 +509,7 @@ public class EventResource {
 			return Response.status(Status.NOT_FOUND).build();
 		}
 
-		LatLng location = eventEntity.getLatLng(EVENT_LOCATION_PROPERTY);
-		List<String> conditionsList = eventEntity.getList(EVENT_CONDITIONS_PROPERTY).stream().map(value -> ((String)value.get())).collect(Collectors.toList());
-
-		String[] conditions = new String[conditionsList.size()];
-		conditionsList.toArray();
-
-		EventData data = new EventData(
-				eventEntity.getKey().getId(),
-				eventEntity.getString(EVENT_NAME_PROPERTY),
-				eventEntity.getString(EVENT_CREATOR_PROPERTY),
-				eventEntity.getString(EVENT_DESCRIPTION_PROPERTY),
-				eventEntity.getString(EVENT_START_PROPERTY),
-				eventEntity.getString(EVENT_END_PROPERTY),
-				new double[] {location.getLatitude(),location.getLongitude()},
-				conditions
-				);
+		EventData data = new EventData(eventEntity);
 
 		log.info(String.format(GET_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 		return Response.ok(g.toJson(data)).build();
@@ -724,9 +702,9 @@ public class EventResource {
 		try {
 			QueryResults<Entity> events = txn.run(query);
 			txn.commit();
-			List<String[]> eventList = new LinkedList<>();	
+			List<EventData> eventList = new LinkedList<>();	
 
-			events.forEachRemaining(event ->eventList.add(new String[] {Long.toString(event.getKey().getId()),event.getString(EVENT_NAME_PROPERTY),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))}));
+			events.forEachRemaining(event ->eventList.add(new EventData(event)));
 
 			log.info(String.format(LIST_EVENTS_OK, tokenId));
 			return Response.ok(g.toJson(eventList)).build();

@@ -28,7 +28,6 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.LatLng;
-import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
@@ -112,29 +111,26 @@ public class HelpResource {
 	private static final String CHOOSE_HELPER_BAD_DATA_ERROR  = "Choose helper attempt failed due to bad inputs";
 	private static final String CHOOSE_HELPER_CONFLICT = "User [%s] is already the current helper of (%d)";
 
+	private static final String HELP_ID_PARAM = "helpId";
+	private static final String RATING_PARAM = "rating";
+	
 	public static final String PATH = "/help";
 	private static final String LIST_PATH ="";//GET
 	private static final String CREATE_PATH = "";//POST
-	private static final String UPDATE_PATH = "/{helpId}";//PUT
-	private static final String CANCEL_PATH = "/{helpId}";//DELETE
-	private static final String FINISH_PATH = "/{helpId}/finish";//PUT
-	private static final String CHOOSE_HELPER_PATH = "/{helpId}/helper";//PUT
-	private static final String OFFER_HELP_PATH = "/{helpId}/offer";//PUT
-	private static final String LEAVE_HELP_PATH = "/{helpId}/leave";//PUT
+	private static final String UPDATE_PATH = "/{"+HELP_ID_PARAM+"}";//PUT
+	private static final String CANCEL_PATH = "/{"+HELP_ID_PARAM+"}";//DELETE
+	private static final String FINISH_PATH = "/{"+HELP_ID_PARAM+"}/finish";//PUT
+	private static final String CHOOSE_HELPER_PATH = "/{"+HELP_ID_PARAM+"}/helper";//PUT
+	private static final String OFFER_HELP_PATH = "/{"+HELP_ID_PARAM+"}/offer";//PUT
+	private static final String LEAVE_HELP_PATH = "/{"+HELP_ID_PARAM+"}/leave";//PUT
 
-	private static final String HELP_ID_PARAM = "helpId";
-	private static final String RATING_PARAM = "rating";
 
 	public static final String HELP_KIND = "Help";
-	private static final String HELP_NAME_PROPERTY = "name";
+	public static final String HELP_NAME_PROPERTY = "name";
 	public static final String HELP_CREATOR_PROPERTY = "creator";
-	private static final String HELP_DESCRIPTION_PROPERTY = "description";
-	private static final String HELP_TIME_PROPERTY = "time";
-	private static final String HELP_PERMANENT_PROPERTY = "permanent";
-	private static final String HELP_LOCATION_PROPERTY = "location";
-	private static final String HELP_STATUS_PROPERTY = "status";
-	private static final String HELP_CONDITIONS_PROPERTY = "conditions";
-	private static final boolean HELP_STATUS_INITIAL = true;
+	public static final String HELP_DESCRIPTION_PROPERTY = "description";
+	public static final String HELP_TIME_PROPERTY = "time";
+	public static final String HELP_LOCATION_PROPERTY = "location";
 
 	private static final String HELPER_ID_PARAM ="helperId";
 	public static final String HELPER_KIND ="Helper";
@@ -175,10 +171,9 @@ public class HelpResource {
 			QueryResults<Entity> results = txn.run(query);
 			txn.commit();
 
-			List<String[]> helpList = new LinkedList<>();	
+			List<HelpData> helpList = new LinkedList<>();	
 
-			results.forEachRemaining(help ->helpList.add(new String[] {Long.toString(help.getKey().getId()),help.getString(HELP_NAME_PROPERTY)
-					,Boolean.toString(help.getBoolean(HELP_STATUS_PROPERTY)),Boolean.toString(help.getBoolean(HELP_PERMANENT_PROPERTY))}));
+			results.forEachRemaining(help ->helpList.add(new HelpData(help)));
 
 			log.info(String.format(LIST_HELP_OK,tokenId));
 			return Response.ok(g.toJson(helpList)).build();
@@ -232,13 +227,6 @@ public class HelpResource {
 		}
 
 		LatLng location = LatLng.of(data.location[0],data.location[1]);
-		ListValue.Builder builder = ListValue.newBuilder();
-
-		for(String condition: data.conditions)
-			builder.addValue(condition);
-
-		ListValue conditions = builder.build();
-
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
 		Key helpKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELP_KIND).newKey());
@@ -248,10 +236,7 @@ public class HelpResource {
 				.set(HELP_CREATOR_PROPERTY,data.creator)
 				.set(HELP_DESCRIPTION_PROPERTY, data.description)
 				.set(HELP_TIME_PROPERTY,time)
-				.set(HELP_PERMANENT_PROPERTY, data.permanent)
 				.set(HELP_LOCATION_PROPERTY,location)
-				.set(HELP_CONDITIONS_PROPERTY,conditions)
-				.set(HELP_STATUS_PROPERTY, HELP_STATUS_INITIAL)
 				.build();
 
 		Transaction txn = datastore.newTransaction();
@@ -328,13 +313,7 @@ public class HelpResource {
 		}
 
 		LatLng location = LatLng.of(data.location[0],data.location[1]);
-		ListValue.Builder builder = ListValue.newBuilder();
 		
-		for(String condition: data.conditions)
-			builder.addValue(condition);
-		
-		ListValue conditions = builder.build();
-
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
 		Entity updatedHelp = Entity.newBuilder(helpEntity)
@@ -342,10 +321,7 @@ public class HelpResource {
 				.set(HELP_CREATOR_PROPERTY,data.creator)
 				.set(HELP_DESCRIPTION_PROPERTY, data.description)
 				.set(HELP_TIME_PROPERTY,time)
-				.set(HELP_PERMANENT_PROPERTY, data.permanent)
 				.set(HELP_LOCATION_PROPERTY,location)
-				.set(HELP_CONDITIONS_PROPERTY,conditions)
-				.set(HELP_STATUS_PROPERTY, HELP_STATUS_INITIAL)
 				.build();
 
 		Transaction txn = datastore.newTransaction();
@@ -443,11 +419,6 @@ public class HelpResource {
 			return Response.status(Status.FORBIDDEN).build();
 		}
 
-		if(helpEntity.getBoolean(HELP_PERMANENT_PROPERTY)) {
-			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
-			return Response.ok().build();
-		}
-
 		List<Key> toDelete = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND).stream().map(helper->helper.getKey()).collect(Collectors.toList());
 		toDelete.add(helpEntity.getKey());
 
@@ -459,7 +430,7 @@ public class HelpResource {
 		try {
 			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
+			log.info(String.format(FINISH_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
