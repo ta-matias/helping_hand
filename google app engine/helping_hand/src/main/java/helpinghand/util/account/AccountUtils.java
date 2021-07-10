@@ -8,6 +8,7 @@ import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.ListValue;
+import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
@@ -65,10 +66,7 @@ import static helpinghand.resources.HelpResource.cancelHelp;
  */
 public class AccountUtils {
 
-	protected static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
-	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
-	protected static final Gson g = new Gson();
+	
 
 	protected static final String DATASTORE_EXCEPTION_ERROR = "Error in AccountUtils: %s";
 	protected static final String TRANSACTION_ACTIVE_ERROR = "Error in AccountUtils: Transaction was active";
@@ -161,8 +159,8 @@ public class AccountUtils {
 	private static final String UPDATE_FEED_OK ="Successfuly updated notification feed  of [%s] with token (%d)";
 	private static final String UPDATE_FEED_BAD_DATA_ERROR = "Update notification feed failed due to bad input";
 
-	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to [%s]'s feed";
-	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to [%s]'s feed";
+	private static final String ADD_NOTIFICATION_FEED_START ="Attempting to add notification to (%d)'s feed";
+	private static final String ADD_NOTIFICATION_FEED_OK ="Successfuly added notification to (%d)'s feed";
 	private static final String ADD_NOTIFICATION_FEED_BAD_DATA_ERROR = "Add notification to feed failed due to bad input";
 
 	public static final String ACCOUNT_KIND = "Account";
@@ -203,6 +201,15 @@ public class AccountUtils {
 	protected static final String DEFAULT_PROPERTY_VALUE_STRING = "";
 	protected static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
 
+	
+	protected static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
+	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
+	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	private static final KeyFactory feedKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND);
+	protected static final Gson g = new Gson();
+	
+	
 	public AccountUtils() {}
 
 	/**
@@ -234,9 +241,7 @@ public class AccountUtils {
 		
 		Query<Key> helpQuery = Query.newKeyQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.eq(HELP_CREATOR_PROPERTY, id)).build();
 		
-		Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, id)).build();
-		Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, id)).build();
-		Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, id)).build();
+		
 	
 		
 		
@@ -296,18 +301,23 @@ public class AccountUtils {
 			QueryResults<Key> helpList = txn.run(helpQuery);
 			helpList.forEachRemaining(help->cancelHelp(help.getId()));
 			
+			long keyId = accountKey.getId();
 			
+			Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, keyId)).build();
+			Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, keyId)).build();
+			Query<Key> followQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, keyId)).build();
+			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
 			
-			
-			//TODO:cancel ongoing events and help requests
 	
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
 				QueryResults<Key> participantList = txn.run(participantQuery);
+				QueryResults<Key> followList = txn.run(followQuery);
 				QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
 				
 				memberList.forEachRemaining(membership->toDelete.add(membership));
 				participantList.forEachRemaining(participation->toDelete.add(participation));
+				followList.forEachRemaining(follow->toDelete.add(follow));
 				
 				helperList.forEachRemaining(helper->{
 					toDelete.add(helper.getKey());
@@ -1536,49 +1546,33 @@ public class AccountUtils {
 	 * @return true, if the message was successfully added to the feed.
 	 * 		   false, otherwise.
 	 */
-	public static boolean addNotificationToFeed(String id,String message) {
-		if(badString(id)||badString(message)) {
+	public static boolean addNotificationToFeed(long datastoreId,String message) {
+		if(badString(message)) {
 			log.warning(ADD_NOTIFICATION_FEED_BAD_DATA_ERROR);
 			return false;
 		}
 
-		log.info(String.format(ADD_NOTIFICATION_FEED_START,id));
+		log.info(String.format(ADD_NOTIFICATION_FEED_START,datastoreId));
 		
-		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key accountKey = accountKeyFactory.newKey(datastoreId);
+		Key feedKey = feedKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId);
 		
 		Transaction txn = datastore.newTransaction();
 		try {
 		
-			QueryResults<Key> accountList = txn.run(accountQuery);
+			Entity account = txn.get(accountKey);
 			
-			if(!accountList.hasNext()) {
+			if(account == null) {
 				txn.rollback();
-				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-				return false;
-			}
-			Key accountKey = accountList.next();
-			
-			if(accountList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR,Long.toString(datastoreId)));
 				return false;
 			}
 
-			Query<Entity> feedQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_FEED_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			Entity feed = txn.get(feedKey);
 			
-			QueryResults<Entity> feedList = txn.run(feedQuery);
-			txn.commit();
-			
-			if(!feedList.hasNext()) {
+			if(feed == null) {
 				txn.rollback();
-				log.severe(String.format(FEED_NOT_FOUND_ERROR, id));
-				return false;
-			} 
-			Entity feed = feedList.next();
-			
-			if(feedList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(MULTIPLE_FEED_ERROR,id));
+				log.warning(String.format(FEED_NOT_FOUND_ERROR,account.getString(ACCOUNT_ID_PROPERTY)));
 				return false;
 			}
 
@@ -1602,7 +1596,7 @@ public class AccountUtils {
 		
 			txn.update(updatedFeed);
 			txn.commit();
-			log.info(String.format(ADD_NOTIFICATION_FEED_OK,id));
+			log.info(String.format(ADD_NOTIFICATION_FEED_OK,datastoreId));
 			return true;
 		} catch(DatastoreException e) {
 			txn.rollback();

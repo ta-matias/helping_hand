@@ -3,10 +3,10 @@
  */
 package helpinghand.resources;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -27,35 +27,39 @@ import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
-import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
-import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
 import helpinghand.util.help.*;
+
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
-import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.RATING_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
+import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
-import static helpinghand.resources.UserResource.FOLLOWER_KIND;
-import static helpinghand.resources.UserResource.FOLLOWER_ID_PROPERTY;
+import static helpinghand.resources.UserResource.USER_STATS_KIND;
 import static helpinghand.resources.UserResource.addRatingToStats;
 /**
  * @author PogChamp Software
@@ -68,6 +72,7 @@ public class HelpResource {
 	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose, [%s], has left the help request";
 	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
 	private static final String HELP_CREATED_NOTIFICATION = "Help request '%s' has been created by '%s'";
+	private static final String RATING_NOTIFICATION = "'%s' as rated you %d for your help in '%s'(%d)";
 
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in HelpResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is HelpResource: Transaction was active";
@@ -89,6 +94,10 @@ public class HelpResource {
 	private static final String UPDATE_HELP_START  = "Attempting to update help(%d) with token (%d)";
 	private static final String UPDATE_HELP_OK = "Successfuly updated help [%s](%d) with token (%d)";
 	private static final String UPDATE_HELP_BAD_DATA_ERROR  = "Update help attempt failed due to bad inputs";
+	
+	private static final String GET_HELP_START  = "Attempting to get help(%d) data with token (%d)";
+	private static final String GET_HELP_OK = "Successfuly got help [%s](%d) data with token (%d)";
+	private static final String GET_HELP_BAD_DATA_ERROR  = "Get help attempt failed due to bad inputs";
 
 	private static final String CANCEL_HELP_START  = "Attempting to cancel help(%d) with token (%d)";
 	private static final String CANCEL_HELP_OK = "Successfuly canceled help [%s](%d) with token (%d)";
@@ -110,19 +119,27 @@ public class HelpResource {
 	private static final String CHOOSE_HELPER_OK = "Successfuly chose helper for [%s](%d) with token (%d)";
 	private static final String CHOOSE_HELPER_BAD_DATA_ERROR  = "Choose helper attempt failed due to bad inputs";
 	private static final String CHOOSE_HELPER_CONFLICT = "User [%s] is already the current helper of (%d)";
+	
+	private static final String LIST_HELPERS_START  = "Attempting to get helpers for (%d) with token (%d)";
+	private static final String LIST_HELPERS_OK = "Successfuly got helpers for [%s](%d) with token (%d)";
+	private static final String LIST_HELPERS_BAD_DATA_ERROR  = "Get helpers attempt failed due to bad inputs";
+	
+
+	private static final String HELP_ID_PARAM = "helpId";
+	private static final String RATING_PARAM = "rating";
 
 	public static final String PATH = "/help";
 	private static final String LIST_PATH ="";//GET
 	private static final String CREATE_PATH = "";//POST
-	private static final String UPDATE_PATH = "/{helpId}";//PUT
-	private static final String CANCEL_PATH = "/{helpId}";//DELETE
-	private static final String FINISH_PATH = "/{helpId}/finish";//PUT
-	private static final String CHOOSE_HELPER_PATH = "/{helpId}/helper";//PUT
-	private static final String OFFER_HELP_PATH = "/{helpId}/offer";//PUT
-	private static final String LEAVE_HELP_PATH = "/{helpId}/leave";//PUT
+	private static final String UPDATE_PATH = "/{"+HELP_ID_PARAM+"}";//PUT
+	private static final String GET_PATH = "/{"+HELP_ID_PARAM+"}";//GET
+	private static final String CANCEL_PATH = "/{"+HELP_ID_PARAM+"}";//DELETE
+	private static final String FINISH_PATH = "/{"+HELP_ID_PARAM+"}/finish";//PUT
+	private static final String CHOOSE_HELPER_PATH = "/{"+HELP_ID_PARAM+"}/helper";//PUT
+	private static final String LIST_HELPERS_PATH = "/{"+HELP_ID_PARAM+"}/helper";//GET
+	private static final String OFFER_HELP_PATH = "/{"+HELP_ID_PARAM+"}/offer";//PUT
+	private static final String LEAVE_HELP_PATH = "/{"+HELP_ID_PARAM+"}/leave";//PUT
 
-	private static final String HELP_ID_PARAM = "helpId";
-	private static final String RATING_PARAM = "rating";
 
 	public static final String HELP_KIND = "Help";
 	public static final String HELP_NAME_PROPERTY = "name";
@@ -138,6 +155,11 @@ public class HelpResource {
 
 	private static final Logger log = Logger.getLogger(HelpResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
+	private static final KeyFactory helpKeyFactory = datastore.newKeyFactory().setKind(HELP_KIND);
+	private static final KeyFactory helperKeyFactory = datastore.newKeyFactory().setKind(HELPER_KIND);
+	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	private static final KeyFactory statsKeyFactory = datastore.newKeyFactory().setKind(USER_STATS_KIND);
 
 	private final Gson g = new Gson();
 
@@ -170,10 +192,9 @@ public class HelpResource {
 			QueryResults<Entity> results = txn.run(query);
 			txn.commit();
 
-			List<String[]> helpList = new LinkedList<>();	
+			List<HelpData> helpList = new LinkedList<>();	
 
-			results.forEachRemaining(help ->helpList.add(new String[] {Long.toString(help.getKey().getId()),help.getString(HELP_NAME_PROPERTY)
-					,Boolean.toString(help.getBoolean(HELP_STATUS_PROPERTY)),Boolean.toString(help.getBoolean(HELP_PERMANENT_PROPERTY))}));
+			results.forEachRemaining(help ->helpList.add(new HelpData(help)));
 
 			log.info(String.format(LIST_HELP_OK,tokenId));
 			return Response.ok(g.toJson(helpList)).build();
@@ -213,50 +234,71 @@ public class HelpResource {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(CREATE_HELP_START, tokenId));
-
-		Entity creator = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, AccessControlManager.getOwner(tokenId));
-
-		if(creator == null) {
-			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,data.creator));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!creator.getString(ACCOUNT_ID_PROPERTY).equals(data.creator)) {
-			log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,data.creator));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		LatLng location = LatLng.of(data.location[0],data.location[1]);
-		ListValue.Builder builder = ListValue.newBuilder();
-
-		for(String condition: data.conditions)
-			builder.addValue(condition);
-
-		ListValue conditions = builder.build();
-
+		
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
-		Key helpKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELP_KIND).newKey());
-
-		Entity help = Entity.newBuilder(helpKey)
-				.set(HELP_NAME_PROPERTY, data.name)
-				.set(HELP_CREATOR_PROPERTY,data.creator)
-				.set(HELP_DESCRIPTION_PROPERTY, data.description)
-				.set(HELP_TIME_PROPERTY,time)
-				.set(HELP_PERMANENT_PROPERTY, data.permanent)
-				.set(HELP_LOCATION_PROPERTY,location)
-				.set(HELP_CONDITIONS_PROPERTY,conditions)
-				.set(HELP_STATUS_PROPERTY, HELP_STATUS_INITIAL)
-				.build();
-
+		Key helpKey = datastore.allocateId(helpKeyFactory.newKey());
+		
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+			Entity tokenEntity = txn.get(tokenKey); 
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+			QueryResults<Key> keyList = txn.run(accountQuery);
+			
+			if(!keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = keyList.next();
+			
+			if(keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+	
+			
+	
+			Entity help = Entity.newBuilder(helpKey)
+					.set(HELP_NAME_PROPERTY, data.name)
+					.set(HELP_CREATOR_PROPERTY,id)
+					.set(HELP_DESCRIPTION_PROPERTY, data.description)
+					.set(HELP_TIME_PROPERTY,time)
+					.set(HELP_LOCATION_PROPERTY,location)
+					.build();
+
+			Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
+					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			QueryResults<ProjectionEntity> followerList = txn.run(followerQuery);
+			
 			txn.add(help);
 			txn.commit();
-			List<String> followers = QueryUtils.getEntityChildrenByKind(creator, FOLLOWER_KIND).stream().map(entity->entity.getString(FOLLOWER_ID_PROPERTY)).collect(Collectors.toList());
-			String message = String.format(HELP_CREATED_NOTIFICATION,data.name,data.creator);
-			followers.forEach(id->addNotificationToFeed(id,message));
+			
+			
+			txn.add(help);
+			txn.commit();
+			String message = String.format(HELP_CREATED_NOTIFICATION,data.name,id);
+			followerList.forEachRemaining(follower->{
+				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message)) {
+					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
+				}
+			});
 
 			log.info(String.format(CREATE_HELP_OK, data.name, helpKey.getId(), tokenId));
 			return Response.ok().build();
@@ -298,54 +340,51 @@ public class HelpResource {
 		long helpId = Long.parseLong(help);
 
 		log.info(String.format(UPDATE_HELP_START,helpId, tokenId));
-
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND,helpId);
-
-		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
-			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;
-			if(tokenRole.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
+		
 		LatLng location = LatLng.of(data.location[0],data.location[1]);
-		ListValue.Builder builder = ListValue.newBuilder();
-		
-		for(String condition: data.conditions)
-			builder.addValue(condition);
-		
-		ListValue conditions = builder.build();
-
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
-		Entity updatedHelp = Entity.newBuilder(helpEntity)
-				.set(HELP_NAME_PROPERTY, data.name)
-				.set(HELP_CREATOR_PROPERTY,data.creator)
-				.set(HELP_DESCRIPTION_PROPERTY, data.description)
-				.set(HELP_TIME_PROPERTY,time)
-				.set(HELP_PERMANENT_PROPERTY, data.permanent)
-				.set(HELP_LOCATION_PROPERTY,location)
-				.set(HELP_CONDITIONS_PROPERTY,conditions)
-				.set(HELP_STATUS_PROPERTY, HELP_STATUS_INITIAL)
-				.build();
-
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
+				Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;
+				if(tokenRole.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+			Entity updatedHelp = Entity.newBuilder(helpEntity)
+					.set(HELP_NAME_PROPERTY, data.name)
+					.set(HELP_DESCRIPTION_PROPERTY, data.description)
+					.set(HELP_TIME_PROPERTY,time)
+					.set(HELP_LOCATION_PROPERTY,location)
+					.build();
+
+		
 			txn.update(updatedHelp);
 			txn.commit();
 			log.info(String.format(UPDATE_HELP_OK, data.name,helpId,tokenId));
@@ -363,6 +402,51 @@ public class HelpResource {
 		}
 
 	}
+	
+	@GET
+	@Path(GET_PATH)
+	public Response getHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(help) || badString (token)) {
+			log.warning(GET_HELP_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+
+		long tokenId = Long.parseLong(token);
+
+		long helpId = Long.parseLong(help);
+
+		log.fine(String.format(GET_HELP_START,helpId,tokenId));
+
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+			Entity helpEntity = txn.get(helpKey);
+			txn.commit();
+			
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			HelpData data = new HelpData(helpEntity);
+	
+			log.info(String.format(GET_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
+			return Response.ok(g.toJson(data)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
 
 	/**
 	 * Finishes the help.
@@ -377,7 +461,8 @@ public class HelpResource {
 	@PUT
 	@Path(FINISH_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response finishHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token, @QueryParam(RATING_PARAM) String rating) {
+	public Response endHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token, @QueryParam(RATING_PARAM) String rating) {
+		
 		if(badString(rating)) {
 			log.warning(FINISH_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -395,66 +480,88 @@ public class HelpResource {
 		long helpId = Long.parseLong(help);
 
 		log.info(String.format(FINISH_HELP_START,helpId, tokenId));
-
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
-
-		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
-			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;
-			if(tokenRole.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		List<Entity> helperList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND, HELPER_CURRENT_PROPERTY, true);
-
-		if(helperList.isEmpty()) {
-			log.severe(NO_CURRENT_HELPER_ERROR);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(helperList.size() > 1) {
-			log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR, helpId));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity currentHelper = helperList.get(0);
-
-		if(!addRatingToStats(currentHelper.getString(HELPER_ID_PROPERTY),true,ratingValue)) {
-			log.severe(String.format(RATING_ERROR, currentHelper.getString(HELPER_ID_PROPERTY)));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		if(helpEntity.getBoolean(HELP_PERMANENT_PROPERTY)) {
-			log.info(String.format(FINISH_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
-			return Response.ok().build();
-		}
-
-		List<Key> toDelete = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND).stream().map(helper->helper.getKey()).collect(Collectors.toList());
-		toDelete.add(helpEntity.getKey());
-
-		Key[] keys =  new Key[toDelete.size()];
-		toDelete.toArray(keys);
-
+		
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
+				Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;
+				if(tokenRole.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			List<Key> toDelete = new LinkedList<>();
+			toDelete.add(helpEntity.getKey());
+	
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			
+			QueryResults<Entity> helperList = txn.run(helperQuery);
+			
+			List<Entity> currentHelper = new LinkedList<>();
+			
+			helperList.forEachRemaining(helper->{
+				toDelete.add(helper.getKey());
+				if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
+					currentHelper.add(helper);
+				}
+			});
+			
+			if(currentHelper.size() > 1) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR, helpId));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+			if(currentHelper.isEmpty()) {
+				txn.rollback();
+				log.warning(NO_CURRENT_HELPER_ERROR);
+				return Response.status(Status.CONFLICT).build();
+			}
+			
+			Key[] keys =  new Key[toDelete.size()];
+			toDelete.toArray(keys);
+			
 			txn.delete(keys);
 			txn.commit();
-			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
+	
+			long helperId = currentHelper.get(0).getLong(HELPER_ID_PROPERTY);
+			if(!addRatingToStats(helperId,true,ratingValue)) {
+				txn.rollback();
+				log.severe(String.format(RATING_ERROR, helperId));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			String message = String.format(RATING_NOTIFICATION,tokenEntity.getString(TOKEN_OWNER_PROPERTY),ratingValue,helpEntity.getString(HELP_NAME_PROPERTY),helpId);
+			if(!addNotificationToFeed(helperId,message)) {
+				txn.rollback();
+				log.severe(String.format(NOTIFICATION_ERROR, helperId));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+			log.info(String.format(FINISH_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -482,7 +589,7 @@ public class HelpResource {
 	 */
 	@DELETE
 	@Path(CANCEL_PATH)
-	public Response cancelHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
+	public Response cancel(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(help) || badString(token)) {
 			log.warning(CANCEL_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -494,49 +601,68 @@ public class HelpResource {
 
 		log.info(String.format(CANCEL_HELP_START, helpId,tokenId));
 
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
-
-		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
-			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;
-			if(tokenRole.getAccess()< minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		List<Entity> helpers = QueryUtils.getEntityChildrenByKind(helpEntity, HELPER_KIND);
-
-		for(Entity helper: helpers) {
-			if(!addNotificationToFeed(helper.getString(HELPER_ID_PROPERTY),String.format(HELP_CANCELED_NOTIFICATION, helpEntity.getString(HELP_NAME_PROPERTY)))) {
-				log.severe(String.format(NOTIFICATION_ERROR, helper.getString(HELPER_ID_PROPERTY)));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
-
-		List<Key> toDelete = helpers.stream().map(entity->entity.getKey()).collect(Collectors.toList());
-		toDelete.add(helpEntity.getKey());
-
-		Key[] keys =  new Key[toDelete.size()];
-		toDelete.toArray(keys);
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
+				Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;
+				if(tokenRole.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+
+			List<Key> toDelete = new LinkedList<>();
+			toDelete.add(helpKey);
+
+			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY)
+					.setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			
+			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+	
+			List<Long> toNotify = new LinkedList<>();
+			
+			helperList.forEachRemaining(helper->{
+				toDelete.add(helper.getKey());
+				toNotify.add(helper.getLong(HELPER_ID_PROPERTY));
+				
+			});
+
+			Key[] keys =  new Key[toDelete.size()];
+			toDelete.toArray(keys);
+		
 			txn.delete(keys);
 			txn.commit();
+			
+			String message = String.format(HELP_CANCELED_NOTIFICATION,helpEntity.getString(HELP_NAME_PROPERTY));
+			toNotify.forEach(id->{
+				if(!addNotificationToFeed(id,message)) {
+					log.warning(NOTIFICATION_ERROR);
+				}
+			});
+			
 			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
@@ -576,77 +702,89 @@ public class HelpResource {
 		long tokenId = Long.parseLong(token);
 
 		long helpId = Long.parseLong(help);
+		
+		long helperId = Long.parseLong(helper);
 
 		log.info(String.format(CHOOSE_HELPER_START,helpId, tokenId));
-
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
-
-		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
-			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-			int minAccess = 1;
-			if(tokenRole.getAccess() < minAccess) {
-				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-		}
-
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND, HELPER_ID_PROPERTY, helper);
-
-		if(checkList.size() > 1) {
-			log.severe(MULTIPLE_HELPER_ERROR);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(checkList.isEmpty()) {
-			log.warning(String.format(HELPER_NOT_FOUND_ERROR, helper,helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity helperEntity = checkList.get(0);
-
-		if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
-			log.warning(String.format(CHOOSE_HELPER_CONFLICT,helper,helpId));
-			return Response.status(Status.CONFLICT).build();
-		}
-
-		Entity updatedHelper = Entity.newBuilder(helperEntity)
-				.set(HELPER_CURRENT_PROPERTY, true)
-				.build();
-
-		List<Entity> currentHelperList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_CURRENT_PROPERTY ,true);
-
-		if(currentHelperList.size() > 1) {
-			log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR,helpId));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		Entity[] toUpdate = new Entity[] {updatedHelper};
-
-		if(!currentHelperList.isEmpty()) {
-			Entity currentHelper = currentHelperList.get(0);
-
-			Entity updatedCurrentHelper = Entity.newBuilder(currentHelper)
-					.set(HELPER_CURRENT_PROPERTY, false)
-					.build();
-
-			toUpdate = new Entity[] {updatedHelper,updatedCurrentHelper};
-		}
-
+		
+		
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Key helperKey = helperKeyFactory.addAncestor(PathElement.of(HELPER_KIND, helpId)).newKey(helperId);
+		
+		Query<Entity> currentHelperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
+				.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_CURRENT_PROPERTY,true))).build();
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
+				Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;
+				if(tokenRole.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+	
+	
+			Entity helperEntity = txn.get(helperKey);
+	
+			if(helperEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELPER_NOT_FOUND_ERROR, helper,helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
+				txn.rollback();
+				log.warning(String.format(CHOOSE_HELPER_CONFLICT,helper,helpId));
+				return Response.status(Status.CONFLICT).build();
+			}
+	
+			
+			Entity updatedHelper = Entity.newBuilder(helperEntity)
+					.set(HELPER_CURRENT_PROPERTY, true)
+					.build();
+	
+			QueryResults<Entity> currentHelperList = txn.run(currentHelperQuery);
+	
+	
+			Entity[] toUpdate = new Entity[] {updatedHelper};
+	
+			if(currentHelperList.hasNext()) {
+				Entity currentHelper = currentHelperList.next();
+	
+				Entity updatedCurrentHelper = Entity.newBuilder(currentHelper)
+						.set(HELPER_CURRENT_PROPERTY, false)
+						.build();
+	
+				toUpdate = new Entity[] {updatedHelper,updatedCurrentHelper};
+			}
+	
+			if(currentHelperList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(MULTIPLE_CURRENT_HELPER_ERROR,helpId));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		
 			txn.update(toUpdate);
 			txn.commit();
 			log.info(String.format(CHOOSE_HELPER_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
@@ -664,6 +802,98 @@ public class HelpResource {
 		}
 
 	}
+	
+	@GET
+	@Path(LIST_HELPERS_PATH)
+	public Response getHelpers(@PathParam(HELP_ID_PARAM)String help,@QueryParam(TOKEN_ID_PARAM)String token) {
+		if(badString(help) || badString(token)) {
+			log.warning(LIST_HELPERS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+
+		long tokenId = Long.parseLong(token);
+		
+		long helpId = Long.parseLong(help);
+		log.info(String.format(LIST_HELPERS_START, helpId,tokenId));
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		
+		
+		Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY).setKind(HELPER_KIND)
+				.setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+
+		try {
+			
+			Entity helpEntity = txn.get(helpKey);
+
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+
+			Entity tokenEntity = txn.get(tokenKey);
+
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+
+			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
+				Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;
+				if(tokenRole.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			
+			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+			List<Key> helperKeys = new LinkedList<>();
+			
+			
+			helperList.forEachRemaining(helperKey -> {
+				long datastoreId = helperKey.getLong(HELPER_ID_PROPERTY);
+				helperKeys.add(accountKeyFactory.newKey(datastoreId));
+				helperKeys.add(statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
+			});
+			
+			Key[] statsKeys = new Key[helperKeys.size()];
+			helperKeys.toArray(statsKeys);
+			
+			Iterator<Entity> helperStats= txn.get(statsKeys);
+			txn.commit();
+
+			List<HelperStats> statsList = new LinkedList<>();	
+			
+			while(helperStats.hasNext()) {
+				Entity account = helperStats.next();
+				Entity stats = helperStats.next();
+				statsList.add(new HelperStats(account,stats));
+			}
+			
+
+			log.info(String.format(LIST_HELPERS_OK,helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
+			return Response.ok(g.toJson(statsList)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
 
 	/**
 	 * The user offers to help.
@@ -687,45 +917,82 @@ public class HelpResource {
 		long tokenId = Long.parseLong(token);
 
 		long helpId = Long.parseLong(help);
+		
 
 		log.info(String.format(OFFER_HELP_START, helpId,tokenId));
-
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
-
-		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		String user = AccessControlManager.getOwner(tokenId);
-
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_ID_PROPERTY, user);
-
-		if(checkList.size() > 1) {
-			log.severe(MULTIPLE_HELPER_ERROR);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(!checkList.isEmpty()) {
-			log.warning(String.format(HELPER_CONFLICT_ERROR, user,helpId));
-			return Response.status(Status.CONFLICT).build();
-		}
-
-		Key helperKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(HELP_KIND, helpEntity.getKey().getId())).setKind(HELPER_KIND).newKey());
-
-		Entity helper = Entity.newBuilder(helperKey)
-				.set(HELPER_ID_PROPERTY,user)
-				.set(HELPER_CURRENT_PROPERTY, false)
-				.build();
-
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		Key helperKey = datastore.allocateId(helperKeyFactory.addAncestor(PathElement.of(HELP_KIND, helpId)).newKey());
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			
+			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+	
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Key accountKey = accountList.next();
+	
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_ID_CONFLICT_ERROR, user));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			
+			Query<Key> helperQuery = Query.newKeyQueryBuilder().setKind(HELPER_KIND)
+					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_ID_PROPERTY, accountKey.getId()))).build();
+			
+			QueryResults<Key> helperList = txn.run(helperQuery);
+			
+			if(helperList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(HELPER_CONFLICT_ERROR, helpId));
+				return Response.status(Status.CONFLICT).build();
+			}
+			
+			helperList.next();
+	
+			if(helperList.hasNext()) {
+				txn.rollback();
+				log.warning(MULTIPLE_HELPER_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+	
+			Entity helper = Entity.newBuilder(helperKey)
+					.set(HELPER_ID_PROPERTY,user)
+					.set(HELPER_CURRENT_PROPERTY, false)
+					.build();
+
+		
 			txn.add(helper);
 			txn.commit();
 			log.info(String.format(OFFER_HELP_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
@@ -767,52 +1034,80 @@ public class HelpResource {
 
 		log.info(String.format(LEAVE_HELP_START,helpId, tokenId));
 
-		Entity helpEntity = QueryUtils.getEntityById(HELP_KIND, helpId);
-
-		if(helpEntity == null) {
-			log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		String user = AccessControlManager.getOwner(tokenId);
-
-		if(user == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		List<Entity> checkList = QueryUtils.getEntityChildrenByKindAndProperty(helpEntity, HELPER_KIND,HELPER_ID_PROPERTY, user);
-
-		if(checkList.size() > 1) {
-			log.severe(MULTIPLE_HELPER_ERROR);
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-
-		if(checkList.isEmpty()) {
-			log.warning(String.format(HELPER_NOT_FOUND_ERROR, user,helpId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity helper = checkList.get(0);
-
-		if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
-			if(!addNotificationToFeed(helpEntity.getString(HELP_CREATOR_PROPERTY),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
-				log.severe(String.format(NOTIFICATION_ERROR, helpEntity.getString(HELP_CREATOR_PROPERTY)));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-
-			//TODO:This should be optional?
-
-			if(!addRatingToStats(user,false,0)) {
-				log.severe(String.format(RATING_ERROR, user));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
-
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Key helpKey = helpKeyFactory.newKey(helpId);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			txn.delete(helper.getKey());
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			Entity tokenEntity = txn.get(tokenKey);
+
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			
+			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+	
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Key accountKey = accountList.next();
+	
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_ID_CONFLICT_ERROR, user));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
+					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_ID_PROPERTY, accountKey.getId()))).build();
+			
+			QueryResults<Entity> helperList = txn.run(helperQuery);
+			
+			if(!helperList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(HELPER_NOT_FOUND_ERROR, helpId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Entity helperEntity = helperList.next();
+	
+			if(helperList.hasNext()) {
+				txn.rollback();
+				log.warning(MULTIPLE_HELPER_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+	
+	
+			if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
+				if(!addNotificationToFeed(helpEntity.getLong(HELP_CREATOR_PROPERTY),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
+					log.severe(String.format(NOTIFICATION_ERROR, helpEntity.getString(HELP_CREATOR_PROPERTY)));
+					return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+				}
+	
+			}
+
+		
+			txn.delete(helperEntity.getKey());
 			txn.commit();
 			log.info(String.format(LEAVE_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok().build();
@@ -829,5 +1124,65 @@ public class HelpResource {
 		}
 
 	}
+	
+	public static boolean cancelHelp(long helpId) {
 
+		Key helpKey = helpKeyFactory.newKey(helpId);
+
+		Transaction txn = datastore.newTransaction();
+
+		try {
+		
+			Entity helpEntity = txn.get(helpKey);
+	
+			if(helpEntity == null) {
+				txn.rollback();
+				return false;
+			}
+
+			List<Key> toDelete = new LinkedList<>();
+			toDelete.add(helpKey);
+
+			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY)
+					.setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			
+			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+	
+			List<Long> toNotify = new LinkedList<>();
+			
+			helperList.forEachRemaining(helper->{
+				toDelete.add(helper.getKey());
+				toNotify.add(helper.getLong(HELPER_ID_PROPERTY));
+				
+			});
+
+			Key[] keys =  new Key[toDelete.size()];
+			toDelete.toArray(keys);
+		
+			txn.delete(keys);
+			txn.commit();
+			
+			String message = String.format(HELP_CANCELED_NOTIFICATION,helpEntity.getString(HELP_NAME_PROPERTY));
+			toNotify.forEach(id->{
+				if(!addNotificationToFeed(id,message)) {
+					log.warning(NOTIFICATION_ERROR);
+				}
+			});
+			
+			return true;
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return false;
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return false;
+			}
+		}
+		
+	}
+	
+	
 }

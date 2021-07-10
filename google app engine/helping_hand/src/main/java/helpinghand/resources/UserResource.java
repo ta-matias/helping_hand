@@ -59,15 +59,14 @@ public class UserResource extends AccountUtils {
 	private static final String GET_ALL_OK ="Successfuly got all users with token (%d)";
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 
-	private static final String MULTIPLE_STATS_ERROR = "User [%s] has multiple stats";
 	private static final String STATS_NOT_FOUND_ERROR = "User [%s] has no stats";
 
 	private static final String GET_STATS_START ="Attempting to get stats of [%s] with token (%d)";
 	private static final String	GET_STATS_OK ="Successfuly got stats of [%s] with token (%d)";
 	private static final String GET_STATS_BAD_DATA_ERROR = "Get stats failed due to bad input";
 
-	private static final String ADD_RATING_START ="Attempting to add rating to [%s]";
-	private static final String	ADD_RATING_OK ="Successfuly added rating to [%s]";
+	private static final String ADD_RATING_START ="Attempting to add rating to (%d)";
+	private static final String	ADD_RATING_OK ="Successfuly added rating to (%d)";
 	private static final String ADD_RATING_BAD_DATA_ERROR = "Add rating failed due to bad input";
 
 	private static final String FOLLOW_START = "Attempting to follow account [%s] with token (%d)";
@@ -116,6 +115,8 @@ public class UserResource extends AccountUtils {
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
+	private static final KeyFactory accountKeyFactory =datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	private static final KeyFactory statsKeyFactory =datastore.newKeyFactory().setKind(USER_STATS_KIND);
 
 	public UserResource() {super();}
 
@@ -782,18 +783,8 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-	
-			double promised = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY));
-			double done = Double.valueOf(statsEntity.getLong(USER_STATS_REQUESTS_DONE_PROPERTY));
-			double reliability;
-	
-			if(promised == 0.0) {
-				reliability = 0;
-			}else {
-				reliability = done/promised;
-			}
 			
-			UserStats stats = new UserStats(statsEntity.getDouble(USER_STATS_RATING_PROPERTY),reliability);
+			UserStats stats = new UserStats(statsEntity);
 	
 			log.info(String.format(GET_STATS_OK,id,tokenId));
 			return Response.ok(g.toJson(stats)).build();
@@ -834,6 +825,8 @@ public class UserResource extends AccountUtils {
 
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
+		
+		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
@@ -863,26 +856,25 @@ public class UserResource extends AccountUtils {
 			}
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 			
+			Query<Key> tokenAccountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
 			
-			accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			QueryResults<Key> tokenAccountList = txn.run(tokenAccountQuery);
 			
-			accountList = txn.run(accountQuery);
-			
-			if(!accountList.hasNext()) {
+			if(!tokenAccountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			accountKey = accountList.next();
+			Key tokenAccountKey = tokenAccountList.next();
 			
-			if(accountList.hasNext()) {
+			if(tokenAccountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
 			Query<Key> followerQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND)
-					.setFilter(CompositeFilter.and(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, user), PropertyFilter.hasAncestor(accountKey)))
+					.setFilter(CompositeFilter.and(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, tokenAccountKey.getId()), PropertyFilter.hasAncestor(accountKey)))
 					.build();
 			
 			QueryResults<Key> followerCheck = txn.run(followerQuery);
@@ -898,7 +890,7 @@ public class UserResource extends AccountUtils {
 			Key followerKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(FOLLOWER_KIND).newKey());
 	
 			Entity follower = Entity.newBuilder(followerKey)
-					.set(FOLLOWER_ID_PROPERTY,user)
+					.set(FOLLOWER_ID_PROPERTY,tokenAccountKey.getId())
 					.build();
 
 			txn.add(follower);
@@ -974,25 +966,25 @@ public class UserResource extends AccountUtils {
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 			
 			
-			accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			Query<Key> tokenAccountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
 			
-			accountList = txn.run(accountQuery);
+			QueryResults<Key> tokenAccountList = txn.run(tokenAccountQuery);
 			
-			if(!accountList.hasNext()) {
+			if(!tokenAccountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			accountKey = accountList.next();
+			Key tokenAccountKey = tokenAccountList.next();
 			
-			if(accountList.hasNext()) {
+			if(tokenAccountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
 			Query<Key> followerQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND)
-					.setFilter(CompositeFilter.and(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, user), PropertyFilter.hasAncestor(accountKey)))
+					.setFilter(CompositeFilter.and(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, tokenAccountKey.getId()), PropertyFilter.hasAncestor(accountKey)))
 					.build();
 			
 			QueryResults<Key> followerList = txn.run(followerQuery);
@@ -1037,46 +1029,33 @@ public class UserResource extends AccountUtils {
 	 * @return true, if the rating was successfully added to the stats.
 	 * 		   false, otherwise.
 	 */
-	public static boolean addRatingToStats(String user,boolean finished,int rating) {
-		if(badString(user)|| rating < 0 || rating > 5) {
+	public static boolean addRatingToStats(long datastoreId,boolean finished,int rating) {
+		if( rating < 0 || rating > 5) {
 			log.warning(ADD_RATING_BAD_DATA_ERROR);
 			return false;
 		}
 
-		log.info(String.format(ADD_RATING_START,user));
-		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+		log.info(String.format(ADD_RATING_START,datastoreId));
+		
+		Key accountKey = accountKeyFactory.newKey(datastoreId);
+		Key statsKey = statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, datastoreId)).newKey(datastoreId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<Key> accountList = txn.run(accountQuery);
+			Entity account = txn.get(accountKey);
 			
-			if(!accountList.hasNext()) {
+			if(account == null) {
 				txn.rollback();
-				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,user));
-				return false;
-			}
-			Key accountKey = accountList.next();
-			
-			if(accountList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,user));
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR,Long.toString(datastoreId)));
 				return false;
 			}
 
-			Query<Entity> statsQuery = Query.newEntityQueryBuilder().setKind(USER_STATS_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			Entity stats = txn.get(statsKey);
 			
-			QueryResults<Entity> statsList = txn.run(statsQuery);
-			
-			if(!statsList.hasNext()) {
+			if(stats == null) {
 				txn.rollback();
-				log.severe(String.format(STATS_NOT_FOUND_ERROR,user));
-				return false;
-			}
-			Entity stats = statsList.next();
-			if(statsList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(MULTIPLE_STATS_ERROR,user));
+				log.warning(String.format(STATS_NOT_FOUND_ERROR,Long.toString(datastoreId)));
 				return false;
 			}
 	
@@ -1101,7 +1080,7 @@ public class UserResource extends AccountUtils {
 
 			txn.update(updatedStats);
 			txn.commit();
-			log.info(String.format(ADD_RATING_OK,user));
+			log.info(String.format(ADD_RATING_OK,datastoreId));
 			return true;
 		} catch(DatastoreException e) {
 			txn.rollback();

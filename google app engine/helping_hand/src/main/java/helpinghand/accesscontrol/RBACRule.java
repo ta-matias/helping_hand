@@ -85,10 +85,12 @@ public enum RBACRule {
 	GET_ALL_HELP("GET_help", new Role[] {USER,GBO}), // list all helps
 	CREATE_HELP("POST_help", new Role[] {USER,INSTITUTION}), // create a help
 	UPDATE_HELP("PUT_help", new Role[] {USER,INSTITUTION}), // update the help's data
+	GET_HELP("GET_help", new Role[] {USER,INSTITUTION}), // update the help's data
 	CANCEL_HELP("DELETE_help", new Role[] {USER,INSTITUTION,GBO}), // cancel a help
 	FINISH_HELP("PUT_help_finish", new Role[] {USER,INSTITUTION}), // finish a help
 	OFFER_HELP("POST_help_offer", new Role[] {USER}), // add a participant to help
 	LEAVE_HELP("DELETE_help_leave", new Role[] {USER}), // remove a participant from help
+	LIST_HELPERS("GET_help_helper", new Role[] {USER,INSTITUTION}), // choose a helper.
 	CHOOSE_HELPER("PUT_help_helper", new Role[] {USER,INSTITUTION}); // choose a helper.
 	
 	public String operation;

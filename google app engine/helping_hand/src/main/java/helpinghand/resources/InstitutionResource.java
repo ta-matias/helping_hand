@@ -3,6 +3,7 @@
  */
 package helpinghand.resources;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -115,6 +116,8 @@ public class InstitutionResource extends AccountUtils {
 	private static final Logger log = Logger.getLogger(InstitutionResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
+	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	private static final KeyFactory userProfileKeyFactory = datastore.newKeyFactory().setKind(USER_PROFILE_KIND);
 
 	public InstitutionResource() {super();}
 
@@ -188,7 +191,7 @@ public class InstitutionResource extends AccountUtils {
 
 		
 
-		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
+		Key accountKey = datastore.allocateId(accountKeyFactory.setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
 		Key accountFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey());
 		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
@@ -757,13 +760,24 @@ public class InstitutionResource extends AccountUtils {
 
 			Query<Entity> memberQuery = Query.newEntityQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
 			QueryResults<Entity> memberList = txn.run(memberQuery);
+			
+			List<Key> members = new LinkedList<>();
+			memberList.forEachRemaining(member->{
+				long datastoreId = member.getLong(INSTITUTION_MEMBER_ID_PROPERTY);
+				members.add(userProfileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
+				
+			});
+			Key[] memberKeys = new Key[members.size()];
+			members.toArray(memberKeys);
+			
+			Iterator<Entity> memberEntities = txn.get(memberKeys);
 			txn.commit();
 			
-			List<String> members = new LinkedList<>();
-			memberList.forEachRemaining(member->members.add(member.getString(INSTITUTION_MEMBER_ID_PROPERTY)));
+			List<UserProfile> memberProfiles = new LinkedList<>();
+			memberEntities.forEachRemaining(profile->memberProfiles.add(new UserProfile(profile)));
 			
 			log.info(String.format(GET_MEMBERS_OK,id,token));
-			return Response.ok(g.toJson(members)).build();
+			return Response.ok(g.toJson(memberProfiles)).build();
 			
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -802,8 +816,6 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(ADD_MEMBER_START,memberId,id,tokenId));
 		
-		
-		
 		Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
 		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
 		
@@ -818,7 +830,7 @@ public class InstitutionResource extends AccountUtils {
 				return Response.status(Status.NOT_FOUND).build();
 			} 
 			
-			memberCheck.next();
+			Key memberAccountKey = memberCheck.next();
 			
 			if(memberCheck.hasNext()) {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, memberId));
@@ -839,7 +851,7 @@ public class InstitutionResource extends AccountUtils {
 			
 			
 			memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
-					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(institutionKey),PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberId))).build();
+					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(institutionKey),PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()))).build();
 			memberCheck  = txn.run(memberQuery);
 			if(memberCheck.hasNext()) {
 				txn.rollback();
@@ -850,7 +862,7 @@ public class InstitutionResource extends AccountUtils {
 			Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, institutionKey.getId())).setKind(INSTITUTION_MEMBER_KIND).newKey());
 	
 			Entity member = Entity.newBuilder(memberKey)
-					.set(INSTITUTION_MEMBER_ID_PROPERTY,memberId)
+					.set(INSTITUTION_MEMBER_ID_PROPERTY,memberAccountKey.getId())
 					.build();
 
 		
@@ -899,6 +911,8 @@ public class InstitutionResource extends AccountUtils {
 		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
+		Query<Key> accountQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
@@ -915,9 +929,23 @@ public class InstitutionResource extends AccountUtils {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, memberId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key memberAccountKey = accountList.next();
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, memberId));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
 			
 			Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND)
-					.setFilter(CompositeFilter.and(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberId), PropertyFilter.hasAncestor(institutionKey)))
+					.setFilter(CompositeFilter.and(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()), PropertyFilter.hasAncestor(institutionKey)))
 					.build();
 			QueryResults<Key> memberCheck = txn.run(memberQuery);
 			

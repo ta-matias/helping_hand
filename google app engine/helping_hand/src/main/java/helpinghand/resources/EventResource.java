@@ -47,6 +47,10 @@ import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
@@ -175,8 +179,7 @@ public class EventResource {
 
 		Key eventKey = datastore.allocateId(eventKeyFactory.newKey());
 		
-		Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
-				.setFilter(PropertyFilter.hasAncestor(eventKey)).build();
+		
 	
 		Transaction txn = datastore.newTransaction();
 
@@ -190,12 +193,27 @@ public class EventResource {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			String creator = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+			QueryResults<Key> keyList = txn.run(accountQuery);
+			
+			if(!keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = keyList.next();
+			
+			if(keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 			
 			
 			Entity event = Entity.newBuilder(eventKey)
 					.set(EVENT_NAME_PROPERTY, data.name)
-					.set(EVENT_CREATOR_PROPERTY, creator)
+					.set(EVENT_CREATOR_PROPERTY, id)
 					.set(EVENT_DESCRIPTION_PROPERTY, data.description)
 					.set(EVENT_START_PROPERTY,start)
 					.set(EVENT_END_PROPERTY, end)
@@ -205,6 +223,8 @@ public class EventResource {
 			
 			
 		
+			Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
+					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
 			QueryResults<ProjectionEntity> followerList = txn.run(followerQuery);
 			
 			txn.add(event);
@@ -212,8 +232,13 @@ public class EventResource {
 			
 			
 			
-			String message = String.format(EVENT_CREATED_NOTIFICATION,data.name,creator);
-			followerList.forEachRemaining(follower->addNotificationToFeed(follower.getString(FOLLOWER_ID_PROPERTY),message));
+			String message = String.format(EVENT_CREATED_NOTIFICATION,data.name,id);
+			followerList.forEachRemaining(follower->{
+				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message)) {
+					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
+				}
+				
+			});
 
 			log.info(String.format(CREATE_EVENT_OK, data.name,eventKey.getId(),tokenId));
 
@@ -375,14 +400,14 @@ public class EventResource {
 				}
 			}
 			List<Key> toDelete = new LinkedList<>();
-			List<String> toNotify = new LinkedList<>();
+			List<Long> toNotify = new LinkedList<>();
 			toDelete.add(eventKey);
 	
 			QueryResults<ProjectionEntity> participantList = txn.run(participantQuery);
 			
 			participantList.forEachRemaining(participant->{
 				toDelete.add(participant.getKey());
-				toNotify.add(participant.getString(PARTICIPANT_ID_PROPERTY));
+				toNotify.add(participant.getLong(PARTICIPANT_ID_PROPERTY));
 			});
 			
 			Key[] keys = new Key[toDelete.size()];
@@ -609,9 +634,28 @@ public class EventResource {
 			}
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Key accountKey = accountList.next();
 	
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_ID_CONFLICT_ERROR, user));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			
 			Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND)
-					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(eventKey),PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, user))).build();
+					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(eventKey),PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, accountKey.getId()))).build();
 	
 			QueryResults<Key> participantList = txn.run(participantQuery);
 			if(participantList.hasNext()) {
@@ -623,7 +667,7 @@ public class EventResource {
 			Key participantKey = datastore.allocateId(participantKeyFactory.addAncestor(PathElement.of(EVENT_KIND, eventId)).newKey());
 	
 			Entity participant = Entity.newBuilder(participantKey)
-					.set(PARTICIPANT_ID_PROPERTY, user)
+					.set(PARTICIPANT_ID_PROPERTY, accountKey.getId())
 					.build();
 
 		
@@ -700,8 +744,26 @@ public class EventResource {
 	
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 			
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
+			
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, user));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Key accountKey = accountList.next();
+	
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_ID_CONFLICT_ERROR, user));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
 			Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND)
-					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(eventKey),PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, user))).build();
+					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(eventKey),PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, accountKey.getId()))).build();
 	
 			QueryResults<Key> participantList = txn.run(participantQuery);
 			if(!participantList.hasNext()) {
@@ -859,14 +921,14 @@ public class EventResource {
 			}
 	
 			List<Key> toDelete = new LinkedList<>();
-			List<String> toNotify = new LinkedList<>();
+			List<Long> toNotify = new LinkedList<>();
 			toDelete.add(eventKey);
 	
 			QueryResults<ProjectionEntity> participantList = txn.run(participantQuery);
 			
 			participantList.forEachRemaining(participant->{
 				toDelete.add(participant.getKey());
-				toNotify.add(participant.getString(PARTICIPANT_ID_PROPERTY));
+				toNotify.add(participant.getLong(PARTICIPANT_ID_PROPERTY));
 			});
 			
 			Key[] keys = new Key[toDelete.size()];
