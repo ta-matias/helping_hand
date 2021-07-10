@@ -74,6 +74,10 @@ public class AccountUtils {
 	private static final String DELETE_START = "Attempting to delete account [%s] with token (%d)";
 	private static final String DELETE_OK = "Successfully deleted account with token (%d)";
 	private static final String DELETE_BAD_DATA_ERROR = "Delete attempt failed due to bad inputs";
+	
+	private static final String GET_ACCOUNT_START = "Attempting to get account [%s] with token (%d)";
+	private static final String GET_ACCOUNT_OK = "Successfuly got account [%s] with token (%d)";
+	private static final String GET_ACCOUNT_BAD_DATA_ERROR = "Get account attempt failed due to bad inputs";
 
 	private static final String LOGIN_START = "Attempting to login into account [%s]";
 	private static final String LOGIN_FAILED = "Login failed for account [%s]";
@@ -275,7 +279,62 @@ public class AccountUtils {
 		}
 
 	}
+	
+	/**
+	 * Returns account data
+	 * @param id - id of the account
+	 * @param token - token performing request
+	 * @return account data
+	 */
+	protected Response getAccount(String id, String token) {
+		if(badString(id) || badString(token)) {
+			log.warning(GET_ACCOUNT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
 
+		long tokenId = Long.parseLong(token);
+
+		log.info(String.format(GET_ACCOUNT_START,id,tokenId));
+
+		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
+
+		if(account == null) {
+			log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+
+		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND, tokenId);
+
+		if(tokenEntity == null) {
+			log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+			return Response.status(Status.NOT_FOUND).build();
+		}
+
+		if(!tokenEntity.getString(AccessControlManager.TOKEN_OWNER_PROPERTY).equals(id)) {
+			Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
+			int minAccess = 1;//minimum access level required do execute this operation
+			if(role.getAccess() < minAccess) {
+				log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+		}
+
+	
+		Account data = new Account(
+				account.getString(ACCOUNT_ID_PROPERTY),
+				account.getString(ACCOUNT_EMAIL_PROPERTY),
+				account.getTimestamp(ACCOUNT_CREATION_PROPERTY).toString(),
+				account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY),
+				account.getBoolean(ACCOUNT_STATUS_PROPERTY)
+				);
+
+		log.info(String.format(GET_ACCOUNT_OK,id,tokenId));
+		return Response.ok(g.toJson(data)).build();
+	}
+	
+	
+	
+	
 	/**
 	 * It performs a login on the user/institution account.
 	 * @param data - The requested data to perform login.

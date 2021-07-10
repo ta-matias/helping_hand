@@ -89,6 +89,7 @@ public class UserResource extends AccountUtils {
 	private static final String LOGIN_PATH = "/{" + USER_ID_PARAM + "}/login";//POST
 	private static final String LOGOUT_PATH = "/{" + USER_ID_PARAM + "}/logout";//DELETE
 	private static final String DELETE_PATH ="/{" + USER_ID_PARAM + "}";//DELETE
+	private static final String GET_PATH ="/{" + USER_ID_PARAM + "}/account";//GET
 	private static final String UPDATE_ID_PATH="/{"+USER_ID_PARAM+"}/id";//PUT
 	private static final String UPDATE_PASSWORD_PATH ="/{" + USER_ID_PARAM + "}/password";//PUT
 	private static final String UPDATE_EMAIL_PATH = "/{" + USER_ID_PARAM + "}/email";//PUT
@@ -269,6 +270,12 @@ public class UserResource extends AccountUtils {
 		return super.deleteAccount(id,token);
 	}
 
+	@GET
+	@Path(GET_PATH)
+	public Response getAccount(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.getAccount(id, token);
+	}
+	
 	/**
 	 * It performs a login on the user account.
 	 * @param data - The requested data to perform login.
