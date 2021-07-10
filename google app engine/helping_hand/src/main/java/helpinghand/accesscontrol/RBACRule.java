@@ -19,6 +19,7 @@ public enum RBACRule {
 	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	CREATE_USER("POST_user", new Role[] {ALL}), //create a user account
 	DELETE_USER("DELETE_user", new Role[] {USER,GBO}), //delete a user account
+	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
 	LOGIN_USER("POST_user_login", new Role[] {ALL}), //login as a user
 	LOGOUT_USER("DELETE_user_logout", new Role[] {USER}), //logout as a user
 	UPDATE_USER_ID("PUT_user_id", new Role[] {USER,GBO}), // update a user's id
@@ -44,6 +45,7 @@ public enum RBACRule {
 	DELETE_INSTITUTION("DELETE_institution", new Role[] {INSTITUTION,GBO}), // delete an institution account
 	LOGIN_INSTITUTION("POST_institution_login", new Role[] {ALL}), // login as an institution
 	LOGOUT_INSTITUTION("DELETE_institution_logout", new Role[] {INSTITUTION}), // logout as an institution
+	GET_INSTITUTION("GET_institution_account", new Role[] {INSTITUTION,GBO}), //get institution account
 	UPDATE_INSTITUTION_ID("PUT_institution_id", new Role[] {INSTITUTION,GBO}), // update an institution's id
 	UPDATE_INSTITUTION_PASSWORD("PUT_institution_password", new Role[] {INSTITUTION,GBO}),// update an institution's password
 	UPDATE_INSTITUTION_EMAIL("PUT_institution_email", new Role[] {INSTITUTION,GBO}),// update an institution's email

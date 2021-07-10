@@ -85,6 +85,10 @@ public class AccountUtils {
 	private static final String DELETE_OK = "Successfully deleted account with token (%d)";
 	private static final String DELETE_BAD_DATA_ERROR = "Delete attempt failed due to bad inputs";
 
+	private static final String GET_ACCOUNT_START = "Attempting to get account [%s] with token (%d)";
+	private static final String GET_ACCOUNT_OK = "Successfuly got account [%s] with token (%d)";
+	private static final String GET_ACCOUNT_BAD_DATA_ERROR = "Get account attempt failed due to bad inputs";
+	
 	private static final String LOGIN_START = "Attempting to login into account [%s]";
 	private static final String LOGIN_FAILED = "Login failed for account [%s]";
 	private static final String LOGIN_OK = "Login successful for account [%s]";
@@ -315,6 +319,92 @@ public class AccountUtils {
 
 	}
 
+	/**
+	 * Returns account data
+	 * @param id - id of the account
+	 * @param token - token performing request
+	 * @return account data
+	 */
+	protected Response getAccount(String id, String token) {
+		if(badString(id) || badString(token)) {
+			log.warning(GET_ACCOUNT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+
+		long tokenId = Long.parseLong(token);
+
+		log.info(String.format(GET_ACCOUNT_START,id,tokenId));
+
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_EMAIL_PROPERTY,
+				ACCOUNT_CREATION_PROPERTY,ACCOUNT_VISIBILITY_PROPERTY,ACCOUNT_STATUS_PROPERTY)
+				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			ProjectionEntity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+
+
+			Account info = new Account(
+					account.getString(ACCOUNT_ID_PROPERTY),
+					account.getString(ACCOUNT_EMAIL_PROPERTY),
+					account.getTimestamp(ACCOUNT_CREATION_PROPERTY).toString(),
+					account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY),
+					account.getBoolean(ACCOUNT_STATUS_PROPERTY)
+					);
+			
+			log.info(String.format(GET_ACCOUNT_OK,id,tokenId));
+			return Response.ok(g.toJson(info)).build();
+			
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	
+	
 	/**
 	 * It performs a login on the user/institution account.
 	 * @param data - The requested data to perform login.

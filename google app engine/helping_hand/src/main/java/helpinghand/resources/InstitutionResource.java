@@ -92,6 +92,7 @@ public class InstitutionResource extends AccountUtils {
 	private static final String GET_INSTS_PATH="";//GET
 	private static final String CREATE_PATH=""; //POST
 	private static final String DELETE_PATH="/{"+INSTITUTION_ID_PARAM+"}"; //DELETE
+	private static final String GET_PATH ="/{" + INSTITUTION_ID_PARAM + "}/account";//GET
 	private static final String LOGIN_PATH="/{"+INSTITUTION_ID_PARAM+"}/login"; //POST
 	private static final String LOGOUT_PATH="/{"+INSTITUTION_ID_PARAM+"}/logout"; //POST
 	private static final String UPDATE_ID_PATH="/{"+INSTITUTION_ID_PARAM+"}/id";//PUT
@@ -277,6 +278,12 @@ public class InstitutionResource extends AccountUtils {
 	@Path(DELETE_PATH)
 	public Response deleteAccount(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.deleteAccount(id, token,Role.INSTITUTION);
+	}
+	
+	@GET
+	@Path(GET_PATH)
+	public Response getAccount(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.getAccount(id, token);
 	}
 
 	/**

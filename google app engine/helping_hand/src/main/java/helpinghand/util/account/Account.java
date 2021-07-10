@@ -1,28 +1,23 @@
 package helpinghand.util.account;
 
-import static helpinghand.util.GeneralUtils.EMAIL_REGEX;
-import static helpinghand.util.GeneralUtils.badString;
-
 public class Account {
 	
-	public String id, email;
-	public boolean status, visible;
+	
+	public String id;
+	public String email;
+	public String creation;
+	public boolean status;
+	public boolean visibility;
 	
 	public Account() {}
-	
-	public Account(String id, String email, boolean status, boolean visible) {
+
+	public Account(String id, String email,String creation, boolean status, boolean visibility) {
 		this.id = id;
 		this.email = email;
+		this.creation = creation;
 		this.status = status;
-		this.visible = visible;
+		this.visibility = visibility;
 	}
 	
-	public boolean badData() {
-		if(badString(id))
-			return true;
-		if(!email.matches(EMAIL_REGEX)) 
-			return true;
-		return false;
-	}
 	
 }
