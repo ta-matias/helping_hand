@@ -713,7 +713,7 @@ public class InstitutionResource extends AccountUtils {
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
-		Transaction txn = datastore.newTransaction();
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
@@ -751,11 +751,10 @@ public class InstitutionResource extends AccountUtils {
 			Query<Entity> memberQuery = Query.newEntityQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
 			QueryResults<Entity> memberList = txn.run(memberQuery);
 			txn.commit();
+			
 			List<String> members = new LinkedList<>();
-			while(memberList.hasNext()) {
-				members.add(memberList.next().getString(INSTITUTION_MEMBER_ID_PROPERTY));
-			}
-	
+			memberList.forEachRemaining(member->members.add(member.getString(INSTITUTION_MEMBER_ID_PROPERTY)));
+			
 			log.info(String.format(GET_MEMBERS_OK,id,token));
 			return Response.ok(g.toJson(members)).build();
 			

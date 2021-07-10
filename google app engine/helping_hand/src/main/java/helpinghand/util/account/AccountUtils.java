@@ -43,7 +43,6 @@ import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
-import static helpinghand.accesscontrol.AccessControlManager.endAllSessions;
 import static helpinghand.accesscontrol.AccessControlManager.startSession;
 import static helpinghand.accesscontrol.AccessControlManager.endSession;
 import static helpinghand.resources.EventResource.EVENT_KIND;
@@ -218,6 +217,7 @@ public class AccountUtils {
 
 		log.info(String.format(DELETE_START,id,tokenId));
 		
+		Query<Key> tokenQuery = Query.newKeyQueryBuilder().setKind(TOKEN_KIND).setFilter(PropertyFilter.eq(TOKEN_OWNER_PROPERTY, id)).build();
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, id)).build();
@@ -268,38 +268,33 @@ public class AccountUtils {
 			toDelete.add(accountKey);
 	
 			QueryResults<Key> childrenList = txn.run(childrenQuery);
-			while(childrenList.hasNext()) {
-				Key childKey = childrenList.next();
-				if(!childKey.getKind().equals(EVENT_KIND)) {
-					toDelete.add(childKey);
-				}
-			}
+			childrenList.forEachRemaining(child->{if(!child.getKind().equals(EVENT_KIND))toDelete.add(child);});
 	
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
 				QueryResults<Key> participantList = txn.run(participantQuery);
 				QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
 				
-				while(memberList.hasNext()) {
-					toDelete.add(memberList.next());
-				}
-				while(participantList.hasNext()) {
-					toDelete.add(participantList.next());
-				}
-				while(helperList.hasNext()) {
-					ProjectionEntity helper =helperList.next();
+				memberList.forEachRemaining(membership->toDelete.add(membership));
+				participantList.forEachRemaining(participation->toDelete.add(participation));
+				
+				helperList.forEachRemaining(helper->{
 					toDelete.add(helper.getKey());
 					if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
 						//TODO:notify help creator
 					}
-				}
+				});
 			}
-	
-			if(!endAllSessions(id)) {
-				log.warning(String.format(LOGOUT_FAILED, tokenId));
-				return Response.status(Status.FORBIDDEN).build();
-			}
-	
+			
+			//end all account sessions(delete tokens)
+			QueryResults<Key> tokenList = txn.run(tokenQuery);
+			tokenList.forEachRemaining(key->toDelete.add(key));
+			
+
+
+			
+
+			//convert list to Key array
 			Key[] keys = new Key[toDelete.size()];
 			toDelete.toArray(keys);
 
@@ -1116,12 +1111,7 @@ public class AccountUtils {
 			txn.commit();
 			
 			List<String[]> events = new LinkedList<>();
-			while(eventList.hasNext()) {
-				Entity event = eventList.next();
-				events.add(new String[] {Long.toString(event.getKey().getId()),
-						event.getString(EVENT_NAME_PROPERTY),
-						Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))});
-			}
+			eventList.forEachRemaining(event->events.add(new String[] {Long.toString(event.getKey().getId()),event.getString(EVENT_NAME_PROPERTY),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))}));
 	
 			log.info(String.format(GET_EVENTS_OK,id,tokenId));
 	
@@ -1205,11 +1195,7 @@ public class AccountUtils {
 			txn.commit();
 			
 			List<String[]> helps = new LinkedList<>();
-			while(helpList.hasNext()) {
-				Entity help = helpList.next();
-				helps.add(new String[] {Long.toString(help.getKey().getId()),
-						help.getString(HELP_NAME_PROPERTY)});
-			}
+			helpList.forEachRemaining(help->helps.add(new String[] {Long.toString(help.getKey().getId()),help.getString(HELP_NAME_PROPERTY)}));
 	
 			log.info(String.format(GET_HELP_OK,id,tokenId));
 			return Response.ok(g.toJson(helps)).build();

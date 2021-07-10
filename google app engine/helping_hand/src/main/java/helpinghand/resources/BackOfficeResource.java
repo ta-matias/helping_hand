@@ -19,13 +19,12 @@ import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
-import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
-import helpinghand.util.QueryUtils;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
+import static helpinghand.accesscontrol.AccessControlManager.updateTokenRole;
 import static helpinghand.resources.UserResource.USER_ID_PARAM;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
@@ -34,6 +33,7 @@ import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ROLE_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_STATUS_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_CREATION_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 /**
  * @author PogChamp Software
@@ -52,12 +52,12 @@ public class BackOfficeResource {
 	private static final String UPDATE_ACCOUNT_ROLE_START = "Attempting to update role of user [%s] to [%s]";
 	private static final String UPDATE_ACCOUNT_ROLE_OK = "Successfulty to updated role of user [%s] to [%s]";
 	private static final String UPDATE_ACCOUNT_ROLE_BAD_DATA_ERROR = "Update role attempt failed due to bad inputs";
-	private static final String UPDATE_ACCOUNT_ROLE_UPDATE_ERROR = "Update account role attempt failed while changing account's role";
 
 	private static final String UPDATE_TOKEN_ROLE_START = "Attempting to update current role of token (%d) to [%s]";
 	private static final String UPDATE_TOKEN_ROLE_OK = "Successfulty to updated current role of token (%d) to [%s]";
 	private static final String UPDATE_TOKEN_ROLE_BAD_DATA_ERROR = "Update current token role attempt failed due to bad inputs";
 	private static final String UPDATE_TOKEN_ROLE_UPDATE_ERROR = "Update current token role attempt failed while changing account's role";
+	private static final String SU_CHANGE_ERROR ="Error in AccessControlManager: There was an attempt to change role of SuperUser [%s]";
 
 	private static final String LIST_ROLE_START = "Attempting to get [%s] accounts with token (%d)";
 	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token (%d)";
@@ -112,41 +112,81 @@ public class BackOfficeResource {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(UPDATE_ACCOUNT_ROLE_START, id, role));
+		
+		Key tokenKey = datastore.newKeyFactory().setKind(TOKEN_KIND).newKey(tokenId);
+		
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
+		Transaction txn =  datastore.newTransaction();
+		try {
+		
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			QueryResults<Entity> accountList = txn.run(accountQuery);	
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+				return null;
+			}
+			
+			Entity oldAccount =accountList.next();
+	
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
+				return null;
+			}
+	
+			Role accountRole = Role.getRole(oldAccount.getString(ACCOUNT_ROLE_PROPERTY));
+			
+			if(accountRole.equals(Role.SU)) {
+				txn.rollback();
+				log.severe(String.format(SU_CHANGE_ERROR, id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+	
+			if(tokenRole.getAccess() <= accountRole.getAccess()) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_JURISDICTION_ERROR,tokenId,tokenRole.getAccess(),oldAccount.getString(ACCOUNT_ID_PROPERTY),accountRole.getAccess()));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+	
+			if(tokenRole.getAccess() < targetRole.getAccess()) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_POWER_ERROR, tokenId,tokenRole.getAccess(),targetRole.getAccess()));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			
+			Entity newAccount = Entity.newBuilder(oldAccount)
+					.set("role", targetRole.name())
+					.build();
 
-		Entity account = QueryUtils.getEntityByProperty(ACCOUNT_KIND, ACCOUNT_ID_PROPERTY, id);
-
-		if(account == null) {
-			log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Entity tokenEntity = QueryUtils.getEntityById(TOKEN_KIND,tokenId);
-
-		if(tokenEntity == null) {
-			log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-			return Response.status(Status.NOT_FOUND).build();
-		}
-
-		Role tokenRole = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-		Role accountRole = Role.getRole(account.getString(ACCOUNT_ROLE_PROPERTY));
-
-		if(tokenRole.getAccess() <= accountRole.getAccess()) {
-			log.warning(String.format(TOKEN_JURISDICTION_ERROR,tokenId,tokenRole.getAccess(),account,accountRole.getAccess()));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		if(tokenRole.getAccess() < targetRole.getAccess()) {
-			log.warning(String.format(TOKEN_POWER_ERROR, tokenId,tokenRole.getAccess(),targetRole.getAccess()));
-			return Response.status(Status.FORBIDDEN).build();
-		}
-
-		if(AccessControlManager.updateAccountRole(id,targetRole)) {
+			txn.update(newAccount);
+			txn.commit();
+			
 			log.info(String.format(UPDATE_ACCOUNT_ROLE_OK ,id,targetRole.name()));
 			return Response.ok().build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 		}
-
-		log.severe(UPDATE_ACCOUNT_ROLE_UPDATE_ERROR);
-		return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 	}
 
 	/**
@@ -171,7 +211,7 @@ public class BackOfficeResource {
 
 		log.info(String.format(UPDATE_TOKEN_ROLE_START,tokenId, role));
 
-		if(AccessControlManager.updateTokenRole(tokenId, targetRole)){
+		if(updateTokenRole(tokenId, targetRole)){
 			log.info(String.format(UPDATE_TOKEN_ROLE_OK, tokenId,role));
 			return Response.ok().build();
 		}
@@ -200,12 +240,30 @@ public class BackOfficeResource {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(LIST_ROLE_START,roleParam.name(),tokenId));
-
-		List<Entity> entities = QueryUtils.getEntityListByProperty(ACCOUNT_KIND, ACCOUNT_ROLE_PROPERTY, roleParam.name());
-		List<String[]> data = entities.stream().map(entity->new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))}).collect(Collectors.toList());
-
-		log.info(String.format(LIST_ROLE_OK, roleParam.name(),tokenId));
-		return Response.ok(g.toJson(data)).build();
+		
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_ROLE_PROPERTY,ACCOUNT_STATUS_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, role)).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+			QueryResults<ProjectionEntity> accounts = txn.run(accountQuery);
+			txn.commit();
+			List<String[]> data = new LinkedList<>();
+			accounts.forEachRemaining(account->data.add(new String[] {account.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(account.getBoolean(ACCOUNT_STATUS_PROPERTY))}));
+			
+	
+			log.info(String.format(LIST_ROLE_OK, roleParam.name(),tokenId));
+			return Response.ok(g.toJson(data)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
 	}
 
 	/**
