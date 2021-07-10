@@ -21,6 +21,8 @@ import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.LoginInfo;
 import helpinghand.accesscontrol.Role;
+import helpinghand.util.event.EventData;
+import helpinghand.util.help.HelpData;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -46,15 +48,17 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.accesscontrol.AccessControlManager.startSession;
 import static helpinghand.accesscontrol.AccessControlManager.endSession;
 import static helpinghand.resources.EventResource.EVENT_KIND;
-import static helpinghand.resources.EventResource.EVENT_NAME_PROPERTY;
+import static helpinghand.resources.EventResource.EVENT_CREATOR_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
 import static helpinghand.resources.EventResource.PARTICIPANT_KIND;
 import static helpinghand.resources.EventResource.PARTICIPANT_ID_PROPERTY;
+import static helpinghand.resources.EventResource.cancelEvent;
 import static helpinghand.resources.HelpResource.HELP_KIND;
-import static helpinghand.resources.HelpResource.HELP_NAME_PROPERTY;
+import static helpinghand.resources.HelpResource.HELP_CREATOR_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_KIND;
 import static helpinghand.resources.HelpResource.HELPER_ID_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_CURRENT_PROPERTY;
+import static helpinghand.resources.HelpResource.cancelHelp;
 /**
  * @author PogChamp Software
  *
@@ -224,6 +228,12 @@ public class AccountUtils {
 		Query<Key> tokenQuery = Query.newKeyQueryBuilder().setKind(TOKEN_KIND).setFilter(PropertyFilter.eq(TOKEN_OWNER_PROPERTY, id)).build();
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Query<ProjectionEntity> eventQuery = Query.newProjectionEntityQueryBuilder().setProjection(EVENT_CREATOR_PROPERTY, EVENT_STATUS_PROPERTY)
+				.setKind(EVENT_KIND).setFilter(PropertyFilter.eq(EVENT_CREATOR_PROPERTY, id)).build();
+		
+		Query<Key> helpQuery = Query.newKeyQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.eq(HELP_CREATOR_PROPERTY, id)).build();
+		
 		Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, id)).build();
 		Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, id)).build();
 		Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, id)).build();
@@ -272,7 +282,24 @@ public class AccountUtils {
 			toDelete.add(accountKey);
 	
 			QueryResults<Key> childrenList = txn.run(childrenQuery);
-			childrenList.forEachRemaining(child->{if(!child.getKind().equals(EVENT_KIND))toDelete.add(child);});
+			childrenList.forEachRemaining(child->toDelete.add(child));
+			
+			QueryResults<ProjectionEntity> eventList = txn.run(eventQuery);
+			eventList.forEachRemaining(event->{
+				if(event.getBoolean(EVENT_STATUS_PROPERTY)) {
+					cancelEvent(event.getKey().getId());
+				}
+			});
+			
+			
+			
+			QueryResults<Key> helpList = txn.run(helpQuery);
+			helpList.forEachRemaining(help->cancelHelp(help.getId()));
+			
+			
+			
+			
+			//TODO:cancel ongoing events and help requests
 	
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
@@ -1155,21 +1182,22 @@ public class AccountUtils {
 
 		log.info(String.format(GET_EVENTS_START,id,tokenId));
 		
-		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> eventQuery = Query.newEntityQueryBuilder().setKind(EVENT_KIND).setFilter(PropertyFilter.eq(EVENT_CREATOR_PROPERTY,id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<Key> accountList = txn.run(accountQuery);
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			Key accountKey = accountList.next();
+			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -1185,7 +1213,7 @@ public class AccountUtils {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 	
-			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
 				if(role.getAccess() < minAccess) {
@@ -1195,13 +1223,13 @@ public class AccountUtils {
 				}
 			}
 			
-			Query<Entity> eventQuery = Query.newEntityQueryBuilder().setKind(EVENT_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
 			
 			QueryResults<Entity> eventList = txn.run(eventQuery);
 			txn.commit();
 			
-			List<String[]> events = new LinkedList<>();
-			eventList.forEachRemaining(event->events.add(new String[] {Long.toString(event.getKey().getId()),event.getString(EVENT_NAME_PROPERTY),Boolean.toString(event.getBoolean(EVENT_STATUS_PROPERTY))}));
+			List<EventData> events = new LinkedList<>();
+			eventList.forEachRemaining(event->events.add(new EventData(event)));
 	
 			log.info(String.format(GET_EVENTS_OK,id,tokenId));
 	
@@ -1239,21 +1267,22 @@ public class AccountUtils {
 
 		log.info(String.format(GET_HELP_START,id,tokenId));
 
-		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> helpQuery = Query.newEntityQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.eq(HELP_CREATOR_PROPERTY,id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<Key> accountList = txn.run(accountQuery);
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			Key accountKey = accountList.next();
+			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -1269,7 +1298,7 @@ public class AccountUtils {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 	
-			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+			if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
 				if(role.getAccess() < minAccess) {
@@ -1279,13 +1308,12 @@ public class AccountUtils {
 				}
 			}
 			
-			Query<Entity> helpQuery = Query.newEntityQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
 			
 			QueryResults<Entity> helpList = txn.run(helpQuery);
 			txn.commit();
 			
-			List<String[]> helps = new LinkedList<>();
-			helpList.forEachRemaining(help->helps.add(new String[] {Long.toString(help.getKey().getId()),help.getString(HELP_NAME_PROPERTY)}));
+			List<HelpData> helps = new LinkedList<>();
+			helpList.forEachRemaining(help->helps.add(new HelpData(help)));
 	
 			log.info(String.format(GET_HELP_OK,id,tokenId));
 			return Response.ok(g.toJson(helps)).build();

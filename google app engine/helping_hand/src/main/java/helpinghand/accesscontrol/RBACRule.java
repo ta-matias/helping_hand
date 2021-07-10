@@ -80,7 +80,6 @@ public enum RBACRule {
 	LEAVE_EVENT("DELETE_event_leave", new Role[] {USER}), // remove a participant from the event
 	LIST_EVENT_PARTICIPANTS("GET_event_list", new Role[] {USER,INSTITUTION,GBO}), // list all participants of the event
 	GET_EVENT_STATUS("GET_event_status", new Role[] {USER,INSTITUTION,GBO}), // get the event's status
-	UPDATE_EVENT_STATUS("PUT_event_status", new Role[] {USER,INSTITUTION,GBO}), // update the event's status
 	
 	//HelpResource
 	GET_ALL_HELP("GET_help", new Role[] {USER,GBO}), // list all helps

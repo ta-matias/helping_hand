@@ -39,7 +39,6 @@ import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.AccessControlManager;
 import helpinghand.accesscontrol.Role;
-import helpinghand.util.QueryUtils;
 import helpinghand.util.help.*;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
@@ -128,13 +127,9 @@ public class HelpResource {
 	public static final String HELP_KIND = "Help";
 	public static final String HELP_NAME_PROPERTY = "name";
 	public static final String HELP_CREATOR_PROPERTY = "creator";
-	private static final String HELP_DESCRIPTION_PROPERTY = "description";
-	private static final String HELP_TIME_PROPERTY = "time";
-	private static final String HELP_PERMANENT_PROPERTY = "permanent";
-	private static final String HELP_LOCATION_PROPERTY = "location";
-	private static final String HELP_STATUS_PROPERTY = "status";
-	private static final String HELP_CONDITIONS_PROPERTY = "conditions";
-	private static final boolean HELP_STATUS_INITIAL = true;
+	public static final String HELP_DESCRIPTION_PROPERTY = "description";
+	public static final String HELP_TIME_PROPERTY = "time";
+	public static final String HELP_LOCATION_PROPERTY = "location";
 
 	private static final String HELPER_ID_PARAM ="helperId";
 	public static final String HELPER_KIND ="Helper";
@@ -142,7 +137,7 @@ public class HelpResource {
 	public static final String HELPER_CURRENT_PROPERTY = "current";
 
 	private static final Logger log = Logger.getLogger(HelpResource.class.getName());
-	private final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 
 	private final Gson g = new Gson();
 
