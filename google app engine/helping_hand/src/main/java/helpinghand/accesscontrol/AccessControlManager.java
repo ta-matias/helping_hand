@@ -49,6 +49,7 @@ public class AccessControlManager {
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in AccessControlManager: Transaction was active";
 	
 	private static final String RBAC_NOT_FOUND_ERROR = "Error in AccessControlManager: RBAC for operation [%s] does not exist";
+	private static final String RBAC_PARTIAL_INITIALIZATION_ERROR = "Warning in AccessControlManager: RBAC not fully initialized, some rules are missing from database";
 	private static final String MULTIPLE_RBAC_OPERATION_ERROR = "Error in AccessControlManager: Multiple RBAC  rules for operation [%s] registered";
 	private static final String USER_ACCESS_INSUFFICIENT_ERROR = "Error in AccessControlManager: Token of user [%s] cannot be elevate to [%s] due to low access level (%d) < (%d)";
 
@@ -87,8 +88,10 @@ public class AccessControlManager {
 			
 			AtomicInteger numRules = new AtomicInteger();
 			rbacList.forEachRemaining(rule->numRules.incrementAndGet());
-			
-			return numRules.get() == RBACRule.values().length;
+			if(numRules.get() != RBACRule.values().length) {
+				log.warning(RBAC_PARTIAL_INITIALIZATION_ERROR);
+			}
+			return numRules.get() > 0;
 			
 			
 		}catch(DatastoreException e) {

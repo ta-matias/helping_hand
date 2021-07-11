@@ -16,12 +16,12 @@ import com.google.cloud.datastore.ListValue;
 public enum RBACRule {
 	
 	//UserResource
-	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	CREATE_USER("POST_user", new Role[] {ALL}), //create a user account
 	DELETE_USER("DELETE_user", new Role[] {USER,GBO}), //delete a user account
-	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
 	LOGIN_USER("POST_user_login", new Role[] {ALL}), //login as a user
 	LOGOUT_USER("DELETE_user_logout", new Role[] {USER}), //logout as a user
+	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
+	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	UPDATE_USER_ID("PUT_user_id", new Role[] {USER,GBO}), // update a user's id
 	UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password
 	UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,GBO}), // update a user's email
@@ -38,14 +38,15 @@ public enum RBACRule {
 	UFOLLOW("DELETE_user_follow",new Role[] {USER}), // user unfollows another user
 	GET_USER_EVENTS("GET_user_events",new Role[] {USER,INSTITUTION,GBO}), // list all events created by the user
 	GET_USER_HELP("GET_user_help",new Role[] {USER,INSTITUTION,GBO}),  // list all help requests created by the user
+	GET_USER_ROUTES("GET_user_route",new Role[] {USER,GBO}),  // list all routes created by the user TODO
 	
 	//Institution Resource
-	GET_ALL_INSTITUTIONS("GET_institution", new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)
 	CREATE_INSTITUTION("POST_institution", new Role[] {ALL}), //create an institution account
 	DELETE_INSTITUTION("DELETE_institution", new Role[] {INSTITUTION,GBO}), // delete an institution account
 	LOGIN_INSTITUTION("POST_institution_login", new Role[] {ALL}), // login as an institution
 	LOGOUT_INSTITUTION("DELETE_institution_logout", new Role[] {INSTITUTION}), // logout as an institution
 	GET_INSTITUTION("GET_institution_account", new Role[] {INSTITUTION,GBO}), //get institution account
+	GET_ALL_INSTITUTIONS("GET_institution", new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)
 	UPDATE_INSTITUTION_ID("PUT_institution_id", new Role[] {INSTITUTION,GBO}), // update an institution's id
 	UPDATE_INSTITUTION_PASSWORD("PUT_institution_password", new Role[] {INSTITUTION,GBO}),// update an institution's password
 	UPDATE_INSTITUTION_EMAIL("PUT_institution_email", new Role[] {INSTITUTION,GBO}),// update an institution's email
@@ -70,28 +71,40 @@ public enum RBACRule {
 	GET_DAILY_STATS("GET_restricted_dailyUsers", new Role[] {GBO}),// get number of accounts created between 2 dates
 	
 	//EventResource
-	GET_ALL_EVENTS("GET_event", new Role[] {USER,INSTITUTION,GBO}), // list all events
 	CREATE_EVENT("POST_event", new Role[] {USER,INSTITUTION}), // create an event
+	UPDATE_EVENT("PUT_event", new Role[] {USER,INSTITUTION}), // update the event's data
 	CANCEL_EVENT("DELETE_event", new Role[] {USER,INSTITUTION,GBO}), // cancel an event
 	END_EVENT("PUT_event_end", new Role[] {USER,INSTITUTION}), // finish an event
 	GET_EVENT("GET_event_get", new Role[] {USER,INSTITUTION,GBO}), // get the event's data
-	UPDATE_EVENT("PUT_event", new Role[] {USER,INSTITUTION}), // update the event's data
+	GET_ALL_EVENTS("GET_event", new Role[] {USER,INSTITUTION,GBO}), // list all events
 	JOIN_EVENT("POST_event_join", new Role[] {USER}), // add a participant to the event
 	LEAVE_EVENT("DELETE_event_leave", new Role[] {USER}), // remove a participant from the event
 	LIST_EVENT_PARTICIPANTS("GET_event_list", new Role[] {USER,INSTITUTION,GBO}), // list all participants of the event
-	GET_EVENT_STATUS("GET_event_status", new Role[] {USER,INSTITUTION,GBO}), // get the event's status
 	
 	//HelpResource
-	GET_ALL_HELP("GET_help", new Role[] {USER,GBO}), // list all helps
 	CREATE_HELP("POST_help", new Role[] {USER,INSTITUTION}), // create a help
 	UPDATE_HELP("PUT_help", new Role[] {USER,INSTITUTION}), // update the help's data
-	GET_HELP("GET_help", new Role[] {USER,INSTITUTION}), // update the help's data
 	CANCEL_HELP("DELETE_help", new Role[] {USER,INSTITUTION,GBO}), // cancel a help
 	FINISH_HELP("PUT_help_finish", new Role[] {USER,INSTITUTION}), // finish a help
+	GET_HELP("GET_help_get", new Role[] {USER,INSTITUTION}), // update the help's data
+	GET_ALL_HELP("GET_help", new Role[] {USER,GBO}), // list all helps
 	OFFER_HELP("POST_help_offer", new Role[] {USER}), // add a participant to help
 	LEAVE_HELP("DELETE_help_leave", new Role[] {USER}), // remove a participant from help
 	LIST_HELPERS("GET_help_helper", new Role[] {USER,INSTITUTION}), // choose a helper.
-	CHOOSE_HELPER("PUT_help_helper", new Role[] {USER,INSTITUTION}); // choose a helper.
+	CHOOSE_HELPER("PUT_help_helper", new Role[] {USER,INSTITUTION}), // choose a helper.
+	
+	//RouteResource
+	CREATE_ROUTE("POST_route", new Role[] {USER}),//create a route TODO
+	DELETE_ROUTE("DELETE_route",new Role[] {USER,GBO}),//delete a route TODO
+	UPDATE_ROUTE("PUT_route",new Role[] {USER}), //change route info TODO
+	GET_ROUTE("GET_route_get", new Role[] {USER,GBO}),//get route info TODO
+	LIST_ROUTES("GET_route",new Role[] {USER,GBO}), // list all route's info TODO
+	START_ROUTE("PUT_route_start",new Role[] {USER}), //start doing a route TODO
+	END_ROUTE("PUT_route_end",new Role[] {USER}); //finish doing a route TODO
+	
+	
+	
+	
 	
 	public String operation;
 	public Role[] permitted;

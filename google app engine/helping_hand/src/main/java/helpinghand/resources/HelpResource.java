@@ -129,16 +129,16 @@ public class HelpResource {
 	private static final String RATING_PARAM = "rating";
 
 	public static final String PATH = "/help";
-	private static final String LIST_PATH ="";//GET
 	private static final String CREATE_PATH = "";//POST
 	private static final String UPDATE_PATH = "/{"+HELP_ID_PARAM+"}";//PUT
-	private static final String GET_PATH = "/{"+HELP_ID_PARAM+"}";//GET
 	private static final String CANCEL_PATH = "/{"+HELP_ID_PARAM+"}";//DELETE
 	private static final String FINISH_PATH = "/{"+HELP_ID_PARAM+"}/finish";//PUT
-	private static final String CHOOSE_HELPER_PATH = "/{"+HELP_ID_PARAM+"}/helper";//PUT
-	private static final String LIST_HELPERS_PATH = "/{"+HELP_ID_PARAM+"}/helper";//GET
+	private static final String GET_PATH = "/{"+HELP_ID_PARAM+"}/get";//GET
+	private static final String LIST_PATH ="";//GET
 	private static final String OFFER_HELP_PATH = "/{"+HELP_ID_PARAM+"}/offer";//PUT
 	private static final String LEAVE_HELP_PATH = "/{"+HELP_ID_PARAM+"}/leave";//PUT
+	private static final String LIST_HELPERS_PATH = "/{"+HELP_ID_PARAM+"}/helper";//GET
+	private static final String CHOOSE_HELPER_PATH = "/{"+HELP_ID_PARAM+"}/helper";//PUT
 
 
 	public static final String HELP_KIND = "Help";
@@ -974,16 +974,8 @@ public class HelpResource {
 			
 			if(helperList.hasNext()) {
 				txn.rollback();
-				log.warning(String.format(HELPER_CONFLICT_ERROR, helpId));
+				log.warning(String.format(HELPER_CONFLICT_ERROR, user,helpId));
 				return Response.status(Status.CONFLICT).build();
-			}
-			
-			helperList.next();
-	
-			if(helperList.hasNext()) {
-				txn.rollback();
-				log.warning(MULTIPLE_HELPER_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 	
 	
@@ -1085,7 +1077,7 @@ public class HelpResource {
 			
 			if(!helperList.hasNext()) {
 				txn.rollback();
-				log.warning(String.format(HELPER_NOT_FOUND_ERROR, helpId));
+				log.warning(String.format(HELPER_NOT_FOUND_ERROR, user,helpId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
