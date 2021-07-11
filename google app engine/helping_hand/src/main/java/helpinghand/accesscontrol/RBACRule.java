@@ -22,7 +22,6 @@ public enum RBACRule {
 	LOGOUT_USER("DELETE_user_logout", new Role[] {USER}), //logout as a user
 	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
 	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
-	UPDATE_USER_ID("PUT_user_id", new Role[] {USER,GBO}), // update a user's id
 	UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password
 	UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,GBO}), // update a user's email
 	UPDATE_USER_STATUS("PUT_user_status", new Role[] {USER,GBO}), //update a user's status
@@ -38,7 +37,7 @@ public enum RBACRule {
 	UFOLLOW("DELETE_user_follow",new Role[] {USER}), // user unfollows another user
 	GET_USER_EVENTS("GET_user_events",new Role[] {USER,INSTITUTION,GBO}), // list all events created by the user
 	GET_USER_HELP("GET_user_help",new Role[] {USER,INSTITUTION,GBO}),  // list all help requests created by the user
-	GET_USER_ROUTES("GET_user_route",new Role[] {USER,GBO}),  // list all routes created by the user TODO
+	GET_USER_ROUTES("GET_user_routes",new Role[] {USER,GBO}),  // list all routes created by the user 
 	
 	//Institution Resource
 	CREATE_INSTITUTION("POST_institution", new Role[] {ALL}), //create an institution account
@@ -47,7 +46,6 @@ public enum RBACRule {
 	LOGOUT_INSTITUTION("DELETE_institution_logout", new Role[] {INSTITUTION}), // logout as an institution
 	GET_INSTITUTION("GET_institution_account", new Role[] {INSTITUTION,GBO}), //get institution account
 	GET_ALL_INSTITUTIONS("GET_institution", new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)
-	UPDATE_INSTITUTION_ID("PUT_institution_id", new Role[] {INSTITUTION,GBO}), // update an institution's id
 	UPDATE_INSTITUTION_PASSWORD("PUT_institution_password", new Role[] {INSTITUTION,GBO}),// update an institution's password
 	UPDATE_INSTITUTION_EMAIL("PUT_institution_email", new Role[] {INSTITUTION,GBO}),// update an institution's email
 	UPDATE_INSTITUTION_STATUS("PUT_institution_status", new Role[] {INSTITUTION,GBO}),// update an institution's status
@@ -56,13 +54,14 @@ public enum RBACRule {
 	GET_INSTITUTION_INFO("GET_institution_info", new Role[] {USER,INSTITUTION,GBO}), // get an institution's account info
 	UPDATE_INSTITUTION_PROFILE("PUT_institution_profile", new Role[] {INSTITUTION,GBO}),// update an institution's profile
 	GET_INSTITUTION_PROFILE("GET_institution_profile", new Role[] {USER,INSTITUTION,GBO}),  // get an institution's profile
+	GET_INSTITUTION_FEED("GET_institution_feed", new Role[] {INSTITUTION}), // get all institution's feeds
+	UPDATE_INSTITUTION_FEED("PUT_institution_feed", new Role[] {INSTITUTION}), // update a institution feed
 	GET_INSTITUTION_MEMBERS("GET_institution_members", new Role[] {USER,INSTITUTION,GBO}), //list an institution's members
 	ADD_INSTITUTION_MEMBER("POST_institution_members", new Role[] {INSTITUTION}), // add a member to an institution 
 	REMOVE_INSTITUTION_MEMBER("DELETE_institution_members", new Role[] {INSTITUTION}), // remove a member from an institution
 	GET_INSTITUTION_EVENTS("GET_institution_events",new Role[] {USER,INSTITUTION,GBO}), // lists all events created by the institution
 	GET_INSTITUTION_HELP("GET_institution_help",new Role[] {USER,INSTITUTION,GBO}), // lists all help requests created by the institution
-	GET_INSTITUTION_FEED("GET_institution_feed", new Role[] {INSTITUTION}), // get all institution's feeds
-	UPDATE_INSTITUTION_FEED("PUT_institution_feed", new Role[] {INSTITUTION}), // update a institution feed
+	GET_INSTITUTION_ROUTES("GET_institution_routes",new Role[] {USER,INSTITUTION,GBO}), // lists all routes created by the institution
 	
 	//BackofficeResource
 	UPDATE_USER_ROLE("PUT_restricted_updateAccountRole", new Role[] {SU}), // update a user account's role
@@ -94,13 +93,13 @@ public enum RBACRule {
 	CHOOSE_HELPER("PUT_help_helper", new Role[] {USER,INSTITUTION}), // choose a helper.
 	
 	//RouteResource
-	CREATE_ROUTE("POST_route", new Role[] {USER}),//create a route TODO
-	DELETE_ROUTE("DELETE_route",new Role[] {USER,GBO}),//delete a route TODO
-	UPDATE_ROUTE("PUT_route",new Role[] {USER}), //change route info TODO
-	GET_ROUTE("GET_route_get", new Role[] {USER,GBO}),//get route info TODO
-	LIST_ROUTES("GET_route",new Role[] {USER,GBO}), // list all route's info TODO
-	START_ROUTE("PUT_route_start",new Role[] {USER}), //start doing a route TODO
-	END_ROUTE("PUT_route_end",new Role[] {USER}); //finish doing a route TODO
+	CREATE_ROUTE("POST_route", new Role[] {USER,INSTITUTION}),//create a route 
+	DELETE_ROUTE("DELETE_route",new Role[] {USER,INSTITUTION,GBO}),//delete a route 
+	UPDATE_ROUTE("PUT_route",new Role[] {USER,INSTITUTION}), //change route info 
+	GET_ROUTE("GET_route_get", new Role[] {USER,INSTITUTION,GBO}),//get route info 
+	LIST_ROUTES("GET_route",new Role[] {USER,INSTITUTION,GBO}), // list all route's info 
+	START_ROUTE("PUT_route_start",new Role[] {USER,INSTITUTION}), //start doing a route TODO
+	END_ROUTE("PUT_route_end",new Role[] {USER,INSTITUTION}); //finish doing a route TODO
 	
 	
 	

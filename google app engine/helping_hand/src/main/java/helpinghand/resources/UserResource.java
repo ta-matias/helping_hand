@@ -94,7 +94,6 @@ public class UserResource extends AccountUtils {
 	private static final String LOGOUT_PATH = "/{" + USER_ID_PARAM + "}/logout";//DELETE
 	private static final String DELETE_PATH ="/{" + USER_ID_PARAM + "}";//DELETE
 	private static final String GET_PATH ="/{" + USER_ID_PARAM + "}/account";//GET
-	private static final String UPDATE_ID_PATH="/{"+USER_ID_PARAM+"}/id";//PUT
 	private static final String UPDATE_PASSWORD_PATH ="/{" + USER_ID_PARAM + "}/password";//PUT
 	private static final String UPDATE_EMAIL_PATH = "/{" + USER_ID_PARAM + "}/email";//PUT
 	private static final String UPDATE_STATUS_PATH="/{"+USER_ID_PARAM+"}/status";//PUT
@@ -103,6 +102,7 @@ public class UserResource extends AccountUtils {
 	private static final String GET_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//GET
 	private static final String GET_EVENTS_PATH = "/{" + USER_ID_PARAM + "}/events";//GET
 	private static final String GET_HELP_PATH = "/{" + USER_ID_PARAM + "}/help";//GET
+	private static final String GET_ROUTES_PATH = "/{" + USER_ID_PARAM + "}/routes";//GET
 	private static final String UPDATE_PROFILE_PATH ="/{" + USER_ID_PARAM + "}/profile";//PUT
 	private static final String GET_PROFILE_PATH = "/{" + USER_ID_PARAM + "}/profile";//GET
 	private static final String GET_FEED_PATH = "/{" + USER_ID_PARAM + "}/feed";//GET
@@ -322,26 +322,6 @@ public class UserResource extends AccountUtils {
 	}
 
 	/**
-	 * Updates the identification of the user.
-	 * @param id - The identification of the user to be updated
-	 * @param data - The updated id data for the user.
-	 * @param token - The token of the user requesting the change of the id.
-	 * @return 200, if the identification change was successful.
-	 * 		   400, if the data is invalid.
-	 * 		   403, if the password is not the current password for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
-	 * 		   409, if there is already an account with this id.
-	 * 		   500, otherwise.
-	 */
-	@PUT
-	@Path(UPDATE_ID_PATH)
-	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateId(@PathParam(USER_ID_PARAM)String id, ChangeId data, @QueryParam(TOKEN_ID_PARAM)String token) {
-		return super.updateId(id, data, token);
-	}
-
-	/**
 	 * Updates the password of the user account.
 	 * @param id - The identification of the user.
 	 * @param data - The updated password data for the user account.
@@ -481,6 +461,13 @@ public class UserResource extends AccountUtils {
 	public Response getAccountHelpRequests(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return super.getAccountHelpRequests(id, token);
 	}
+	
+	@GET
+	@Path(GET_ROUTES_PATH)
+	public Response getAccountRoutes(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.getAccountRoutes(id, token);
+	}
+	
 
 	/**
 	 * Obtains the profile of the user.

@@ -24,6 +24,7 @@ import helpinghand.accesscontrol.LoginInfo;
 import helpinghand.accesscontrol.Role;
 import helpinghand.util.event.EventData;
 import helpinghand.util.help.HelpData;
+import helpinghand.util.route.Route;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -60,6 +61,8 @@ import static helpinghand.resources.HelpResource.HELPER_KIND;
 import static helpinghand.resources.HelpResource.HELPER_ID_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_CURRENT_PROPERTY;
 import static helpinghand.resources.HelpResource.cancelHelp;
+import static helpinghand.resources.RouteResource.ROUTE_KIND;
+import static helpinghand.resources.RouteResource.ROUTE_CREATOR_PROPERTY;
 /**
  * @author PogChamp Software
  *
@@ -151,6 +154,10 @@ public class AccountUtils {
 	private static final String GET_HELP_OK = "Successfuly got all events of account [%s] with token (%d)";
 	private static final String GET_HELP_BAD_DATA_ERROR  = "Get all events of account attempt failed due to bad inputs";
 
+	private static final String GET_ROUTES_START  = "Attempting to get all routes of account [%s] with token (%d)";
+	private static final String GET_ROUTES_OK = "Successfuly got all routes of account [%s] with token (%d)";
+	private static final String GET_ROUTES_BAD_DATA_ERROR  = "Get all routes of account attempt failed due to bad inputs";
+	
 	private static final String GET_FEED_START ="Attempting to get notification with token (%d)";
 	private static final String GET_FEED_OK ="Successfuly got notification list of [%s] with token (%d)";
 	private static final String GET_FEED_BAD_DATA_ERROR = "Get notification feed failed due to bad input";
@@ -1341,6 +1348,82 @@ public class AccountUtils {
 		
 		
 	}
+	
+	protected Response getAccountRoutes(String id,String token) {
+		if(badString(id)|| badString(token)) {
+			log.info(GET_ROUTES_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+
+		long tokenId = Long.parseLong(token);
+
+		log.info(String.format(GET_ROUTES_START,id,tokenId));
+
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> routeQuery = Query.newEntityQueryBuilder().setKind(ROUTE_KIND).setFilter(PropertyFilter.eq(ROUTE_CREATOR_PROPERTY,id)).build();
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+		
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			ProjectionEntity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+	
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+	
+			if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) && !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
+				int minAccess = 1;//minimum access level required do execute this operation
+				if(role.getAccess() < minAccess) {
+					txn.rollback();
+					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
+					return Response.status(Status.FORBIDDEN).build();
+				}
+			}
+			
+			
+			QueryResults<Entity> routeList = txn.run(routeQuery);
+			txn.commit();
+			
+			List<Route> helps = new LinkedList<>();
+			routeList.forEachRemaining(route->helps.add(new Route(route)));
+	
+			log.info(String.format(GET_ROUTES_OK,id,tokenId));
+			return Response.ok(g.toJson(helps)).build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+		
+		
+	}
+	
 
 	/**
 	 * Obtains the feed of the user/institution account.

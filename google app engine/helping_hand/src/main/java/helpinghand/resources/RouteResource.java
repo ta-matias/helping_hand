@@ -26,10 +26,12 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.ListValue;
+import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.gson.Gson;
 
 import helpinghand.util.route.*;
@@ -38,12 +40,21 @@ import static helpinghand.resources.RouteResource.BASE_PATH;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
+import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
+import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
+import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 @Path(BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class RouteResource {
+	
+	private static final String ROUTE_CREATED_NOTIFICATION = "Route '%s' as been created by '%s'";
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in RouteResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is RouteResource: Transaction was active";
@@ -150,8 +161,37 @@ public class RouteResource {
 					.set(ROUTE_CATEGORIES_PROPERTY,categories)
 					.build();
 			
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+			QueryResults<Key> keyList = txn.run(accountQuery);
+			
+			if(!keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = keyList.next();
+			
+			if(keyList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			
+			Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
+					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			QueryResults<ProjectionEntity> followerList = txn.run(followerQuery);
+			
 			txn.add(routeEntity);
 			txn.commit();
+			
+			String message = String.format(ROUTE_CREATED_NOTIFICATION,data.name,id);
+			followerList.forEachRemaining(follower->{
+				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message)) {
+					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
+				}
+			});
+			
 			log.info(String.format(CREATE_ROUTE_OK,data.name,tokenId));
 			return Response.ok(routeKey.getId()).build();
 		
