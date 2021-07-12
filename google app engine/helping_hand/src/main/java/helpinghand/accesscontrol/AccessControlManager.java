@@ -18,7 +18,6 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
-import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.Transaction;
@@ -166,14 +165,13 @@ public class AccessControlManager {
 
 		Key tokenKey = datastore.allocateId(tokenKeyFactory.newKey());
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_ROLE_PROPERTY,ACCOUNT_PASSWORD_PROPERTY,ACCOUNT_STATUS_PROPERTY)
-				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Transaction txn = datastore.newTransaction();
 		
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);	
+			QueryResults<Entity> accountList = txn.run(accountQuery);	
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
@@ -181,7 +179,7 @@ public class AccessControlManager {
 				return null;
 			}
 			
-			ProjectionEntity account =accountList.next();
+			Entity account = accountList.next();
 	
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -202,7 +200,7 @@ public class AccessControlManager {
 			}
 			
 	
-			String role = account.getString(ACCOUNT_ROLE_PROPERTY).equals(Role.INSTITUTION.name())?Role.INSTITUTION.name():Role.USER.name();
+			String role = account.getString(ACCOUNT_ROLE_PROPERTY);
 	
 			
 	
@@ -293,10 +291,9 @@ public class AccessControlManager {
 			
 			String id = oldToken.getString(TOKEN_OWNER_PROPERTY);
 			
-			Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_ROLE_PROPERTY)
-					.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+			Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 			
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.delete(tokenKey);
@@ -305,7 +302,7 @@ public class AccessControlManager {
 				return false;
 			}
 			
-			ProjectionEntity account =accountList.next();
+			Entity account =accountList.next();
 	
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -400,10 +397,9 @@ public class AccessControlManager {
 				}
 				String id = token.getString(TOKEN_OWNER_PROPERTY);
 				
-				Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_STATUS_PROPERTY,ACCOUNT_ROLE_PROPERTY)
-						.setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+				Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 				
-				QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+				QueryResults<Entity> accountList = txn.run(accountQuery);
 				
 				if(!accountList.hasNext()) {
 					txn.delete(tokenKey);
@@ -411,7 +407,7 @@ public class AccessControlManager {
 					log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 					return false;
 				}
-				ProjectionEntity account = accountList.next();
+				Entity account = accountList.next();
 				
 				if(accountList.hasNext()) {
 					txn.delete(tokenKey);

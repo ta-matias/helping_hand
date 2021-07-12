@@ -33,7 +33,6 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
-import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
@@ -483,22 +482,21 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(GET_PROFILE_START, id, tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY,ACCOUNT_VISIBILITY_PROPERTY)
-				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -706,22 +704,21 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(GET_MEMBERS_START,id,tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY)
-				.setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();

@@ -273,11 +273,11 @@ public class BackOfficeResource {
 
 		log.info(String.format(LIST_ROLE_START,roleParam.name(),tokenId));
 		
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_ROLE_PROPERTY,ACCOUNT_STATUS_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, role)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, role)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
-			QueryResults<ProjectionEntity> accounts = txn.run(accountQuery);
+			QueryResults<Entity> accounts = txn.run(accountQuery);
 			txn.commit();
 			List<String[]> data = new LinkedList<>();
 			accounts.forEachRemaining(account->data.add(new String[] {account.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(account.getBoolean(ACCOUNT_STATUS_PROPERTY))}));
@@ -330,15 +330,14 @@ public class BackOfficeResource {
 
 		log.info(String.format(DAILY_STATS_START,start,end,tokenId));
 
-		Query<ProjectionEntity> query = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_CREATION_PROPERTY)
-				.setFilter(CompositeFilter.and(PropertyFilter.gt(ACCOUNT_CREATION_PROPERTY, startTimestamp),PropertyFilter.lt(ACCOUNT_CREATION_PROPERTY,endTimestamp))).build();
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(CompositeFilter.and(PropertyFilter.gt(ACCOUNT_CREATION_PROPERTY, startTimestamp),PropertyFilter.lt(ACCOUNT_CREATION_PROPERTY,endTimestamp))).build();
 
 		Map<Instant,Integer> map = initializeMap(Instant.parse(start).truncatedTo(ChronoUnit.DAYS),Instant.parse(end).truncatedTo(ChronoUnit.DAYS));
 
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
-			QueryResults<ProjectionEntity> creationTimestamps = txn.run(query);
+			QueryResults<Entity> creationTimestamps = txn.run(query);
 			txn.commit();
 			creationTimestamps.forEachRemaining(projectionEntity -> {
 

@@ -26,7 +26,6 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.ListValue;
-import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
@@ -178,9 +177,8 @@ public class RouteResource {
 			}
 			
 			
-			Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
-					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
-			QueryResults<ProjectionEntity> followerList = txn.run(followerQuery);
+			Query<Entity> followerQuery = Query.newEntityQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			QueryResults<Entity> followerList = txn.run(followerQuery);
 			
 			txn.add(routeEntity);
 			txn.commit();

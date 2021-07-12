@@ -30,7 +30,6 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.PathElement;
-import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.Transaction;
@@ -283,9 +282,8 @@ public class HelpResource {
 					.set(HELP_LOCATION_PROPERTY,location)
 					.build();
 
-			Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
-					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
-			QueryResults<ProjectionEntity> followerList = txn.run(followerQuery);
+			Query<Entity> followerQuery = Query.newEntityQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			QueryResults<Entity> followerList = txn.run(followerQuery);
 			
 			txn.add(help);
 			txn.commit();
@@ -637,10 +635,9 @@ public class HelpResource {
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(helpKey);
 
-			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY)
-					.setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
 			
-			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+			QueryResults<Entity> helperList = txn.run(helperQuery);
 	
 			List<Long> toNotify = new LinkedList<>();
 			
@@ -820,7 +817,7 @@ public class HelpResource {
 		Key helpKey = helpKeyFactory.newKey(helpId);
 		
 		
-		Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY).setKind(HELPER_KIND)
+		Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
 				.setFilter(PropertyFilter.hasAncestor(helpKey)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
@@ -854,7 +851,7 @@ public class HelpResource {
 			}
 			
 			
-			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+			QueryResults<Entity> helperList = txn.run(helperQuery);
 			List<Key> helperKeys = new LinkedList<>();
 			
 			
@@ -1135,10 +1132,9 @@ public class HelpResource {
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(helpKey);
 
-			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY)
-					.setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
 			
-			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+			QueryResults<Entity> helperList = txn.run(helperQuery);
 	
 			List<Long> toNotify = new LinkedList<>();
 			

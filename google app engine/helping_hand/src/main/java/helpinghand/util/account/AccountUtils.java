@@ -9,7 +9,6 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
-import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
@@ -243,8 +242,7 @@ public class AccountUtils {
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
-		Query<ProjectionEntity> eventQuery = Query.newProjectionEntityQueryBuilder().setProjection(EVENT_CREATOR_PROPERTY, EVENT_STATUS_PROPERTY)
-				.setKind(EVENT_KIND).setFilter(PropertyFilter.eq(EVENT_CREATOR_PROPERTY, id)).build();
+		Query<Entity> eventQuery = Query.newEntityQueryBuilder().setKind(EVENT_KIND).setFilter(PropertyFilter.eq(EVENT_CREATOR_PROPERTY, id)).build();
 		
 		Query<Key> helpQuery = Query.newKeyQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.eq(HELP_CREATOR_PROPERTY, id)).build();
 		
@@ -296,7 +294,7 @@ public class AccountUtils {
 			QueryResults<Key> childrenList = txn.run(childrenQuery);
 			childrenList.forEachRemaining(child->toDelete.add(child));
 			
-			QueryResults<ProjectionEntity> eventList = txn.run(eventQuery);
+			QueryResults<Entity> eventList = txn.run(eventQuery);
 			eventList.forEachRemaining(event->{
 				if(event.getBoolean(EVENT_STATUS_PROPERTY)) {
 					cancelEvent(event.getKey().getId());
@@ -313,14 +311,14 @@ public class AccountUtils {
 			Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, keyId)).build();
 			Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, keyId)).build();
 			Query<Key> followQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, keyId)).build();
-			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
 			
 	
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
 				QueryResults<Key> participantList = txn.run(participantQuery);
 				QueryResults<Key> followList = txn.run(followQuery);
-				QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+				QueryResults<Entity> helperList = txn.run(helperQuery);
 				
 				memberList.forEachRemaining(membership->toDelete.add(membership));
 				participantList.forEachRemaining(participation->toDelete.add(participation));
@@ -379,9 +377,7 @@ public class AccountUtils {
 
 		log.info(String.format(GET_ACCOUNT_START,id,tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_EMAIL_PROPERTY,
-				ACCOUNT_CREATION_PROPERTY,ACCOUNT_VISIBILITY_PROPERTY,ACCOUNT_STATUS_PROPERTY)
-				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
@@ -396,14 +392,14 @@ public class AccountUtils {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -994,22 +990,21 @@ public class AccountUtils {
 
 		log.info(String.format(GET_ACCOUNT_INFO_START,id,tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY)
-				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -1199,7 +1194,7 @@ public class AccountUtils {
 
 		log.info(String.format(GET_EVENTS_START,id,tokenId));
 		
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Query<Entity> eventQuery = Query.newEntityQueryBuilder().setKind(EVENT_KIND).setFilter(PropertyFilter.eq(EVENT_CREATOR_PROPERTY,id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
@@ -1207,14 +1202,14 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -1284,7 +1279,7 @@ public class AccountUtils {
 
 		log.info(String.format(GET_HELP_START,id,tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Query<Entity> helpQuery = Query.newEntityQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.eq(HELP_CREATOR_PROPERTY,id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
@@ -1292,14 +1287,14 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -1359,7 +1354,7 @@ public class AccountUtils {
 
 		log.info(String.format(GET_ROUTES_START,id,tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setKind(ACCOUNT_KIND).setProjection(ACCOUNT_ID_PROPERTY, ACCOUNT_VISIBILITY_PROPERTY).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Query<Entity> routeQuery = Query.newEntityQueryBuilder().setKind(ROUTE_KIND).setFilter(PropertyFilter.eq(ROUTE_CREATOR_PROPERTY,id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
@@ -1367,14 +1362,14 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
+			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			ProjectionEntity account = accountList.next();
+			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();

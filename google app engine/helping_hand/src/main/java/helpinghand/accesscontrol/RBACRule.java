@@ -102,8 +102,8 @@ public enum RBACRule {
 	UPDATE_ROUTE("PUT_route",new Role[] {USER,INSTITUTION}), //change route info 
 	GET_ROUTE("GET_route_get", new Role[] {USER,INSTITUTION,GBO}),//get route info 
 	LIST_ROUTES("GET_route",new Role[] {USER,INSTITUTION,GBO}), // list all route's info 
-	START_ROUTE("PUT_route_start",new Role[] {USER,INSTITUTION}), //start doing a route TODO
-	END_ROUTE("PUT_route_end",new Role[] {USER,INSTITUTION}); //finish doing a route TODO
+	START_ROUTE("PUT_route_start",new Role[] {USER}), //start doing a route TODO
+	END_ROUTE("PUT_route_end",new Role[] {USER}); //finish doing a route TODO
 	
 	
 	

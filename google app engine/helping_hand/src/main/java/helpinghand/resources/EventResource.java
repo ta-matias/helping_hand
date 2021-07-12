@@ -26,7 +26,6 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.PathElement;
-import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
@@ -223,9 +222,9 @@ public class EventResource {
 			
 			
 		
-			Query<ProjectionEntity> followerQuery = Query.newProjectionEntityQueryBuilder().setProjection(FOLLOWER_ID_PROPERTY).setKind(FOLLOWER_KIND)
+			Query<Entity> followerQuery = Query.newEntityQueryBuilder().setKind(FOLLOWER_KIND)
 					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
-			QueryResults<ProjectionEntity> followerList = txn.run(followerQuery);
+			QueryResults<Entity> followerList = txn.run(followerQuery);
 			
 			txn.add(event);
 			txn.commit();
@@ -368,7 +367,7 @@ public class EventResource {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
-		Query<ProjectionEntity> participantQuery = Query.newProjectionEntityQueryBuilder().setProjection(PARTICIPANT_ID_PROPERTY).setFilter(PropertyFilter.hasAncestor(eventKey)).build();
+		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setFilter(PropertyFilter.hasAncestor(eventKey)).build();
 		
 		Transaction txn = datastore.newTransaction();
 
@@ -403,7 +402,7 @@ public class EventResource {
 			List<Long> toNotify = new LinkedList<>();
 			toDelete.add(eventKey);
 	
-			QueryResults<ProjectionEntity> participantList = txn.run(participantQuery);
+			QueryResults<Entity> participantList = txn.run(participantQuery);
 			
 			participantList.forEachRemaining(participant->{
 				toDelete.add(participant.getKey());
@@ -867,7 +866,7 @@ public class EventResource {
 		log.info(String.format(LIST_EVENT_PARTICIPANTS_START, eventId,tokenId));
 
 		Key eventKey = eventKeyFactory.newKey(eventId);
-		Query<ProjectionEntity> participantQuery =  Query.newProjectionEntityQueryBuilder().setProjection(PARTICIPANT_ID_PROPERTY).setKind(PARTICIPANT_KIND)
+		Query<Entity> participantQuery =  Query.newEntityQueryBuilder().setKind(PARTICIPANT_KIND)
 				.setFilter(PropertyFilter.hasAncestor(eventKey)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
@@ -882,7 +881,7 @@ public class EventResource {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
-			QueryResults<ProjectionEntity> participantList = txn.run(participantQuery);
+			QueryResults<Entity> participantList = txn.run(participantQuery);
 			txn.commit();
 			
 			List<String> participants = new LinkedList<>();
@@ -907,7 +906,7 @@ public class EventResource {
 	public static boolean  cancelEvent(long eventId) {
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
-		Query<ProjectionEntity> participantQuery = Query.newProjectionEntityQueryBuilder().setProjection(PARTICIPANT_ID_PROPERTY).setFilter(PropertyFilter.hasAncestor(eventKey)).build();
+		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setFilter(PropertyFilter.hasAncestor(eventKey)).build();
 		
 		Transaction txn = datastore.newTransaction();
 
@@ -924,7 +923,7 @@ public class EventResource {
 			List<Long> toNotify = new LinkedList<>();
 			toDelete.add(eventKey);
 	
-			QueryResults<ProjectionEntity> participantList = txn.run(participantQuery);
+			QueryResults<Entity> participantList = txn.run(participantQuery);
 			
 			participantList.forEachRemaining(participant->{
 				toDelete.add(participant.getKey());
