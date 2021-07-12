@@ -68,6 +68,10 @@ public enum RBACRule {
 	UPDATE_TOKEN_ROLE("PUT_restricted_updateTokenRole", new Role[] {USER,GBO,SU}), // update a token's current role
 	GET_USERS_ROLE("GET_restricted_listRole", new Role[] {GBO}), // get all accounts of a certain role
 	GET_DAILY_STATS("GET_restricted_dailyUsers", new Role[] {GBO}),// get number of accounts created between 2 dates
+	CREATE_REPORT("POST_restricted_createReport", new Role[] {USER,INSTITUTION,GBO}),// create a report
+	GET_REPORT("GET_restricted_getReport", new Role[] {GBO}),//get a report
+	LIST_REPORTS("GET_restricted_listReports", new Role[] {GBO}),// list all reports
+	DELETE_REPORT("GET_restricted_deleteReport", new Role[] {GBO}),// delete a report
 	
 	//EventResource
 	CREATE_EVENT("POST_event", new Role[] {USER,INSTITUTION}), // create an event

@@ -14,16 +14,19 @@ import javax.ws.rs.core.Response.Status;
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
+import com.google.cloud.datastore.StructuredQuery.OrderBy;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
 import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.Role;
+import helpinghand.util.backoffice.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
+import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.updateTokenRole;
 import static helpinghand.resources.UserResource.USER_ID_PARAM;
 import static helpinghand.util.GeneralUtils.badString;
@@ -67,10 +70,35 @@ public class BackOfficeResource {
 	private static final String DAILY_STATS_OK = "Successfulty to got account creation stats from [%s] to [%s] with token (%d)";
 	private static final String DAILY_STATS_BAD_DATA_ERROR = "Get daily stats attempt failed due to bad inputs";
 	private static final String DAILY_STATS_BAD_DATA_ERROR_DATES = "Get daily stats attempt failed due to bad date inputs [%s] and [%s]";
-
+	
+	private static final String CREATE_REPORT_START = "Attempting to create report with token (%d)";
+	private static final String CREATE_REPORT_OK = "Successfulty created report with token (%d)";
+	private static final String CREATE_REPORT_BAD_DATA_ERROR = "Create report attempt failed due to bad inputs";
+	
+	private static final String GET_REPORT_START = "Attempting to get report (%d) with token (%d)";
+	private static final String GET_REPORT_OK ="Successfulty got report (%d) with token (%d)";
+	private static final String GET_REPORT_BAD_DATA_ERROR = "Get report attempt failed due to bad inputs";
+	private static final String REPORT_NOT_FOUND_ERROR = "Report (%d) doesn't exist";
+	
+	private static final String LIST_REPORTS_START = "Attempting to list reports with token (%d)";
+	private static final String LIST_REPORTS_OK ="Successfulty listed reports with token (%d)";
+	private static final String LIST_REPORTS_BAD_DATA_ERROR = "List reports attempt failed due to bad inputs";
+	
+	private static final String DELETE_REPORT_START = "Attempting to delete report (%d) with token (%d)";
+	private static final String DELETE_REPORT_OK = "Successfulty deleted report (%d) with token (%d)";
+	private static final String DELETE_REPORT_BAD_DATA_ERROR = "Delete report attempt failed due to bad inputs";
+	
 	private static final String USER_ROLE_PARAM = "role";
 	private static final String START_DATE_PARAM = "startDate";
 	private static final String END_DATE_PARAM = "endDate";
+	private static final String REPORT_ID_PARAM = "reportId";
+	
+	private static final String REPORT_KIND = "Report";
+	public static final String REPORT_DATE_PROPERTY = "date";
+	public static final String REPORT_CREATOR_PROPERTY = "creator";
+	public static final String REPORT_SUBJECT_PROPERTY = "subject";
+	public static final String REPORT_TEXT_PROPERTY = "text";
+	
 
 	// Paths
 	public static final String PATH = "/restricted";
@@ -78,12 +106,16 @@ public class BackOfficeResource {
 	private static final String UPDATE_TOKEN_ROLE_PATH = "/updateTokenRole";//PUT
 	private static final String LIST_ROLE_PATH = "/listRole"; // GET
 	private static final String DAILY_USERS_PATH = "/dailyUsers"; // GET
+	private static final String CREATE_REPORT_PATH = "/createReport"; // POST
+	private static final String GET_REPORT_PATH = "/getReport"; // GET
+	private static final String LIST_REPORTS_PATH = "/listReports"; // GET
+	private static final String DELETE_REPORT_PATH = "/deleteReport"; // DELETE
 
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-
-	// logger object
-	private static final Logger log = Logger.getLogger(UserResource.class.getName());
-
+	private static final Logger log = Logger.getLogger(BackOfficeResource.class.getName());
+	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
+	private static final KeyFactory reportKeyFactory = datastore.newKeyFactory().setKind(REPORT_KIND);
+	
 	private final Gson g = new Gson();
 
 	public BackOfficeResource() {}
@@ -113,7 +145,7 @@ public class BackOfficeResource {
 
 		log.info(String.format(UPDATE_ACCOUNT_ROLE_START, id, role));
 		
-		Key tokenKey = datastore.newKeyFactory().setKind(TOKEN_KIND).newKey(tokenId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
@@ -355,5 +387,193 @@ public class BackOfficeResource {
 
 		return data;
 	}
+	
+	@POST
+	@Path(CREATE_REPORT_PATH)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response createReport(@QueryParam(TOKEN_ID_PARAM)String token, CreateReport data) {
+		if(badString(token) || data.badData()) {
+			log.warning(CREATE_REPORT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId  = Long.parseLong(token);
+		
+		log.info(String.format(CREATE_REPORT_START,tokenId));
+		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Key reportKey = datastore.allocateId(reportKeyFactory.newKey());
+		
+		Timestamp now = Timestamp.now();
+		
+		Transaction txn = datastore.newTransaction();
+
+		try {
+			
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Entity reportEntity = Entity.newBuilder(reportKey)
+					.set(REPORT_CREATOR_PROPERTY, tokenEntity.getString(TOKEN_OWNER_PROPERTY))
+					.set(REPORT_DATE_PROPERTY,now)
+					.set(REPORT_SUBJECT_PROPERTY,data.subject)
+					.set(REPORT_TEXT_PROPERTY,data.text)
+					.build();
+			
+			txn.add(reportEntity);
+			txn.commit();
+			
+			
+			log.info(String.format(CREATE_REPORT_OK,tokenId));
+			return Response.ok().build();
+		} catch (DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+		
+	}
+	
+	@GET
+	@Path(GET_REPORT_PATH)
+	public Response getReport(@QueryParam(TOKEN_ID_PARAM)String token, @QueryParam(REPORT_ID_PARAM)String report) {
+		if(badString(token) ||badString(report)) {
+			log.warning(GET_REPORT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		long tokenId = Long.parseLong(token);
+		long reportId = Long.parseLong(report);
+		
+		log.info(String.format(GET_REPORT_START, reportId,tokenId));
+		
+		Key reportKey = reportKeyFactory.newKey(reportId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+
+		try {
+			
+			Entity reportEntity = txn.get(reportKey);
+			txn.commit();
+			
+			if(reportEntity == null) {
+				txn.rollback();
+				log.warning(String.format(REPORT_NOT_FOUND_ERROR, reportId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Report data = new Report(reportEntity);
+
+			log.info(String.format(GET_REPORT_OK,reportId,tokenId));
+			return Response.ok(g.toJson(data)).build();
+		} catch (DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	@GET
+	@Path(LIST_REPORTS_PATH)
+	public Response listReports(@QueryParam(TOKEN_ID_PARAM)String token) {
+		if(badString(token)) {
+			log.warning(LIST_REPORTS_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		long tokenId = Long.parseLong(token);
+		
+		log.info(String.format(LIST_REPORTS_START,tokenId));
+		Query<Entity> reportQuery = Query.newEntityQueryBuilder().setKind(REPORT_KIND).addOrderBy(OrderBy.asc(REPORT_DATE_PROPERTY)).build();
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+
+		try {
+			
+			QueryResults<Entity> reportList = txn.run(reportQuery);
+			txn.commit();
+			
+			List<Report> data = new LinkedList<>();
+			reportList.forEachRemaining(report->data.add(new Report(report)));
+			
+			log.info(String.format(LIST_REPORTS_OK,tokenId));
+			return Response.ok(g.toJson(data)).build();
+		} catch (DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	@DELETE
+	@Path(DELETE_REPORT_PATH)
+	public Response deleteReport(@QueryParam(TOKEN_ID_PARAM)String token, @QueryParam(REPORT_ID_PARAM)String report) {
+		if(badString(token) || badString(report)) {
+			log.warning(DELETE_REPORT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId = Long.parseLong(token);
+		long reportId = Long.parseLong(report);
+		
+		log.info(String.format(DELETE_REPORT_START, reportId,tokenId));
+		
+		Key reportKey = reportKeyFactory.newKey(reportId);
+		
+		Transaction txn = datastore.newTransaction();
+
+		try {
+			
+			Entity reportEntity = txn.get(reportKey);
+			
+			
+			if(reportEntity == null) {
+				txn.rollback();
+				log.warning(String.format(REPORT_NOT_FOUND_ERROR, reportId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			txn.delete(reportKey);
+			txn.commit();
+			
+			
+			log.info(String.format(DELETE_REPORT_OK,reportId,tokenId));
+			return Response.ok().build();
+		} catch (DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	
+	
 
 }
