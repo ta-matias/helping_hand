@@ -10,7 +10,6 @@ import static helpinghand.util.account.AccountUtils.ACCOUNT_VISIBILITY_PROPERTY;
 
 public class Account {
 	
-	
 	public String id;
 	public String email;
 	public String creation;
@@ -25,9 +24,8 @@ public class Account {
 		this.creation = account.getTimestamp(ACCOUNT_CREATION_PROPERTY).toString();
 		this.visibility = account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY);
 		this.email = "*****";
-		if(ignoreVisibility || this.visibility) {
+		if(ignoreVisibility || this.visibility)
 			this.email = account.getString(ACCOUNT_EMAIL_PROPERTY);		
-		}
 	}
 	
 	public Account(String id, String email,String creation, boolean status, boolean visibility) {
@@ -37,6 +35,5 @@ public class Account {
 		this.status = status;
 		this.visibility = visibility;
 	}
-	
 	
 }

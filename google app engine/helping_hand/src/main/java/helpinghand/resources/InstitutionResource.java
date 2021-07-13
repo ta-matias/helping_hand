@@ -147,8 +147,6 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(CREATE_START,data.email,Role.INSTITUTION.name()));
 
-		
-
 		Key accountKey = datastore.allocateId(accountKeyFactory.setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());
 		Key accountFeedKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey(accountKey.getId());
@@ -185,17 +183,16 @@ public class InstitutionResource extends AccountUtils {
 				.set(INSTITUTION_PROFILE_CATEGORIES_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
 				.build();
 		
-		
 		Query<Key> idQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
 		Query<Key> emailQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
 		
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			QueryResults<Key> idCheck = txn.run(idQuery);
 
 			if(idCheck.hasNext()) {
+				txn.rollback();
 				log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
 				return Response.status(Status.CONFLICT).build();
 			} 
@@ -203,6 +200,7 @@ public class InstitutionResource extends AccountUtils {
 			QueryResults<Key> emailCheck = txn.run(emailQuery);
 			
 			if(emailCheck.hasNext()) {
+				txn.rollback();
 				log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
 				return Response.status(Status.CONFLICT).build();
 			}
@@ -240,7 +238,17 @@ public class InstitutionResource extends AccountUtils {
 	public Response deleteAccount(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.deleteAccount(id, token,Role.INSTITUTION);
 	}
-	
+
+	/**
+	 * Returns account data.
+	 * @param id - id of the account.
+	 * @param token - token performing request.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(GET_PATH)
 	public Response getAccount(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
@@ -411,8 +419,13 @@ public class InstitutionResource extends AccountUtils {
 	public Response getAccountHelpRequests(@PathParam(INSTITUTION_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return super.getAccountHelpRequests(id, token);
 	}
-	
-	
+
+	/**
+	 * 
+	 * @param id
+	 * @param token
+	 * @return
+	 */
 	@GET
 	@Path(GET_ROUTES_PATH)
 	public Response getAccountRoutes(@PathParam(INSTITUTION_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
@@ -443,12 +456,11 @@ public class InstitutionResource extends AccountUtils {
 
 		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
-		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -456,6 +468,7 @@ public class InstitutionResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -496,7 +509,6 @@ public class InstitutionResource extends AccountUtils {
 	
 			log.info(String.format(GET_PROFILE_OK,id,tokenId));
 			return Response.ok(g.toJson(profile)).build();
-			
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -508,6 +520,7 @@ public class InstitutionResource extends AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -535,42 +548,43 @@ public class InstitutionResource extends AccountUtils {
 		log.info(String.format(UPDATE_PROFILE_START,tokenId));
 
 		ListValue.Builder listValueBuilder = ListValue.newBuilder();
-		
+
 		for(String category: data.categories)
 			listValueBuilder.addValue(category);
 
 		ListValue categories = listValueBuilder.build();
-		
+
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-		
+
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
+
 		Transaction txn = datastore.newTransaction();
+
 		try {
-		
 			QueryResults<Key> accountList = txn.run(accountQuery);
-			
+
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+
 			Key accountKey = accountList.next();
-			
+
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
+
 			Entity tokenEntity = txn.get(tokenKey);
-	
+
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-	
+
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
@@ -583,7 +597,7 @@ public class InstitutionResource extends AccountUtils {
 
 			Key profileKey  = datastore.newKeyFactory().setKind(INSTITUTION_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity instProfile = txn.get(profileKey);
-	
+
 			if(instProfile == null) {
 				txn.rollback();
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
@@ -591,12 +605,12 @@ public class InstitutionResource extends AccountUtils {
 			}
 
 			Entity updatedInstProfile = Entity.newBuilder(instProfile)
-				.set(PROFILE_NAME_PROPERTY, data.name)
-				.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
-				.set(PROFILE_BIO_PROPERTY,data.bio)
-				.set(INSTITUTION_PROFILE_CATEGORIES_PROPERTY,categories)
-				.build();
-			
+					.set(PROFILE_NAME_PROPERTY, data.name)
+					.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
+					.set(PROFILE_BIO_PROPERTY,data.bio)
+					.set(INSTITUTION_PROFILE_CATEGORIES_PROPERTY,categories)
+					.build();
+
 			txn.update(updatedInstProfile);
 			txn.commit();
 			log.info(String.format(UPDATE_PROFILE_OK,id,tokenId));
@@ -623,6 +637,7 @@ public class InstitutionResource extends AccountUtils {
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the token cannot execute the operation with the current access level.
 	 * 		   404, if the institution does not exist or the token does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_MEMBERS_PATH)
@@ -637,29 +652,30 @@ public class InstitutionResource extends AccountUtils {
 		log.info(String.format(GET_MEMBERS_START,id,tokenId));
 
 		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-		
+
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
+
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+
 		try {
-		
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
-			
+
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+
 			ProjectionEntity account = accountList.next();
-			
+
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
+
 			Entity tokenEntity = txn.get(tokenKey);
-	
+
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
@@ -670,6 +686,7 @@ public class InstitutionResource extends AccountUtils {
 				Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
 				if(role.getAccess() < minAccess) {
+					txn.rollback();
 					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 					return Response.status(Status.FORBIDDEN).build();
 				}
@@ -677,25 +694,24 @@ public class InstitutionResource extends AccountUtils {
 
 			Query<Entity> memberQuery = Query.newEntityQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
 			QueryResults<Entity> memberList = txn.run(memberQuery);
-			
+
 			List<Key> members = new LinkedList<>();
 			memberList.forEachRemaining(member->{
 				long datastoreId = member.getLong(INSTITUTION_MEMBER_ID_PROPERTY);
 				members.add(accountKeyFactory.newKey(datastoreId));
-				
 			});
+
 			Key[] memberKeys = new Key[members.size()];
 			members.toArray(memberKeys);
-			
+
 			Iterator<Entity> memberEntities = txn.get(memberKeys);
 			txn.commit();
-			
+
 			List<Account> memberAccounts = new LinkedList<>();
 			memberEntities.forEachRemaining(memberAccount->memberAccounts.add(new Account(memberAccount,true)));
-			
+
 			log.info(String.format(GET_MEMBERS_OK,id,token));
 			return Response.ok(g.toJson(memberAccounts)).build();
-			
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -707,6 +723,7 @@ public class InstitutionResource extends AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+
 	}
 
 	/**
@@ -732,57 +749,62 @@ public class InstitutionResource extends AccountUtils {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(ADD_MEMBER_START,memberId,id,tokenId));
-		
+
 		Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
 		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
-		
+
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			QueryResults<Key> memberCheck = txn.run(memberQuery);
 
 			if(!memberCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, memberId));
 				return Response.status(Status.NOT_FOUND).build();
 			} 
-			
+
 			Key memberAccountKey = memberCheck.next();
-			
+
 			if(memberCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, memberId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			QueryResults<Key> institutionCheck = txn.run(institutionQuery);
-			
+
 			if(!institutionCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+
 			Key institutionKey = institutionCheck.next();
+
 			if(institutionCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
-			
+
 			memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(institutionKey),PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()))).build();
-			memberCheck  = txn.run(memberQuery);
+
+			memberCheck = txn.run(memberQuery);
+
 			if(memberCheck.hasNext()) {
 				txn.rollback();
 				log.warning(String.format(ADD_MEMBER_CONFLICT_ERROR, memberId,id));
 				return Response.status(Status.CONFLICT).build();
 			}
-			
+
 			Key memberKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, institutionKey.getId())).setKind(INSTITUTION_MEMBER_KIND).newKey());
-	
+
 			Entity member = Entity.newBuilder(memberKey)
 					.set(INSTITUTION_MEMBER_ID_PROPERTY,memberAccountKey.getId())
 					.build();
 
-		
 			txn.add(member);
 			txn.commit();
 			log.info(String.format(ADD_MEMBER_OK,memberId,id,tokenId));
@@ -827,74 +849,82 @@ public class InstitutionResource extends AccountUtils {
 
 		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
+
 		Query<Key> accountQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
-		
+
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			QueryResults<Key> institutionCheck = txn.run(institutionQuery);
-			
+
 			if(!institutionCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key institutionKey = institutionCheck.next();
+			
 			if(institutionCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			QueryResults<Key> accountList = txn.run(accountQuery);
-			
+
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, memberId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key memberAccountKey = accountList.next();
+			
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, memberId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
-			
+
 			Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()), PropertyFilter.hasAncestor(institutionKey)))
 					.build();
-			QueryResults<Key> memberCheck = txn.run(memberQuery);
 			
+			QueryResults<Key> memberCheck = txn.run(memberQuery);
+
 			if(!memberCheck.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(REMOVE_MEMBER_NOT_FOUND_ERROR, memberId,id));
 				return Response.status(Status.NOT_FOUND).build();
 			} 
-			
+
 			Key memberKey = memberCheck.next();
-			
+
 			if(memberCheck.hasNext()) {
+				txn.rollback();
 				log.severe(REPEATED_MEMBER_ERROR);
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			Entity tokenEntity = txn.get(tokenKey);
-			
+
 			if(tokenEntity == null) {
+				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
 				if(role.getAccess() < minAccess) {
+					txn.rollback();
 					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-		
-		
+
 			txn.delete(memberKey);
 			txn.commit();
 			log.info(String.format(REMOVE_MEMBER_OK,memberId,id,tokenId));
@@ -912,7 +942,7 @@ public class InstitutionResource extends AccountUtils {
 		}
 
 	}
-	
+
 	/**
 	 * Obtains the feed of the institution account.
 	 * @param id - The identification of the institution.
@@ -927,7 +957,7 @@ public class InstitutionResource extends AccountUtils {
 	public Response getFeed(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.getFeed(id, token);
 	}
-	
+
 	/**
 	 * Updates the feed of the institution account.
 	 * @param token - The token of the institution.

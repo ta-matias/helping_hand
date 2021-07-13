@@ -6,13 +6,10 @@ import java.util.stream.Collectors;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Value;
 
-
-
 import static helpinghand.util.account.AccountUtils.PROFILE_NAME_PROPERTY;
 import static helpinghand.util.account.AccountUtils.PROFILE_BIO_PROPERTY;
 import static helpinghand.util.account.AccountUtils.INSTITUTION_PROFILE_INITIALS_PROPERTY;
 import static helpinghand.util.account.AccountUtils.INSTITUTION_PROFILE_CATEGORIES_PROPERTY;
-
 
 public class InstitutionProfile {
 	
@@ -33,9 +30,7 @@ public class InstitutionProfile {
 		List<String> categoriesStringList = categoriesValueList.stream().map(value->value.get()).collect(Collectors.toList());
 		this.categories = new String[categoriesStringList.size()];
 		categoriesStringList.toArray(this.categories);
-		
 	}
-	
 	
 	public InstitutionProfile(String name, String initials, String bio, String[] categories) {
 		this.name = name;
@@ -49,7 +44,7 @@ public class InstitutionProfile {
 			return true;
 		if(initials == null) 
 			return true;
-		if(bio ==null) 
+		if(bio == null) 
 			return true;
 		if(categories == null) 
 			return true;

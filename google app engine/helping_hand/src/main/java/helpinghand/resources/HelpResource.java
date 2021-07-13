@@ -155,7 +155,9 @@ public class HelpResource {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory helpKeyFactory = datastore.newKeyFactory().setKind(HELP_KIND);
+	private static final KeyFactory helperKeyFactory = datastore.newKeyFactory().setKind(HELPER_KIND);
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	private static final KeyFactory statsKeyFactory = datastore.newKeyFactory().setKind(USER_STATS_KIND);
 
 	private final Gson g = new Gson();
 
@@ -424,7 +426,6 @@ public class HelpResource {
 			txn.commit();
 			
 			if(helpEntity == null) {
-				txn.rollback();
 				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
@@ -601,6 +602,7 @@ public class HelpResource {
 		log.info(String.format(CANCEL_HELP_START, helpId,tokenId));
 
 		Key helpKey = helpKeyFactory.newKey(helpId);
+		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 
 		Transaction txn = datastore.newTransaction();
@@ -705,7 +707,7 @@ public class HelpResource {
 		
 		Key helpKey = helpKeyFactory.newKey(helpId);
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		Key helperKey = datastore.newKeyFactory().setKind(HELPER_KIND).addAncestor(PathElement.of(HELPER_KIND, helpId)).newKey(helperId);
+		Key helperKey = helperKeyFactory.addAncestor(PathElement.of(HELPER_KIND, helpId)).newKey(helperId);
 		
 		Query<Entity> currentHelperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
 				.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_CURRENT_PROPERTY,true))).build();
@@ -860,7 +862,7 @@ public class HelpResource {
 			helperList.forEachRemaining(helperKey -> {
 				long datastoreId = helperKey.getLong(HELPER_ID_PROPERTY);
 				helperKeys.add(accountKeyFactory.newKey(datastoreId));
-				helperKeys.add(datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
+				helperKeys.add(statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
 			});
 			
 			Key[] statsKeys = new Key[helperKeys.size()];
@@ -919,7 +921,7 @@ public class HelpResource {
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		Key helpKey = helpKeyFactory.newKey(helpId);
-		Key helperKey = datastore.allocateId(datastore.newKeyFactory().setKind(HELPER_KIND).addAncestor(PathElement.of(HELP_KIND, helpId)).newKey());
+		Key helperKey = datastore.allocateId(helperKeyFactory.addAncestor(PathElement.of(HELP_KIND, helpId)).newKey());
 		
 		Transaction txn = datastore.newTransaction();
 

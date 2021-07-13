@@ -70,8 +70,6 @@ import static helpinghand.resources.RouteResource.ROUTE_CREATOR_PROPERTY;
  */
 public class AccountUtils {
 
-	
-
 	protected static final String DATASTORE_EXCEPTION_ERROR = "Error in AccountUtils: %s";
 	protected static final String TRANSACTION_ACTIVE_ERROR = "Error in AccountUtils: Transaction was active";
 	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token (%d) does not exist";
@@ -80,11 +78,9 @@ public class AccountUtils {
 	public static final String ACCOUNT_ID_CONFLICT_ERROR = "Multiple accounts [%s] registered";
 	private static final String FEED_NOT_FOUND_ERROR = "User [%s] has no notification feeds";
 
-	
 	private static final String GET_ALL_START ="Attempting to get all [%s] accounts with token (%d)";
 	private static final String GET_ALL_OK ="Successfuly got all [%s] accounts with token (%d)";
 	private static final String GET_ALL_BAD_DATA_ERROR = "Get all accounts attempt failed due to bad input";
-	
 	
 	protected static final String CREATE_START = "Attempting to create account with id [%s] and role [%s]";
 	protected static final String CREATE_OK = "Successfuly created account [%s] and role [%s]";
@@ -211,16 +207,20 @@ public class AccountUtils {
 	protected static final String DEFAULT_PROPERTY_VALUE_STRING = "";
 	protected static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
 
-	
 	protected static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
 	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
 	protected static final Gson g = new Gson();
 	
-	
 	public AccountUtils() {}
-	
+
+	/**
+	 * 
+	 * @param token
+	 * @param role
+	 * @return
+	 */
 	protected Response listAll(String token, Role role) {
 		if(badString(token)) {
 			log.info(GET_ALL_BAD_DATA_ERROR);
@@ -255,15 +255,14 @@ public class AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
-	
-	
-	
-	
+
 	/**
 	 * Deletes an existing account either user or institution.
 	 * @param id - The identification of the user/institution to be deleted.
-	 * @param token - The token of the account performing this operation
+	 * @param token - The token of the account performing this operation.
+	 * @param role - The role of the account.
 	 * @return 200, if the account was successfully deleted.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the token cannot execute the operation with the current access level.
@@ -298,6 +297,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = keyList.next();
 			
 			if(keyList.hasNext()) {
@@ -305,8 +305,8 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			Query<Key> childrenQuery = Query.newKeyQueryBuilder().setFilter(PropertyFilter.hasAncestor(accountKey)).build();
 			
+			Query<Key> childrenQuery = Query.newKeyQueryBuilder().setFilter(PropertyFilter.hasAncestor(accountKey)).build();
 	
 			Entity tokenEntity = txn.get(tokenKey);
 	
@@ -334,12 +334,9 @@ public class AccountUtils {
 			
 			QueryResults<ProjectionEntity> eventList = txn.run(eventQuery);
 			eventList.forEachRemaining(event->{
-				if(event.getBoolean(EVENT_STATUS_PROPERTY)) {
+				if(event.getBoolean(EVENT_STATUS_PROPERTY))
 					cancelEvent(event.getKey().getId());
-				}
 			});
-			
-			
 			
 			QueryResults<Key> helpList = txn.run(helpQuery);
 			helpList.forEachRemaining(help->cancelHelp(help.getId()));
@@ -351,7 +348,6 @@ public class AccountUtils {
 			Query<Key> followQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, keyId)).build();
 			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setProjection(HELPER_CURRENT_PROPERTY).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
 			
-	
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
 				QueryResults<Key> participantList = txn.run(participantQuery);
@@ -373,25 +369,22 @@ public class AccountUtils {
 			//end all account sessions(delete tokens)
 			QueryResults<Key> tokenList = txn.run(tokenQuery);
 			tokenList.forEachRemaining(key->toDelete.add(key));
-			
-
-
-			
 
 			//convert list to Key array
 			Key[] keys = new Key[toDelete.size()];
 			toDelete.toArray(keys);
-
 		
 			txn.delete(keys);
 			txn.commit();
 			log.info(String.format(DELETE_OK,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
+			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 			if(txn.isActive()) {
+				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -400,10 +393,14 @@ public class AccountUtils {
 	}
 
 	/**
-	 * Returns account data
-	 * @param id - id of the account
-	 * @param token - token performing request
-	 * @return account data
+	 * Returns account data.
+	 * @param id - id of the account.
+	 * @param token - token performing request.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
 	 */
 	protected Response getAccount(String id, String token) {
 		if(badString(id) || badString(token)) {
@@ -420,8 +417,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			Entity tokenEntity = txn.get(tokenKey);
 			
 			if(tokenEntity == null) {
@@ -432,15 +429,15 @@ public class AccountUtils {
 			
 			QueryResults<Entity> accountList = txn.run(accountQuery);
 			txn.commit();
+			
 			if(!accountList.hasNext()) {
-				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
-				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -449,18 +446,15 @@ public class AccountUtils {
 				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
 				if(role.getAccess() < minAccess) {
-					txn.rollback();
 					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
 
-
 			Account info = new Account(account,true);
 			
 			log.info(String.format(GET_ACCOUNT_OK,id,tokenId));
 			return Response.ok(g.toJson(info)).build();
-			
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -473,9 +467,7 @@ public class AccountUtils {
 			}
 		}
 	}
-	
-	
-	
+
 	/**
 	 * It performs a login on the user/institution account.
 	 * @param data - The requested data to perform login.
@@ -556,7 +548,6 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -564,6 +555,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -595,7 +587,6 @@ public class AccountUtils {
 				log.severe(String.format(PASSWORD_DENIED_ERROR,data.oldPassword,id));
 				return Response.status(Status.FORBIDDEN).build(); 
 			}
-		
 			
 			Entity updatedAccount = Entity.newBuilder(account)
 					.set(ACCOUNT_PASSWORD_PROPERTY,DigestUtils.sha512Hex(data.newPassword))
@@ -648,7 +639,6 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -656,6 +646,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -683,7 +674,6 @@ public class AccountUtils {
 			}
 			
 			Query<Key> checkQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY, email)).build();
-			
 			
 			if(txn.run(checkQuery).hasNext()) {
 				txn.rollback();
@@ -732,6 +722,7 @@ public class AccountUtils {
 		}
 
 		long tokenId = Long.parseLong(token);
+		
 		boolean statusBoolean = Boolean.getBoolean(status);
 
 		log.info(String.format(UPDATE_STATUS_START,tokenId));
@@ -742,7 +733,6 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -750,6 +740,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -817,6 +808,7 @@ public class AccountUtils {
 		}
 
 		long tokenId = Long.parseLong(token);
+		
 		boolean visibilityBoolean = Boolean.getBoolean(visibility);
 
 		log.info(String.format(UPDATE_VISIBILITY_START,tokenId));
@@ -827,7 +819,6 @@ public class AccountUtils {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -835,6 +826,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -882,7 +874,7 @@ public class AccountUtils {
 		}
 
 	}
-	
+
 	/**
 	 * Obtains the account info of the user/institution.
 	 * @param id - The identification of the user/institution.
@@ -909,8 +901,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -918,6 +910,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -953,7 +946,6 @@ public class AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 
-
 			AccountInfo info = new AccountInfo(
 					accountInfo.getString(ACCOUNT_INFO_PHONE_PROPERTY),
 					accountInfo.getString(ACCOUNT_INFO_ADDRESS_1_PROPERTY),
@@ -964,7 +956,6 @@ public class AccountUtils {
 			
 			log.info(String.format(GET_ACCOUNT_INFO_OK,id,tokenId));
 			return Response.ok(g.toJson(info)).build();
-			
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -976,8 +967,6 @@ public class AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
-		
-
 		
 	}
 
@@ -1007,8 +996,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -1016,6 +1005,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -1059,7 +1049,6 @@ public class AccountUtils {
 					.set(ACCOUNT_INFO_CITY_PROPERTY,data.city)
 					.build();
 
-		
 			txn.update(updatedAccountInfo);
 			txn.commit();
 			log.info(String.format(UPDATE_ACCOUNT_INFO_OK,id,tokenId));
@@ -1103,8 +1092,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -1112,6 +1101,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -1138,8 +1128,6 @@ public class AccountUtils {
 				}
 			}
 			
-			
-			
 			QueryResults<Entity> eventList = txn.run(eventQuery);
 			txn.commit();
 			
@@ -1147,9 +1135,7 @@ public class AccountUtils {
 			eventList.forEachRemaining(event->events.add(new EventData(event)));
 	
 			log.info(String.format(GET_EVENTS_OK,id,tokenId));
-	
 			return Response.ok(g.toJson(events)).build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -1161,6 +1147,7 @@ public class AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -1188,8 +1175,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -1197,6 +1184,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -1222,7 +1210,6 @@ public class AccountUtils {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-			
 			
 			QueryResults<Entity> helpList = txn.run(helpQuery);
 			txn.commit();
@@ -1244,9 +1231,14 @@ public class AccountUtils {
 			}
 		}
 		
-		
 	}
-	
+
+	/**
+	 * 
+	 * @param id
+	 * @param token
+	 * @return
+	 */
 	protected Response getAccountRoutes(String id,String token) {
 		if(badString(id)|| badString(token)) {
 			log.info(GET_ROUTES_BAD_DATA_ERROR);
@@ -1263,8 +1255,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -1272,6 +1264,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -1298,7 +1291,6 @@ public class AccountUtils {
 				}
 			}
 			
-			
 			QueryResults<Entity> routeList = txn.run(routeQuery);
 			txn.commit();
 			
@@ -1319,9 +1311,7 @@ public class AccountUtils {
 			}
 		}
 		
-		
 	}
-	
 
 	/**
 	 * Obtains the feed of the user/institution account.
@@ -1347,8 +1337,8 @@ public class AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -1356,6 +1346,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -1386,7 +1377,6 @@ public class AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			} 
 	
-	
 			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
 			List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
 	
@@ -1403,7 +1393,9 @@ public class AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
+
 
 	/**
 	 * Updates the feed of the user/institution account.
@@ -1429,7 +1421,6 @@ public class AccountUtils {
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
 
 		ListValue.Builder feedBuilder = ListValue.newBuilder();
 
@@ -1439,8 +1430,8 @@ public class AccountUtils {
 		ListValue completeFeed = feedBuilder.build(); 
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -1448,6 +1439,7 @@ public class AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -1465,6 +1457,7 @@ public class AccountUtils {
 			}
 		
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				txn.rollback();
 				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
 				return Response.status(Status.FORBIDDEN).build();
 			}
@@ -1482,7 +1475,6 @@ public class AccountUtils {
 			Entity updatedFeed = Entity.newBuilder(feed)
 					.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
 					.build();
-
 		
 			txn.update(updatedFeed);
 			txn.commit();
@@ -1501,7 +1493,7 @@ public class AccountUtils {
 		}
 		
 	}
-	
+
 	/**
 	 * Adds a notification to feed of the user/institution.
 	 * @param user - The identification of the user/institution.
@@ -1521,8 +1513,8 @@ public class AccountUtils {
 		Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId);
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			Entity account = txn.get(accountKey);
 			
 			if(account == null) {
@@ -1539,7 +1531,6 @@ public class AccountUtils {
 				return false;
 			}
 
-	
 			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
 	
 			ListValue.Builder feedBuilder = ListValue.newBuilder();
@@ -1556,7 +1547,6 @@ public class AccountUtils {
 					.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, completeFeed)
 					.build();
 
-		
 			txn.update(updatedFeed);
 			txn.commit();
 			log.info(String.format(ADD_NOTIFICATION_FEED_OK,datastoreId));

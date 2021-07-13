@@ -98,7 +98,6 @@ public class BackOfficeResource {
 	public static final String REPORT_CREATOR_PROPERTY = "creator";
 	public static final String REPORT_SUBJECT_PROPERTY = "subject";
 	public static final String REPORT_TEXT_PROPERTY = "text";
-	
 
 	// Paths
 	public static final String PATH = "/restricted";
@@ -150,8 +149,8 @@ public class BackOfficeResource {
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Transaction txn =  datastore.newTransaction();
-		try {
 		
+		try {
 			Entity tokenEntity = txn.get(tokenKey);
 			
 			if(tokenEntity == null) {
@@ -165,15 +164,15 @@ public class BackOfficeResource {
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
-				return null;
+				return Response.status(Status.NOT_FOUND).build();
 			}
 			
-			Entity oldAccount =accountList.next();
+			Entity oldAccount = accountList.next();
 	
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
-				return null;
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 	
 			Role accountRole = Role.getRole(oldAccount.getString(ACCOUNT_ROLE_PROPERTY));
@@ -198,7 +197,6 @@ public class BackOfficeResource {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			
 			Entity newAccount = Entity.newBuilder(oldAccount)
 					.set("role", targetRole.name())
 					.build();
@@ -219,6 +217,7 @@ public class BackOfficeResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -243,7 +242,7 @@ public class BackOfficeResource {
 
 		log.info(String.format(UPDATE_TOKEN_ROLE_START,tokenId, role));
 
-		if(updateTokenRole(tokenId, targetRole)){
+		if(updateTokenRole(tokenId, targetRole)) {
 			log.info(String.format(UPDATE_TOKEN_ROLE_OK, tokenId,role));
 			return Response.ok().build();
 		}
@@ -276,12 +275,12 @@ public class BackOfficeResource {
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, role)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		
 		try {
 			QueryResults<Entity> accounts = txn.run(accountQuery);
 			txn.commit();
 			List<Account> data = new LinkedList<>();
 			accounts.forEachRemaining(account->data.add(new Account(account,true)));
-			
 	
 			log.info(String.format(LIST_ROLE_OK, roleParam.name(),tokenId));
 			return Response.ok(g.toJson(data)).build();
@@ -296,6 +295,7 @@ public class BackOfficeResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -340,7 +340,6 @@ public class BackOfficeResource {
 			QueryResults<Entity> creationTimestamps = txn.run(query);
 			txn.commit();
 			creationTimestamps.forEachRemaining(projectionEntity -> {
-
 				Timestamp creationTimestamp = projectionEntity.getTimestamp(ACCOUNT_CREATION_PROPERTY);
 
 				Instant creation = creationTimestamp.toDate().toInstant().truncatedTo(ChronoUnit.DAYS);
@@ -387,6 +386,12 @@ public class BackOfficeResource {
 		return data;
 	}
 	
+	/**
+	 * 
+	 * @param token
+	 * @param data
+	 * @return
+	 */
 	@POST
 	@Path(CREATE_REPORT_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -396,11 +401,12 @@ public class BackOfficeResource {
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
-		long tokenId  = Long.parseLong(token);
+		long tokenId = Long.parseLong(token);
 		
 		log.info(String.format(CREATE_REPORT_START,tokenId));
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Key reportKey = datastore.allocateId(reportKeyFactory.newKey());
 		
 		Timestamp now = Timestamp.now();
@@ -408,14 +414,12 @@ public class BackOfficeResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			Entity tokenEntity = txn.get(tokenKey);
-			
 			
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.warning(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.FORBIDDEN).build();
+				return Response.status(Status.NOT_FOUND).build();
 			}
 			
 			Entity reportEntity = Entity.newBuilder(reportKey)
@@ -427,7 +431,6 @@ public class BackOfficeResource {
 			
 			txn.add(reportEntity);
 			txn.commit();
-			
 			
 			log.info(String.format(CREATE_REPORT_OK,tokenId));
 			return Response.ok().build();
@@ -445,6 +448,12 @@ public class BackOfficeResource {
 		
 	}
 	
+	/**
+	 * 
+	 * @param token
+	 * @param report
+	 * @return
+	 */
 	@GET
 	@Path(GET_REPORT_PATH)
 	public Response getReport(@QueryParam(TOKEN_ID_PARAM)String token, @QueryParam(REPORT_ID_PARAM)String report) {
@@ -452,7 +461,9 @@ public class BackOfficeResource {
 			log.warning(GET_REPORT_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
+		
 		long reportId = Long.parseLong(report);
 		
 		log.info(String.format(GET_REPORT_START, reportId,tokenId));
@@ -462,7 +473,6 @@ public class BackOfficeResource {
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
-			
 			Entity reportEntity = txn.get(reportKey);
 			txn.commit();
 			
@@ -487,8 +497,14 @@ public class BackOfficeResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 	
+	/**
+	 * 
+	 * @param token
+	 * @return
+	 */
 	@GET
 	@Path(LIST_REPORTS_PATH)
 	public Response listReports(@QueryParam(TOKEN_ID_PARAM)String token) {
@@ -496,15 +512,16 @@ public class BackOfficeResource {
 			log.warning(LIST_REPORTS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
 		
 		log.info(String.format(LIST_REPORTS_START,tokenId));
+		
 		Query<Entity> reportQuery = Query.newEntityQueryBuilder().setKind(REPORT_KIND).addOrderBy(OrderBy.asc(REPORT_DATE_PROPERTY)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
-			
 			QueryResults<Entity> reportList = txn.run(reportQuery);
 			txn.commit();
 			
@@ -524,8 +541,15 @@ public class BackOfficeResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 	
+	/**
+	 * 
+	 * @param token
+	 * @param report
+	 * @return
+	 */
 	@DELETE
 	@Path(DELETE_REPORT_PATH)
 	public Response deleteReport(@QueryParam(TOKEN_ID_PARAM)String token, @QueryParam(REPORT_ID_PARAM)String report) {
@@ -535,6 +559,7 @@ public class BackOfficeResource {
 		}
 		
 		long tokenId = Long.parseLong(token);
+		
 		long reportId = Long.parseLong(report);
 		
 		log.info(String.format(DELETE_REPORT_START, reportId,tokenId));
@@ -544,18 +569,16 @@ public class BackOfficeResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			Entity reportEntity = txn.get(reportKey);
-			
 			
 			if(reportEntity == null) {
 				txn.rollback();
 				log.warning(String.format(REPORT_NOT_FOUND_ERROR, reportId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			txn.delete(reportKey);
 			txn.commit();
-			
 			
 			log.info(String.format(DELETE_REPORT_OK,reportId,tokenId));
 			return Response.ok().build();
@@ -570,9 +593,7 @@ public class BackOfficeResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
-	
-	
-	
 
 }
