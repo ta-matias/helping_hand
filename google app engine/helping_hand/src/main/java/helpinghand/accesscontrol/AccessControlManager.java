@@ -46,6 +46,7 @@ public class AccessControlManager {
 	private static final String WRONG_PASSWORD_ERROR = "Error in AccessControlManager: Wrong password for account [%s]";
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in AccessControlManager: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in AccessControlManager: Transaction was active";
+	private static final String ROLE_ACCESS_ERROR= "Error in AccessControlManager: Role [%s] does not have access to operation [%s]";
 	
 	private static final String RBAC_NOT_FOUND_ERROR = "Error in AccessControlManager: RBAC for operation [%s] does not exist";
 	private static final String RBAC_PARTIAL_INITIALIZATION_ERROR = "Warning in AccessControlManager: RBAC not fully initialized, some rules are missing from database";
@@ -445,6 +446,7 @@ public class AccessControlManager {
 			List<String> roles = lst.stream().map(value->value.get()).collect(Collectors.toList());
 
 			if(roles.contains(role))return true;
+			log.warning(String.format(ROLE_ACCESS_ERROR,role,operationId));
 			return false;
 		} catch(DatastoreException e) {
 			txn.rollback();

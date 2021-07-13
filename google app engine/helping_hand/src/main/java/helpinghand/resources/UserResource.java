@@ -110,8 +110,6 @@ public class UserResource extends AccountUtils {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory accountKeyFactory =datastore.newKeyFactory().setKind(ACCOUNT_KIND);
-	private static final KeyFactory profileKeyFactory = datastore.newKeyFactory().setKind(USER_PROFILE_KIND);
-	private static final KeyFactory statsKeyFactory =datastore.newKeyFactory().setKind(USER_STATS_KIND);
 
 	public UserResource() {super();}
 
@@ -317,8 +315,8 @@ public class UserResource extends AccountUtils {
 	@PUT
 	@Path(UPDATE_EMAIL_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateEmail(@PathParam(USER_ID_PARAM)String id, ChangeEmail data, @QueryParam(TOKEN_ID_PARAM)String token) {
-		return super.updateEmail(id,data, token);
+	public Response updateEmail(@PathParam(USER_ID_PARAM)String id, @QueryParam(EMAIL_PARAM) String email, @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.updateEmail(id,email, token);
 	}
 
 	/**
@@ -335,8 +333,8 @@ public class UserResource extends AccountUtils {
 	 */
 	@PUT
 	@Path(UPDATE_STATUS_PATH)
-	public Response updateStatus(@PathParam(USER_ID_PARAM) String id, ChangeStatus data, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.updateStatus(id, data, token);
+	public Response updateStatus(@PathParam(USER_ID_PARAM) String id, @QueryParam(STATUS_PARAM) String status, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateStatus(id, status, token);
 	}
 
 	/**
@@ -491,7 +489,7 @@ public class UserResource extends AccountUtils {
 				}
 			}
 			
-			Key profileKey  = profileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
+			Key profileKey  = datastore.newKeyFactory().setKind(USER_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
 			Entity userProfile = txn.get(profileKey);
 			txn.commit();
 			
@@ -580,7 +578,7 @@ public class UserResource extends AccountUtils {
 				}
 			}
 
-			Key profileKey  = profileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Key profileKey  = datastore.newKeyFactory().setKind(USER_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity userProfile = txn.get(profileKey);
 			
 			if(userProfile == null) {
@@ -687,7 +685,7 @@ public class UserResource extends AccountUtils {
 			}
 
 
-			Key statsKey = statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Key statsKey = datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity statsEntity = txn.get(statsKey);
 			txn.commit();
 			
@@ -950,7 +948,7 @@ public class UserResource extends AccountUtils {
 		log.info(String.format(ADD_RATING_START,datastoreId));
 		
 		Key accountKey = accountKeyFactory.newKey(datastoreId);
-		Key statsKey = statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, datastoreId)).newKey(datastoreId);
+		Key statsKey = datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, datastoreId)).newKey(datastoreId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {

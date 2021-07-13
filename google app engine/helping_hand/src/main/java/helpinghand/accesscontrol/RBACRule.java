@@ -19,7 +19,7 @@ public enum RBACRule {
 	CREATE_USER("POST_user", new Role[] {ALL}), //create a user account
 	DELETE_USER("DELETE_user", new Role[] {USER,GBO}), //delete a user account
 	LOGIN_USER("POST_user_login", new Role[] {ALL}), //login as a user
-	LOGOUT_USER("DELETE_user_logout", new Role[] {USER}), //logout as a user
+	LOGOUT_USER("DELETE_user_logout", new Role[] {USER,GBO,SU}), //logout as a user
 	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
 	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password

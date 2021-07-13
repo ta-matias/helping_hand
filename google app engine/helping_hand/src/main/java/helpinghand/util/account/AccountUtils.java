@@ -44,6 +44,7 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
+import static helpinghand.util.GeneralUtils.EMAIL_REGEX;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
@@ -201,6 +202,8 @@ public class AccountUtils {
 	public static final String ACCOUNT_FEED_NOTIFICATIONS_PROPERTY = "notifications";
 	
 	protected static final String VISIBILITY_PARAM = "visibility";
+	protected static final String STATUS_PARAM = "status";
+	protected static final String EMAIL_PARAM = "email";
 	
 	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = true;
 	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = true;//false in final release
@@ -213,8 +216,6 @@ public class AccountUtils {
 	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
 	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
-	private static final KeyFactory infoKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_INFO_KIND);
-	private static final KeyFactory feedKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND);
 	protected static final Gson g = new Gson();
 	
 	
@@ -286,10 +287,6 @@ public class AccountUtils {
 		Query<ProjectionEntity> eventQuery = Query.newProjectionEntityQueryBuilder().setKind(EVENT_KIND).setProjection(EVENT_STATUS_PROPERTY).setFilter(PropertyFilter.eq(EVENT_CREATOR_PROPERTY, id)).build();
 		
 		Query<Key> helpQuery = Query.newKeyQueryBuilder().setKind(HELP_KIND).setFilter(PropertyFilter.eq(HELP_CREATOR_PROPERTY, id)).build();
-		
-		
-	
-		
 		
 		Transaction txn = datastore.newTransaction();
 
@@ -635,8 +632,8 @@ public class AccountUtils {
 	 * 		   409, if there is already an account with the email.
 	 * 		   500, otherwise.
 	 */
-	protected Response updateEmail(String id, ChangeEmail data, String token) {
-		if(data.badData() || badString(id) ||badString(token)) {
+	protected Response updateEmail(String id, String email, String token) {
+		if(!email.matches(EMAIL_REGEX) || badString(id) ||badString(token)) {
 			log.warning(UPDATE_EMAIL_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
@@ -684,29 +681,23 @@ public class AccountUtils {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-	
-			if(badPassword(account,data.password)) {
-				txn.rollback();
-				log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
-				return Response.status(Status.FORBIDDEN).build(); 
-			}
 			
-			Query<Key> checkQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY, data.email)).build();
+			Query<Key> checkQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY, email)).build();
 			
 			
 			if(txn.run(checkQuery).hasNext()) {
 				txn.rollback();
-				log.warning(String.format(UPDATE_EMAIL_CONFLICT_ERROR,data.email));
+				log.warning(String.format(UPDATE_EMAIL_CONFLICT_ERROR,email));
 				return Response.status(Status.CONFLICT).build(); 
 			}
 
 			Entity updatedAccount = Entity.newBuilder(account)
-					.set(ACCOUNT_EMAIL_PROPERTY,data.email)
+					.set(ACCOUNT_EMAIL_PROPERTY,email)
 					.build();
 
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_EMAIL_OK,data.email,tokenId));
+			log.info(String.format(UPDATE_EMAIL_OK,email,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -734,13 +725,14 @@ public class AccountUtils {
 	 * 		   404, if the account does not exist or the token does not exist.
 	 * 		   500, otherwise.
 	 */
-	protected Response updateStatus(String id, ChangeStatus data, String token) {
-		if(data.badData()||badString(id) || badString(token)) {
+	protected Response updateStatus(String id, String status, String token) {
+		if(badString(status)||badString(id) || badString(token)) {
 			log.warning(UPDATE_STATUS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 
 		long tokenId = Long.parseLong(token);
+		boolean statusBoolean = Boolean.getBoolean(status);
 
 		log.info(String.format(UPDATE_STATUS_START,tokenId));
 
@@ -783,20 +775,14 @@ public class AccountUtils {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-	
-			if(badPassword(account,data.password)) {
-				txn.rollback();
-				log.severe(String.format(PASSWORD_DENIED_ERROR,data.password,id));
-				return Response.status(Status.FORBIDDEN).build(); 
-			}
 
 			Entity updatedAccount = Entity.newBuilder(account)
-					.set(ACCOUNT_STATUS_PROPERTY,data.status)
+					.set(ACCOUNT_STATUS_PROPERTY,statusBoolean)
 					.build();
 
 			txn.update(updatedAccount);
 			txn.commit();
-			log.info(String.format(UPDATE_STATUS_OK,data.status,tokenId));
+			log.info(String.format(UPDATE_STATUS_OK,statusBoolean,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -917,7 +903,8 @@ public class AccountUtils {
 
 		log.info(String.format(GET_ACCOUNT_INFO_START,id,tokenId));
 
-		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY)
+				.setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
@@ -957,7 +944,7 @@ public class AccountUtils {
 				}
 			}
 			
-			Key infoKey = infoKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
+			Key infoKey = datastore.newKeyFactory().setKind(ACCOUNT_INFO_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
 			Entity accountInfo = txn.get(infoKey);		
 			txn.commit();
 
@@ -1055,8 +1042,7 @@ public class AccountUtils {
 				}
 			}
 			
-			Key infoKey = infoKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
-			log.info(infoKey.toString());
+			Key infoKey = datastore.newKeyFactory().setKind(ACCOUNT_INFO_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity accountInfo = txn.get(infoKey);	
 
 			if(accountInfo == null) {
@@ -1391,7 +1377,7 @@ public class AccountUtils {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			Key feedKey = feedKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, id)).newKey(accountKey.getId());
+			Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, id)).newKey(accountKey.getId());
 			Entity feed = txn.get(feedKey);
 			txn.commit();
 			
@@ -1483,7 +1469,7 @@ public class AccountUtils {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			Key feedKey = feedKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, id)).newKey(accountKey.getId());
+			Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, id)).newKey(accountKey.getId());
 			
 			Entity feed = txn.get(feedKey);
 			
@@ -1532,7 +1518,7 @@ public class AccountUtils {
 		log.info(String.format(ADD_NOTIFICATION_FEED_START,datastoreId));
 		
 		Key accountKey = accountKeyFactory.newKey(datastoreId);
-		Key feedKey = feedKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId);
+		Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId);
 		
 		Transaction txn = datastore.newTransaction();
 		try {

@@ -111,7 +111,6 @@ public class InstitutionResource extends AccountUtils {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
-	private static final KeyFactory instProfileKeyFactory = datastore.newKeyFactory().setKind(INSTITUTION_PROFILE_KIND);
 
 	public InstitutionResource() {super();}
 
@@ -308,8 +307,8 @@ public class InstitutionResource extends AccountUtils {
 	 */
 	@PUT
 	@Path(UPDATE_EMAIL_PATH)
-	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeEmail data, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.updateEmail(id, data, token);
+	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(EMAIL_PARAM) String email, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateEmail(id, email, token);
 	}
 
 	/**
@@ -326,8 +325,8 @@ public class InstitutionResource extends AccountUtils {
 	 */
 	@PUT
 	@Path(UPDATE_STATUS_PATH)
-	public Response updateStatus(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeStatus data, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.updateStatus(id, data, token);
+	public Response updateStatus(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(STATUS_PARAM) String status, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateStatus(id, status, token);
 	}
 
 	/**
@@ -483,7 +482,7 @@ public class InstitutionResource extends AccountUtils {
 				}
 			}
 			
-			Key profileKey = instProfileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
+			Key profileKey = datastore.newKeyFactory().setKind(INSTITUTION_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
 			Entity instProfile = txn.get(profileKey);
 		
 			txn.commit();
@@ -582,7 +581,7 @@ public class InstitutionResource extends AccountUtils {
 				}
 			}
 
-			Key profileKey  = instProfileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Key profileKey  = datastore.newKeyFactory().setKind(INSTITUTION_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity instProfile = txn.get(profileKey);
 	
 			if(instProfile == null) {
