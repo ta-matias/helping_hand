@@ -7,7 +7,6 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
@@ -110,7 +109,6 @@ public class UserResource extends AccountUtils {
 	private static final String FOLLOW_PATH = "/{" + USER_ID_PARAM + "}/follow";//POST
 	private static final String UNFOLLOW_PATH = "/{" + USER_ID_PARAM + "}/follow";//DELETE
 
-	
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
@@ -186,8 +184,6 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(CREATE_START,data.id,Role.USER.name()));
 
-		
-
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
 		Key accountFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey());
@@ -229,13 +225,13 @@ public class UserResource extends AccountUtils {
 				.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_RATING)
 				.build();
 		
-		Query<Key> idQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
-		Query<Key> emailQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
+		Query<Key> idQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
+		
+		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
 		
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			QueryResults<Key> idCheck = txn.run(idQuery);
 
 			if(idCheck.hasNext()) {
@@ -251,7 +247,6 @@ public class UserResource extends AccountUtils {
 				log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
 				return Response.status(Status.CONFLICT).build();
 			}
-			
 			
 			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
 			txn.commit();
@@ -287,6 +282,16 @@ public class UserResource extends AccountUtils {
 		return super.deleteAccount(id,token,Role.USER);
 	}
 	
+	/**
+	 * Returns account data.
+	 * @param id - id of the account.
+	 * @param token - token performing request.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(GET_PATH)
 	public Response getAccount(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
@@ -461,12 +466,17 @@ public class UserResource extends AccountUtils {
 		return super.getAccountHelpRequests(id, token);
 	}
 	
+	/**
+	 * 
+	 * @param id
+	 * @param token
+	 * @return
+	 */
 	@GET
 	@Path(GET_ROUTES_PATH)
 	public Response getAccountRoutes(@PathParam(USER_ID_PARAM)String id,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return super.getAccountRoutes(id, token);
 	}
-	
 
 	/**
 	 * Obtains the profile of the user.
@@ -494,8 +504,8 @@ public class UserResource extends AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<Entity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -503,6 +513,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Entity account = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -535,6 +546,7 @@ public class UserResource extends AccountUtils {
 			txn.commit();
 			
 			if(!profileList.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -542,17 +554,15 @@ public class UserResource extends AccountUtils {
 			Entity userProfile = profileList.next();
 			
 			if(profileList.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-	
-	
 	
 			UserProfile profile = new UserProfile(
 					userProfile.getString(PROFILE_NAME_PROPERTY),
 					userProfile.getString(PROFILE_BIO_PROPERTY)
 					);
-			
 			
 			log.info(String.format(GET_PROFILE_OK,id,tokenId));
 			return Response.ok(g.toJson(profile)).build();
@@ -567,6 +577,7 @@ public class UserResource extends AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -598,8 +609,8 @@ public class UserResource extends AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -607,6 +618,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -655,7 +667,6 @@ public class UserResource extends AccountUtils {
 					.set(PROFILE_NAME_PROPERTY, data.name)
 					.set(PROFILE_BIO_PROPERTY,data.bio)
 					.build();
-
 		
 			txn.update(updatedUserProfile);
 			txn.commit();
@@ -732,8 +743,8 @@ public class UserResource extends AccountUtils {
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -741,6 +752,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -748,7 +760,6 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-
 
 			Query<Entity> statsQuery = Query.newEntityQueryBuilder().setKind(USER_STATS_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
 			
@@ -758,7 +769,7 @@ public class UserResource extends AccountUtils {
 			if(!statsList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+				return Response.status(Status.NOT_FOUND).build();
 			}
 
 			Entity statsEntity = statsList.next();
@@ -784,6 +795,7 @@ public class UserResource extends AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -810,13 +822,11 @@ public class UserResource extends AccountUtils {
 
 		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
-		
-		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -824,6 +834,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -839,6 +850,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 			
 			Query<Key> tokenAccountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
@@ -850,6 +862,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key tokenAccountKey = tokenAccountList.next();
 			
 			if(tokenAccountList.hasNext()) {
@@ -870,8 +883,6 @@ public class UserResource extends AccountUtils {
 				return Response.status(Status.CONFLICT).build();
 			}
 
-
-			
 			Key followerKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(FOLLOWER_KIND).newKey());
 	
 			Entity follower = Entity.newBuilder(followerKey)
@@ -897,7 +908,7 @@ public class UserResource extends AccountUtils {
 	}
 
 	/**
-	 * The user unfollows another user.
+	 * The owner of token stops following account with id
 	 * @param id - The user identification to be unfollowed.
 	 * @param token - The token of the user requesting this operation.
 	 * @return 200, if the operation was successful.
@@ -906,7 +917,6 @@ public class UserResource extends AccountUtils {
 	 * 		   or the user is not following another user.
 	 * 		   500, otherwise.
 	 */
-	//owner of token stops following account with id
 	@DELETE
 	@Path(UNFOLLOW_PATH)
 	public Response unfollow(@PathParam(USER_ID_PARAM)String id, @QueryParam(TOKEN_ID_PARAM) String token) {
@@ -924,8 +934,8 @@ public class UserResource extends AccountUtils {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			QueryResults<Key> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
@@ -933,6 +943,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = accountList.next();
 			
 			if(accountList.hasNext()) {
@@ -950,7 +961,6 @@ public class UserResource extends AccountUtils {
 			}
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 			
-			
 			Query<Key> tokenAccountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
 			
 			QueryResults<Key> tokenAccountList = txn.run(tokenAccountQuery);
@@ -960,6 +970,7 @@ public class UserResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key tokenAccountKey = tokenAccountList.next();
 			
 			if(tokenAccountList.hasNext()) {
@@ -1015,7 +1026,7 @@ public class UserResource extends AccountUtils {
 	 * 		   false, otherwise.
 	 */
 	public static boolean addRatingToStats(long datastoreId,boolean finished,int rating) {
-		if( rating < 0 || rating > 5) {
+		if(rating < 0 || rating > 5) {
 			log.warning(ADD_RATING_BAD_DATA_ERROR);
 			return false;
 		}
@@ -1023,11 +1034,12 @@ public class UserResource extends AccountUtils {
 		log.info(String.format(ADD_RATING_START,datastoreId));
 		
 		Key accountKey = accountKeyFactory.newKey(datastoreId);
+		
 		Key statsKey = statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, datastoreId)).newKey(datastoreId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		try {
 		
+		try {
 			Entity account = txn.get(accountKey);
 			
 			if(account == null) {

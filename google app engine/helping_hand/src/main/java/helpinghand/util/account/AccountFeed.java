@@ -7,7 +7,7 @@ public class AccountFeed {
 	public AccountFeed() {}
 	
 	public AccountFeed(String[] feed) {
-		this.feed= feed;
+		this.feed = feed;
 	}
 	
 	public boolean badData() {

@@ -108,7 +108,6 @@ public class EventResource {
 	private static final String LIST_EVENT_PARTICIPANTS_OK = "Successfuly got event [%s](%d) participants with token (%d)";
 	private static final String LIST_EVENT_PARTICIPANTS_BAD_DATA_ERROR  = "Get event participants attempt failed due to bad inputs";
 
-
 	private static final String EVENT_ID_PARAM = "eventId";
 
 	public static final String PATH = "/event";
@@ -165,8 +164,8 @@ public class EventResource {
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
-		
 		long tokenId = Long.parseLong(token);
+		
 		log.info(String.format(CREATE_EVENT_START,tokenId));
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
@@ -177,22 +176,20 @@ public class EventResource {
 		Timestamp end = Timestamp.parseTimestamp(data.end);
 
 		Key eventKey = datastore.allocateId(eventKeyFactory.newKey());
-		
-		
 	
 		Transaction txn = datastore.newTransaction();
 
 		try {
-			
 			Entity tokenEntity = txn.get(tokenKey); 
 	
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.FORBIDDEN).build();
+				return Response.status(Status.NOT_FOUND).build();
 			}
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			
 			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 			QueryResults<Key> keyList = txn.run(accountQuery);
 			
@@ -201,6 +198,7 @@ public class EventResource {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = keyList.next();
 			
 			if(keyList.hasNext()) {
@@ -208,7 +206,6 @@ public class EventResource {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
 			
 			Entity event = Entity.newBuilder(eventKey)
 					.set(EVENT_NAME_PROPERTY, data.name)
@@ -220,27 +217,21 @@ public class EventResource {
 					.set(EVENT_STATUS_PROPERTY, EVENT_STATUS_DEFAULT)
 					.build();
 			
-			
-		
 			Query<Entity> followerQuery = Query.newEntityQueryBuilder().setKind(FOLLOWER_KIND)
 					.setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			
 			QueryResults<Entity> followerList = txn.run(followerQuery);
 			
 			txn.add(event);
 			txn.commit();
 			
-			
-			
 			String message = String.format(EVENT_CREATED_NOTIFICATION,data.name,id);
 			followerList.forEachRemaining(follower->{
-				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message)) {
+				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message))
 					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
-				}
-				
 			});
 
 			log.info(String.format(CREATE_EVENT_OK, data.name,eventKey.getId(),tokenId));
-
 			return Response.ok(eventKey.getId()).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -287,7 +278,6 @@ public class EventResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity eventEntity = txn.get(eventKey);
 	
 			if(eventEntity == null) {
@@ -320,7 +310,6 @@ public class EventResource {
 	
 			//TODO:Do something to participants?
 
-		
 			txn.update(updatedEvent);
 			txn.commit();
 			log.info(String.format(END_EVENT_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
@@ -363,8 +352,8 @@ public class EventResource {
 
 		log.info(String.format(CANCEL_EVENT_START, eventId, tokenId));
 		
-		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
 		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setFilter(PropertyFilter.hasAncestor(eventKey)).build();
@@ -372,7 +361,6 @@ public class EventResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity eventEntity = txn.get(eventKey);
 	
 			if(eventEntity == null) {
@@ -398,6 +386,7 @@ public class EventResource {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
+			
 			List<Key> toDelete = new LinkedList<>();
 			List<Long> toNotify = new LinkedList<>();
 			toDelete.add(eventKey);
@@ -416,9 +405,8 @@ public class EventResource {
 		
 			String message = String.format(EVENT_CANCELED_NOTIFICATION, eventEntity.getString(EVENT_NAME_PROPERTY));
 			toNotify.forEach(id->{
-				if(!addNotificationToFeed(id,message)) {
+				if(!addNotificationToFeed(id,message))
 					log.warning(String.format(NOTIFICATION_ERROR,id));
-				}
 			});
 			
 			log.info(String.format(CANCEL_EVENT_OK,eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
@@ -509,7 +497,6 @@ public class EventResource {
 					.set(EVENT_LOCATION_PROPERTY, location)
 					.build();
 		
-		
 			txn.update(updatedEvent);
 			txn.commit();
 			log.info(String.format(UPDATE_EVENT_OK, data.name,updatedEvent.getKey().getId(),tokenId));
@@ -534,6 +521,7 @@ public class EventResource {
 	 * @param token - The token id of the user or the institution who is performing this request.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_PATH)
@@ -552,11 +540,13 @@ public class EventResource {
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		
 		try {
 			Entity eventEntity = txn.get(eventKey);
 			txn.commit();
 			
 			if(eventEntity == null) {
+				txn.rollback();
 				log.warning(String.format(EVENT_NOT_FOUND_ERROR, eventId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
@@ -576,6 +566,7 @@ public class EventResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 
 	/**
@@ -603,13 +594,13 @@ public class EventResource {
 
 		log.info(String.format(JOIN_EVENT_START, eventId,tokenId));
 
-		
 		Key eventKey = eventKeyFactory.newKey(eventId);
+		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
-		try {
 		
+		try {
 			Entity eventEntity = txn.get(eventKey);
 	
 			if(eventEntity == null) {
@@ -652,11 +643,11 @@ public class EventResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
-			
 			Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(eventKey),PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, accountKey.getId()))).build();
 	
 			QueryResults<Key> participantList = txn.run(participantQuery);
+			
 			if(participantList.hasNext()) {
 				txn.rollback();
 				log.warning(String.format(JOIN_EVENT_CONFLICT_ERROR,user,eventId));
@@ -668,7 +659,6 @@ public class EventResource {
 			Entity participant = Entity.newBuilder(participantKey)
 					.set(PARTICIPANT_ID_PROPERTY, accountKey.getId())
 					.build();
-
 		
 			txn.add(participant);
 			txn.commit();
@@ -715,8 +705,8 @@ public class EventResource {
 		Transaction txn = datastore.newTransaction();
 		
 		Key eventKey = eventKeyFactory.newKey(eventId);
-		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		try {
 			Entity eventEntity =txn.get(eventKey);
@@ -765,6 +755,7 @@ public class EventResource {
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(eventKey),PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, accountKey.getId()))).build();
 	
 			QueryResults<Key> participantList = txn.run(participantQuery);
+			
 			if(!participantList.hasNext()) {
 				txn.rollback();
 				log.warning(String.format(LEAVE_EVENT_NOT_FOUND_ERROR,user,eventId));
@@ -866,13 +857,13 @@ public class EventResource {
 		log.info(String.format(LIST_EVENT_PARTICIPANTS_START, eventId,tokenId));
 
 		Key eventKey = eventKeyFactory.newKey(eventId);
-		Query<Entity> participantQuery =  Query.newEntityQueryBuilder().setKind(PARTICIPANT_KIND)
+		
+		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setKind(PARTICIPANT_KIND)
 				.setFilter(PropertyFilter.hasAncestor(eventKey)).build();
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
-		
 			Entity eventEntity = txn.get(eventKey);
 	
 			if(eventEntity == null) {
@@ -889,7 +880,6 @@ public class EventResource {
 			
 			log.info(String.format(LIST_EVENT_PARTICIPANTS_OK, eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			return Response.ok(g.toJson(participants)).build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
@@ -901,8 +891,15 @@ public class EventResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
-	
+
+	/**
+	 * Cancels the event eventId.
+	 * @param eventId - The event identification to be canceled.
+	 * @return true, if the event was successfully canceled.
+	 * 		   false, otherwise.
+	 */
 	public static boolean  cancelEvent(long eventId) {
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
@@ -911,7 +908,6 @@ public class EventResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity eventEntity = txn.get(eventKey);
 	
 			if(eventEntity == null) {
@@ -937,9 +933,8 @@ public class EventResource {
 		
 			String message = String.format(EVENT_CANCELED_NOTIFICATION, eventEntity.getString(EVENT_NAME_PROPERTY));
 			toNotify.forEach(id->{
-				if(!addNotificationToFeed(id,message)) {
+				if(!addNotificationToFeed(id,message))
 					log.warning(String.format(NOTIFICATION_ERROR,id));
-				}
 			});
 			
 			return true;
@@ -954,8 +949,7 @@ public class EventResource {
 				return true;
 			}
 		}
+		
 	}
-	
-	
 
 }

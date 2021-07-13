@@ -46,7 +46,7 @@ public class AccessControlManager {
 	private static final String WRONG_PASSWORD_ERROR = "Error in AccessControlManager: Wrong password for account [%s]";
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in AccessControlManager: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in AccessControlManager: Transaction was active";
-	
+
 	private static final String RBAC_NOT_FOUND_ERROR = "Error in AccessControlManager: RBAC for operation [%s] does not exist";
 	private static final String RBAC_PARTIAL_INITIALIZATION_ERROR = "Warning in AccessControlManager: RBAC not fully initialized, some rules are missing from database";
 	private static final String MULTIPLE_RBAC_OPERATION_ERROR = "Error in AccessControlManager: Multiple RBAC  rules for operation [%s] registered";
@@ -68,7 +68,7 @@ public class AccessControlManager {
 
 	private static Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
-	
+
 	private static Logger log = Logger.getLogger(AccessControlManager.class.getName());
 
 	/**
@@ -76,24 +76,20 @@ public class AccessControlManager {
 	 * @return <b>true</b> if it is initialized, <b>false</b> if it is not
 	 */
 	public static boolean RBACPolicyIntitalized() {
-		
 		Query<Key> rbacQuery = Query.newKeyQueryBuilder().setKind(RBAC_KIND).build();
-		
+
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
 			QueryResults<Key> rbacList = txn.run(rbacQuery);
 			txn.commit();
-			
+
 			AtomicInteger numRules = new AtomicInteger();
 			rbacList.forEachRemaining(rule->numRules.incrementAndGet());
-			if(numRules.get() != RBACRule.values().length) {
+			if(numRules.get() != RBACRule.values().length)
 				log.warning(RBAC_PARTIAL_INITIALIZATION_ERROR);
-			}
 			return numRules.get() > 0;
-			
-			
-		}catch(DatastoreException e) {
+		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
 			return false;
@@ -104,7 +100,7 @@ public class AccessControlManager {
 				return false;
 			}
 		}
-		
+
 	}
 
 	/**
@@ -155,8 +151,7 @@ public class AccessControlManager {
 	public static LoginInfo startSession(String id, String password) {
 		if(badString(id) || badString(password))
 			return null;
-		
-		
+
 		Timestamp creation = Timestamp.now();
 
 		Instant creationInstant = creation.toDate().toInstant();
@@ -166,44 +161,40 @@ public class AccessControlManager {
 		Key tokenKey = datastore.allocateId(tokenKeyFactory.newKey());
 
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-		
+
 		Transaction txn = datastore.newTransaction();
-		
+
 		try {
-		
 			QueryResults<Entity> accountList = txn.run(accountQuery);	
-			
+
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 				return null;
 			}
-			
+
 			Entity account = accountList.next();
-	
+
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 				return null;
 			}
-			
+
 			if(!account.getBoolean(ACCOUNT_STATUS_PROPERTY)) {
 				txn.rollback();
 				log.warning(String.format(ACCOUNT_INACTIVE_ERROR, id));
 				return null;
 			}
-			
+
 			if(!account.getString(ACCOUNT_PASSWORD_PROPERTY).equals(DigestUtils.sha512Hex(password))) {
 				txn.rollback();
 				log.warning(String.format(WRONG_PASSWORD_ERROR, id));
 				return null;
 			}
-			
-	
+
 			String role = account.getString(ACCOUNT_ROLE_PROPERTY);
-	
-			
-	
+
 			Entity token = Entity.newBuilder(tokenKey)
 					.set(TOKEN_OWNER_PROPERTY, id)
 					.set(TOKEN_CREATION_PROPERTY,creation)
@@ -211,7 +202,6 @@ public class AccessControlManager {
 					.set(TOKEN_ROLE_PROPERTY,role)
 					.build();
 
-		
 			txn.add(token);
 			txn.commit();
 			return new LoginInfo(id,role,Long.toString(token.getKey().getId()),expiration.toString());
@@ -226,6 +216,7 @@ public class AccessControlManager {
 				return null;
 			}
 		}
+
 	}
 
 	/**
@@ -234,19 +225,19 @@ public class AccessControlManager {
 	 * @return <b>true</b> if logout was successful, <b>false</b> in case it failed.
 	 */
 	public static boolean endSession(long tokenId) {
-
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
+
 		Transaction txn = datastore.newTransaction();
-		
+
 		try {
-			
 			Entity token = txn.get(tokenKey);
+
 			if(token == null) {
+				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 				return false;
 			}
-			
+
 			txn.delete(tokenKey);
 			txn.commit();
 			return true;
@@ -264,7 +255,6 @@ public class AccessControlManager {
 
 	}
 
-
 	/**
 	 * Elevates a token to a new role (only works on user tokens since institutions only have one role)
 	 * @param tokenId - id of the token to be elevated.
@@ -276,64 +266,60 @@ public class AccessControlManager {
 			return false;
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
-		
+
 		Transaction txn = datastore.newTransaction();
+
 		try {
-		
 			Entity oldToken = txn.get(tokenKey);
-			
+
 			if(oldToken == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 				return false;
 			}
-			
+
 			String id = oldToken.getString(TOKEN_OWNER_PROPERTY);
-			
+
 			Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-			
+
 			QueryResults<Entity> accountList = txn.run(accountQuery);
-			
+
 			if(!accountList.hasNext()) {
 				txn.delete(tokenKey);
 				txn.commit();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 				return false;
 			}
-			
-			Entity account =accountList.next();
-	
+
+			Entity account = accountList.next();
+
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 				return false;
 			}
-			
-			
-	
+
 			Role userRole = Role.getRole(account.getString("role"));
-	
+
 			//trying to elevate to role with more access than allowed
 			if(targetRole.getAccess() > userRole.getAccess()) {
 				txn.rollback();
 				log.severe(String.format(USER_ACCESS_INSUFFICIENT_ERROR, id,targetRole.name(),userRole.getAccess(),targetRole.getAccess()));
 				return false;
 			}
-	
+
 			Timestamp creation = Timestamp.now();
-	
+
 			Instant creationInstant = creation.toDate().toInstant();
-	
+
 			Timestamp expiration = Timestamp.of(Date.from(creationInstant.plus(TOKEN_DURATION, ChronoUnit.HOURS)));
-	
+
 			Entity newToken = Entity.newBuilder(oldToken)
 					.set(TOKEN_ROLE_PROPERTY, targetRole.name())
 					.set(TOKEN_CREATION_PROPERTY,creation)
 					.set(TOKEN_EXPIRATION_PROPERTY,expiration)
 					.build();
 
-		
 			//update token with new role
 			txn.update(newToken);
 			txn.commit();
@@ -349,7 +335,7 @@ public class AccessControlManager {
 				return false;
 			}
 		}
-		
+
 	}
 
 	/**
@@ -366,85 +352,87 @@ public class AccessControlManager {
 		boolean hasToken = tokenId<0?false:true;
 
 		String role = Role.ALL.name();
-		
+
 		Query<Entity> rbacQuery = Query.newEntityQueryBuilder().setKind(RBAC_KIND).setFilter(PropertyFilter.eq(RBAC_ID_PROPERTY, operationId)).build(); 
-		
-		
+
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		
+
 		try {
-			
 			if(hasToken) {
-				
 				Key tokenKey = tokenKeyFactory.newKey(tokenId);
-				
+
 				Entity token = txn.get(tokenKey);
-				
+
 				if(token == null) {
 					txn.rollback();
 					log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 					return false;
 				}
-	
+
 				Timestamp now = Timestamp.now();
 				Timestamp tokenExpiration = token.getTimestamp(TOKEN_EXPIRATION_PROPERTY);
-				
+
 				if(tokenExpiration.compareTo(now) < 0) {
 					txn.delete(tokenKey);
 					txn.commit();
 					log.severe(String.format(TOKEN_EXPIRED_ERROR,tokenId));
 					return false;
 				}
+				
 				String id = token.getString(TOKEN_OWNER_PROPERTY);
-				
+
 				Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-				
+
 				QueryResults<Entity> accountList = txn.run(accountQuery);
-				
+
 				if(!accountList.hasNext()) {
 					txn.delete(tokenKey);
 					txn.commit();
 					log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 					return false;
 				}
-				Entity account = accountList.next();
 				
+				Entity account = accountList.next();
+
 				if(accountList.hasNext()) {
 					txn.delete(tokenKey);
 					txn.commit();
 					log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 					return false;
 				}
-				
+
 				if(!account.getBoolean(ACCOUNT_STATUS_PROPERTY)) {
 					txn.delete(tokenKey);
 					txn.commit();
 					log.severe(String.format(ACCOUNT_INACTIVE_ERROR, id));
 					return false;
 				}
-	
+
 				role = token.getString(TOKEN_ROLE_PROPERTY);
 			}
-			
+
 			QueryResults<Entity> rbacList = txn.run(rbacQuery);
 			txn.commit();
-			
+
 			if(!rbacList.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(RBAC_NOT_FOUND_ERROR,operationId));
 				return false;
 			}
-	
+
 			Entity rbac = rbacList.next();
-			
+
 			if(rbacList.hasNext()) {
+				txn.rollback();
 				log.severe(String.format(MULTIPLE_RBAC_OPERATION_ERROR,operationId));
 				return false;
 			}
-		
+
 			List<Value<String>> lst = rbac.getList(RBAC_PERMISSION_PROPERTY);
 			List<String> roles = lst.stream().map(value->value.get()).collect(Collectors.toList());
 
-			if(roles.contains(role))return true;
+			if(roles.contains(role))
+				return true;
 			return false;
 		} catch(DatastoreException e) {
 			txn.rollback();

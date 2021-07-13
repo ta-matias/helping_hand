@@ -105,10 +105,6 @@ public enum RBACRule {
 	START_ROUTE("PUT_route_start",new Role[] {USER}), //start doing a route TODO
 	END_ROUTE("PUT_route_end",new Role[] {USER}); //finish doing a route TODO
 	
-	
-	
-	
-	
 	public String operation;
 	public Role[] permitted;
 	
