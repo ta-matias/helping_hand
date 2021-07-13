@@ -124,7 +124,6 @@ public class HelpResource {
 	private static final String LIST_HELPERS_OK = "Successfuly got helpers for [%s](%d) with token (%d)";
 	private static final String LIST_HELPERS_BAD_DATA_ERROR  = "Get helpers attempt failed due to bad inputs";
 	
-
 	private static final String HELP_ID_PARAM = "helpId";
 	private static final String RATING_PARAM = "rating";
 
@@ -139,7 +138,6 @@ public class HelpResource {
 	private static final String LEAVE_HELP_PATH = "/{"+HELP_ID_PARAM+"}/leave";//PUT
 	private static final String LIST_HELPERS_PATH = "/{"+HELP_ID_PARAM+"}/helper";//GET
 	private static final String CHOOSE_HELPER_PATH = "/{"+HELP_ID_PARAM+"}/helper";//PUT
-
 
 	public static final String HELP_KIND = "Help";
 	public static final String HELP_NAME_PROPERTY = "name";
@@ -218,8 +216,7 @@ public class HelpResource {
 	 * @param data - The data for the help creation.
 	 * @return 200, if the help was successfully created.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the account.
-	 * 		   404, if the creator does not exist.
+	 * 		   404, if the creator does not exist or the token does not exist.
 	 * 		   500, otherwise.
 	 */
 	@POST
@@ -243,7 +240,6 @@ public class HelpResource {
 
 		Key helpKey = datastore.allocateId(helpKeyFactory.newKey());
 		
-		
 		Transaction txn = datastore.newTransaction();
 
 		try {
@@ -256,6 +252,7 @@ public class HelpResource {
 			}
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			
 			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 			QueryResults<Key> keyList = txn.run(accountQuery);
 			
@@ -264,6 +261,7 @@ public class HelpResource {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = keyList.next();
 			
 			if(keyList.hasNext()) {
@@ -272,9 +270,6 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
-	
-			
-	
 			Entity help = Entity.newBuilder(helpKey)
 					.set(HELP_NAME_PROPERTY, data.name)
 					.set(HELP_CREATOR_PROPERTY,id)
@@ -289,16 +284,14 @@ public class HelpResource {
 			txn.add(help);
 			txn.commit();
 			
-			
 			txn.add(help);
 			txn.commit();
 			String message = String.format(HELP_CREATED_NOTIFICATION,data.name,id);
 			followerList.forEachRemaining(follower->{
-				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message)) {
+				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message))
 					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
-				}
 			});
-
+			
 			log.info(String.format(CREATE_HELP_OK, data.name, helpKey.getId(), tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
@@ -344,12 +337,12 @@ public class HelpResource {
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
 		Key helpKey = helpKeyFactory.newKey(helpId);
 		
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
@@ -382,7 +375,6 @@ public class HelpResource {
 					.set(HELP_TIME_PROPERTY,time)
 					.set(HELP_LOCATION_PROPERTY,location)
 					.build();
-
 		
 			txn.update(updatedHelp);
 			txn.commit();
@@ -402,6 +394,15 @@ public class HelpResource {
 
 	}
 	
+	/**
+	 * Returns the help data.
+	 * @param help - id of the help.
+	 * @param token - token performing request-
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   404, if the help does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(GET_PATH)
 	public Response getHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token) {
@@ -419,6 +420,7 @@ public class HelpResource {
 		Key helpKey = helpKeyFactory.newKey(helpId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		
 		try {
 			Entity helpEntity = txn.get(helpKey);
 			txn.commit();
@@ -444,8 +446,8 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
-	
 
 	/**
 	 * Finishes the help.
@@ -453,15 +455,15 @@ public class HelpResource {
 	 * @param token - The token of the user/institution executing this operation.
 	 * @return 200, if the help was successfully finished.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level or the rating error occurred.
+	 * 		   403, if the token cannot execute the operation with the current access level.
 	 * 		   404, if the help does not exist or the token does not exist.
+	 * 		   409, if there is no current helper in this help request.
 	 * 		   500, otherwise.
 	 */
 	@PUT
 	@Path(FINISH_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response endHelp(@PathParam(HELP_ID_PARAM) String help, @QueryParam(TOKEN_ID_PARAM) String token, @QueryParam(RATING_PARAM) String rating) {
-		
 		if(badString(rating)) {
 			log.warning(FINISH_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -481,13 +483,12 @@ public class HelpResource {
 		log.info(String.format(FINISH_HELP_START,helpId, tokenId));
 		
 		Key helpKey = helpKeyFactory.newKey(helpId);
-		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
@@ -513,6 +514,7 @@ public class HelpResource {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
+			
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(helpEntity.getKey());
 	
@@ -524,9 +526,8 @@ public class HelpResource {
 			
 			helperList.forEachRemaining(helper->{
 				toDelete.add(helper.getKey());
-				if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
+				if(helper.getBoolean(HELPER_CURRENT_PROPERTY))
 					currentHelper.add(helper);
-				}
 			});
 			
 			if(currentHelper.size() > 1) {
@@ -548,11 +549,14 @@ public class HelpResource {
 			txn.commit();
 	
 			long helperId = currentHelper.get(0).getLong(HELPER_ID_PROPERTY);
+			
 			if(!addRatingToStats(helperId,true,ratingValue)) {
 				log.severe(String.format(RATING_ERROR, helperId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
+			
 			String message = String.format(RATING_NOTIFICATION,tokenEntity.getString(TOKEN_OWNER_PROPERTY),ratingValue,helpEntity.getString(HELP_NAME_PROPERTY),helpId);
+			
 			if(!addNotificationToFeed(helperId,message)) {
 				log.severe(String.format(NOTIFICATION_ERROR, helperId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -604,7 +608,6 @@ public class HelpResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
@@ -644,7 +647,6 @@ public class HelpResource {
 			helperList.forEachRemaining(helper->{
 				toDelete.add(helper.getKey());
 				toNotify.add(helper.getLong(HELPER_ID_PROPERTY));
-				
 			});
 
 			Key[] keys =  new Key[toDelete.size()];
@@ -655,9 +657,8 @@ public class HelpResource {
 			
 			String message = String.format(HELP_CANCELED_NOTIFICATION,helpEntity.getString(HELP_NAME_PROPERTY));
 			toNotify.forEach(id->{
-				if(!addNotificationToFeed(id,message)) {
+				if(!addNotificationToFeed(id,message))
 					log.warning(NOTIFICATION_ERROR);
-				}
 			});
 			
 			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
@@ -683,7 +684,7 @@ public class HelpResource {
 	 * @param helper - The helper  that will be chosen to join the help.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not exist or the token cannot execute the operation with the current access level.
+	 * 		   403, if the token cannot execute the operation with the current access level.
 	 * 		   404, if the help does not exist or the user is not offering to help or the token does not exist.
 	 * 		   409, if the user is already the current helper.
 	 * 		   500, otherwise.
@@ -704,17 +705,16 @@ public class HelpResource {
 
 		log.info(String.format(CHOOSE_HELPER_START,helpId, tokenId));
 		
-		
 		Key helpKey = helpKeyFactory.newKey(helpId);
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		Key helperKey = helperKeyFactory.addAncestor(PathElement.of(HELPER_KIND, helpId)).newKey(helperId);
 		
 		Query<Entity> currentHelperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
 				.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_CURRENT_PROPERTY,true))).build();
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
@@ -740,8 +740,7 @@ public class HelpResource {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-	
-	
+
 			Entity helperEntity = txn.get(helperKey);
 	
 			if(helperEntity == null) {
@@ -755,14 +754,12 @@ public class HelpResource {
 				log.warning(String.format(CHOOSE_HELPER_CONFLICT,helper,helpId));
 				return Response.status(Status.CONFLICT).build();
 			}
-	
 			
 			Entity updatedHelper = Entity.newBuilder(helperEntity)
 					.set(HELPER_CURRENT_PROPERTY, true)
 					.build();
 	
 			QueryResults<Entity> currentHelperList = txn.run(currentHelperQuery);
-	
 	
 			Entity[] toUpdate = new Entity[] {updatedHelper};
 	
@@ -800,6 +797,16 @@ public class HelpResource {
 
 	}
 	
+	/**
+	 * Obtains the list of helpers of the help.
+	 * @param help - The help identification to obtain its helpers.
+	 * @param token - The token performing request.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   404, if the help does not exist or the token does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(LIST_HELPERS_PATH)
 	public Response getHelpers(@PathParam(HELP_ID_PARAM)String help,@QueryParam(TOKEN_ID_PARAM)String token) {
@@ -811,11 +818,11 @@ public class HelpResource {
 		long tokenId = Long.parseLong(token);
 		
 		long helpId = Long.parseLong(help);
+		
 		log.info(String.format(LIST_HELPERS_START, helpId,tokenId));
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		Key helpKey = helpKeyFactory.newKey(helpId);
-		
 		
 		Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
 				.setFilter(PropertyFilter.hasAncestor(helpKey)).build();
@@ -823,7 +830,6 @@ public class HelpResource {
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 
 		try {
-			
 			Entity helpEntity = txn.get(helpKey);
 
 			if(helpEntity == null) {
@@ -850,10 +856,8 @@ public class HelpResource {
 				}
 			}
 			
-			
 			QueryResults<Entity> helperList = txn.run(helperQuery);
 			List<Key> helperKeys = new LinkedList<>();
-			
 			
 			helperList.forEachRemaining(helperKey -> {
 				long datastoreId = helperKey.getLong(HELPER_ID_PROPERTY);
@@ -874,7 +878,6 @@ public class HelpResource {
 				Entity stats = helperStats.next();
 				statsList.add(new HelperStats(account,stats));
 			}
-			
 
 			log.info(String.format(LIST_HELPERS_OK,helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok(g.toJson(statsList)).build();
@@ -889,8 +892,8 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
-	
 
 	/**
 	 * The user offers to help.
@@ -898,8 +901,7 @@ public class HelpResource {
 	 * @param token - The token requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not exist.
-	 * 		   404, if the help does not exist or the token does not exist.
+	 * 		   404, if the help does not exist or the token does not exist or the account does not exist.
 	 * 		   409, if the user has already offered to help.
 	 * 		   500, otherwise.
 	 */
@@ -915,7 +917,6 @@ public class HelpResource {
 
 		long helpId = Long.parseLong(help);
 		
-
 		log.info(String.format(OFFER_HELP_START, helpId,tokenId));
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
@@ -925,7 +926,6 @@ public class HelpResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
@@ -941,7 +941,6 @@ public class HelpResource {
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 	
@@ -963,7 +962,6 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
-			
 			Query<Key> helperQuery = Query.newKeyQueryBuilder().setKind(HELPER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_ID_PROPERTY, accountKey.getId()))).build();
 			
@@ -975,12 +973,10 @@ public class HelpResource {
 				return Response.status(Status.CONFLICT).build();
 			}
 	
-	
 			Entity helper = Entity.newBuilder(helperKey)
 					.set(HELPER_ID_PROPERTY,user)
 					.set(HELPER_CURRENT_PROPERTY, false)
 					.build();
-
 		
 			txn.add(helper);
 			txn.commit();
@@ -1029,7 +1025,6 @@ public class HelpResource {
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
@@ -1045,7 +1040,6 @@ public class HelpResource {
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 	
@@ -1086,15 +1080,13 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 	
-	
 			if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
 				if(!addNotificationToFeed(helpEntity.getLong(HELP_CREATOR_PROPERTY),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
+					txn.rollback();
 					log.severe(String.format(NOTIFICATION_ERROR, helpEntity.getString(HELP_CREATOR_PROPERTY)));
 					return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 				}
-	
 			}
-
 		
 			txn.delete(helperEntity.getKey());
 			txn.commit();
@@ -1114,18 +1106,23 @@ public class HelpResource {
 
 	}
 	
+	/**
+	 * Cancels the help request.
+	 * @param helpId - The help identification to be canceled.
+	 * @return true, if the help was successfully canceled.
+	 * 		   false, otherwise.
+	 */
 	public static boolean cancelHelp(long helpId) {
-
 		Key helpKey = helpKeyFactory.newKey(helpId);
 
 		Transaction txn = datastore.newTransaction();
 
 		try {
-		
 			Entity helpEntity = txn.get(helpKey);
 	
 			if(helpEntity == null) {
 				txn.rollback();
+				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 				return false;
 			}
 
@@ -1141,7 +1138,6 @@ public class HelpResource {
 			helperList.forEachRemaining(helper->{
 				toDelete.add(helper.getKey());
 				toNotify.add(helper.getLong(HELPER_ID_PROPERTY));
-				
 			});
 
 			Key[] keys =  new Key[toDelete.size()];
@@ -1152,9 +1148,8 @@ public class HelpResource {
 			
 			String message = String.format(HELP_CANCELED_NOTIFICATION,helpEntity.getString(HELP_NAME_PROPERTY));
 			toNotify.forEach(id->{
-				if(!addNotificationToFeed(id,message)) {
+				if(!addNotificationToFeed(id,message))
 					log.warning(NOTIFICATION_ERROR);
-				}
 			});
 			
 			return true;
@@ -1171,6 +1166,5 @@ public class HelpResource {
 		}
 		
 	}
-	
-	
+
 }

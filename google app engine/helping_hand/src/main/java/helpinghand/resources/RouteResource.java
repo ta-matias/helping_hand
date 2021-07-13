@@ -17,7 +17,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.Response;
 
-
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -49,6 +48,11 @@ import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
+/**
+ * 
+ * @author PogChamp Software
+ *
+ */
 @Path(BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class RouteResource {
@@ -112,6 +116,12 @@ public class RouteResource {
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
 	private static final KeyFactory routeKeyFactory = datastore.newKeyFactory().setKind(ROUTE_KIND);
 	
+	/**
+	 * 
+	 * @param token
+	 * @param data
+	 * @return
+	 */
 	@POST
 	@Path(CREATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -120,34 +130,35 @@ public class RouteResource {
 			log.warning(CREATE_ROUTE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
 		
 		log.info(String.format(CREATE_ROUTE_START,data.name,tokenId));
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		Key routeKey = datastore.allocateId(routeKeyFactory.newKey());
 		
+		Key routeKey = datastore.allocateId(routeKeyFactory.newKey());
 		
 		ListValue.Builder pointsBuilder = ListValue.newBuilder();
 		data.points.forEach(point->pointsBuilder.addValue(LatLng.of(point[0], point[1])));
 		ListValue points = pointsBuilder.build();
 		
 		ListValue.Builder categoriesBuilder = ListValue.newBuilder();
-		for(String category: data.categories) {
+		
+		for(String category: data.categories)
 			categoriesBuilder.addValue(StringValue.of(category));
-		}
+
 		ListValue categories = categoriesBuilder.build();
 		
-		
 		Transaction txn = datastore.newTransaction();
+		
 		try {
-			
 			Entity tokenEntity = txn.get(tokenKey);
 		
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.FORBIDDEN).build();
+				return Response.status(Status.NOT_FOUND).build();
 			}
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
@@ -168,6 +179,7 @@ public class RouteResource {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			
 			Key accountKey = keyList.next();
 			
 			if(keyList.hasNext()) {
@@ -175,7 +187,6 @@ public class RouteResource {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
 			
 			Query<Entity> followerQuery = Query.newEntityQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
 			QueryResults<Entity> followerList = txn.run(followerQuery);
@@ -185,14 +196,12 @@ public class RouteResource {
 			
 			String message = String.format(ROUTE_CREATED_NOTIFICATION,data.name,id);
 			followerList.forEachRemaining(follower->{
-				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message)) {
+				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message))
 					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
-				}
 			});
 			
 			log.info(String.format(CREATE_ROUTE_OK,data.name,tokenId));
 			return Response.ok(routeKey.getId()).build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
@@ -204,8 +213,16 @@ public class RouteResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 	
+	/**
+	 * 
+	 * @param route
+	 * @param token
+	 * @param data
+	 * @return
+	 */
 	@PUT
 	@Path(UPDATE_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -214,29 +231,31 @@ public class RouteResource {
 			log.warning(UPDATE_ROUTE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
+		
 		long routeId = Long.parseLong(route);
 		
 		log.info(String.format(UPDATE_ROUTE_START,routeId,tokenId));
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		Key routeKey = routeKeyFactory.newKey(routeId);
 		
+		Key routeKey = routeKeyFactory.newKey(routeId);
 		
 		ListValue.Builder pointsBuilder = ListValue.newBuilder();
 		data.points.forEach(point->pointsBuilder.addValue(LatLng.of(point[0], point[1])));
 		ListValue points = pointsBuilder.build();
 		
 		ListValue.Builder categoriesBuilder = ListValue.newBuilder();
-		for(String category: data.categories) {
+		
+		for(String category: data.categories)
 			categoriesBuilder.addValue(StringValue.of(category));
-		}
+
 		ListValue categories = categoriesBuilder.build();
 		
-		
 		Transaction txn = datastore.newTransaction();
+
 		try {
-			
 			Entity routeEntity = txn.get(routeKey);
 			
 			if(routeEntity == null) {
@@ -250,7 +269,7 @@ public class RouteResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.FORBIDDEN).build();
+				return Response.status(Status.NOT_FOUND).build();
 			}
 			
 			if(!routeEntity.getString(ROUTE_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -258,7 +277,6 @@ public class RouteResource {
 				log.warning(String.format(ROUTE_CREATOR_ERROR,routeId,tokenEntity.getString(TOKEN_OWNER_PROPERTY)));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-			
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 		
@@ -274,7 +292,6 @@ public class RouteResource {
 			txn.commit();
 			log.info(String.format(UPDATE_ROUTE_OK,routeId,tokenId));
 			return Response.ok().build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
@@ -286,8 +303,15 @@ public class RouteResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 	
+	/**
+	 * 
+	 * @param route
+	 * @param token
+	 * @return
+	 */
 	@DELETE
 	@Path(DELETE_PATH)
 	public Response deleteRoute(@PathParam(ROUTE_ID_PARAM)String route,@QueryParam(TOKEN_ID_PARAM)String token) {
@@ -295,17 +319,20 @@ public class RouteResource {
 			log.warning(DELETE_ROUTE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
+		
 		long routeId = Long.parseLong(route);
 		
 		log.info(String.format(DELETE_ROUTE_START,routeId,tokenId));
 		
 		Key routeKey = routeKeyFactory.newKey(routeId);
+		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
+		
 		try {
-			
 			Entity routeEntity = txn.get(routeKey);
 			
 			if(routeEntity == null) {
@@ -319,7 +346,7 @@ public class RouteResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.FORBIDDEN).build();
+				return Response.status(Status.NOT_FOUND).build();
 			}
 			
 			if(!routeEntity.getString(ROUTE_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -332,7 +359,6 @@ public class RouteResource {
 			txn.commit();
 			log.info(String.format(DELETE_ROUTE_OK,routeId,tokenId));
 			return Response.ok().build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
@@ -344,8 +370,15 @@ public class RouteResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 	
+	/**
+	 * 
+	 * @param route
+	 * @param token
+	 * @return
+	 */
 	@GET
 	@Path(GET_PATH)
 	public Response getRoute(@PathParam(ROUTE_ID_PARAM)String route,@QueryParam(TOKEN_ID_PARAM)String token) {
@@ -353,17 +386,18 @@ public class RouteResource {
 			log.warning(GET_ROUTE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
+		
 		long routeId = Long.parseLong(route);
 		
 		log.info(String.format(GET_ROUTE_START,routeId,tokenId));
 		
 		Key routeKey = routeKeyFactory.newKey(routeId);
 		
-		
 		Transaction txn = datastore.newTransaction();
+	
 		try {
-			
 			Entity routeEntity = txn.get(routeKey);
 			txn.commit();
 			
@@ -373,14 +407,10 @@ public class RouteResource {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
-			
 			Route data = new Route(routeEntity);
-			
-			
 			
 			log.info(String.format(GET_ROUTE_OK,routeId,tokenId));
 			return Response.ok(g.toJson(data)).build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
@@ -394,6 +424,11 @@ public class RouteResource {
 		}
 	}
 	
+	/**
+	 * 
+	 * @param token
+	 * @return
+	 */
 	@GET
 	@Path(LIST_PATH)
 	public Response listRoutes(@QueryParam(TOKEN_ID_PARAM)String token) {
@@ -401,6 +436,7 @@ public class RouteResource {
 			log.warning(LIST_ROUTES_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
+		
 		long tokenId = Long.parseLong(token);
 		
 		log.info(String.format(LIST_ROUTES_START,tokenId));
@@ -408,8 +444,8 @@ public class RouteResource {
 		Query<Entity> routeQuery = Query.newEntityQueryBuilder().setKind(ROUTE_KIND).build();
 		
 		Transaction txn = datastore.newTransaction();
+		
 		try {
-			
 			QueryResults<Entity> routeList = txn.run(routeQuery);
 			
 			List<Route> data = new LinkedList<>();
@@ -417,7 +453,6 @@ public class RouteResource {
 			
 			log.info(String.format(LIST_ROUTES_OK,tokenId));
 			return Response.ok(g.toJson(data)).build();
-		
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
@@ -429,14 +464,27 @@ public class RouteResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
+		
 	}
 	
+	/**
+	 * 
+	 * @param route
+	 * @param token
+	 * @return
+	 */
 	@PUT
 	@Path(START_PATH)
 	public Response startRoute(@PathParam(ROUTE_ID_PARAM)String route,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return null;
 	}
 	
+	/**
+	 * 
+	 * @param route
+	 * @param token
+	 * @return
+	 */
 	@PUT
 	@Path(END_PATH)
 	public Response endRoute(@PathParam(ROUTE_ID_PARAM)String route,@QueryParam(TOKEN_ID_PARAM)String token) {

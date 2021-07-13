@@ -34,26 +34,23 @@ public class CreateEvent {
 	 * 		   false, otherwise.
 	 */
 	public boolean badData() {
-		
-		
-		
 		if(badString(name)) 
 			return true;
 		if(badString(description)) 
 			return true;
-		
 		if(location == null || location.length != 2)
-			return false;
-		
+			return true;
+
 		try {
 			Timestamp now = Timestamp.now();
 			Timestamp startStamp = Timestamp.parseTimestamp(start);
 			Timestamp endStamp = Timestamp.parseTimestamp(end);
 			
-			
-			if(badString(start) || startStamp.compareTo(now) < 0) return true;
-			if(badString(end) || endStamp.compareTo(startStamp) < 0 ) return true;
-		}catch(Exception e) {
+			if(badString(start) || startStamp.compareTo(now) < 0) 
+				return true;
+			if(badString(end) || endStamp.compareTo(startStamp) < 0)
+				return true;
+		} catch(Exception e) {
 			return true;
 		}
 		

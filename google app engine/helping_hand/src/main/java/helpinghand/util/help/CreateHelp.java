@@ -31,15 +31,15 @@ public class CreateHelp {
 			return true;
 		if(badString(description)) 
 			return true;
-		
 		if(location == null || location.length != 2)
-			return false;
+			return true;
 		
 		try {
 			Timestamp now = Timestamp.now();
 			Timestamp timeStamp = Timestamp.parseTimestamp(time);
 			
-			if(badString(time) || timeStamp.compareTo(now) < 0) return true;
+			if(badString(time) || timeStamp.compareTo(now) < 0) 
+				return true;
 		}catch(Exception e) {
 			return true;
 		}

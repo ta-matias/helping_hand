@@ -16,7 +16,7 @@ public enum Role {
 	
 	private int access;
 	
-	Role(int access){
+	Role(int access) {
 		this.access = access;
 	}
 	

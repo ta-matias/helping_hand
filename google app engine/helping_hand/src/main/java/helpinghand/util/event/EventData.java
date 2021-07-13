@@ -1,3 +1,6 @@
+/**
+ * 
+ */
 package helpinghand.util.event;
 
 import static helpinghand.util.GeneralUtils.badString;
@@ -8,10 +11,7 @@ import static helpinghand.resources.EventResource.EVENT_START_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_END_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_LOCATION_PROPERTY;
 
-
-
 import com.google.cloud.datastore.Entity;
-
 /**
  * @author PogChamp Software
  *
@@ -54,12 +54,18 @@ public class EventData {
 	 * 		   false, otherwise.
 	 */
 	public boolean badData() {
-		if(badString(name)) return true;
-		if(badString(creator)) return true;
-		if(badString(description)) return true;
-		if(badString(start)) return true;
-		if(badString(end)) return true;
-		if(location == null || location.length != 2)return false;
+		if(badString(name)) 
+			return true;
+		if(badString(creator)) 
+			return true;
+		if(badString(description)) 
+			return true;
+		if(badString(start)) 
+			return true;
+		if(badString(end)) 
+			return true;
+		if(location == null || location.length != 2)
+			return true;
 		return false;
 	}
 

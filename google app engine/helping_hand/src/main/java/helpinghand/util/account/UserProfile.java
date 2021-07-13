@@ -5,8 +5,6 @@ import com.google.cloud.datastore.Entity;
 import static helpinghand.util.account.AccountUtils.PROFILE_NAME_PROPERTY;
 import static helpinghand.util.account.AccountUtils.PROFILE_BIO_PROPERTY;
 
-
-
 public class UserProfile {
 	
 	public boolean visibility;
