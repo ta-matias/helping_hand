@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -33,11 +32,11 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.ListValue;
 import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
-import com.google.cloud.datastore.Value;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import com.google.datastore.v1.TransactionOptions;
@@ -65,10 +64,6 @@ public class InstitutionResource extends AccountUtils {
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in InstitutionResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in InstitutionResource: Transaction was active";
 	private static final String REPEATED_MEMBER_ERROR = "The same user is registered in an institution repeatedly";
-
-	private static final String GET_ALL_START ="Attempting to get all institutions with token (%d)";
-	private static final String GET_ALL_OK ="Successfuly got all institutions with token (%d)";
-	private static final String GET_ALL_BAD_DATA_ERROR = "Get all institutions attempt failed due to bad input";
 
 	private static final String GET_MEMBERS_START ="Attempting to get all institution [%s] members with token (%d)";
 	private static final String GET_MEMBERS_OK ="Successfuly got all institution [%s] members with token (%d)";
@@ -116,7 +111,7 @@ public class InstitutionResource extends AccountUtils {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
-	private static final KeyFactory userProfileKeyFactory = datastore.newKeyFactory().setKind(USER_PROFILE_KIND);
+	private static final KeyFactory instProfileKeyFactory = datastore.newKeyFactory().setKind(INSTITUTION_PROFILE_KIND);
 
 	public InstitutionResource() {super();}
 
@@ -129,43 +124,8 @@ public class InstitutionResource extends AccountUtils {
 	 */
 	@GET
 	@Path(GET_INSTS_PATH)
-	public Response getAll(@QueryParam(TOKEN_ID_PARAM) String token) {
-		if(badString(token)) {
-			log.info(GET_ALL_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).build();
-		}
-
-		long tokenId = Long.parseLong(token);
-
-		log.info(String.format(GET_ALL_START, tokenId));
-
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.INSTITUTION.name())).build();
-
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-
-		try {
-			QueryResults<Entity> results= txn.run(query);	
-			txn.commit();
-			List<String[]> institutions = new LinkedList<>();
-
-			results.forEachRemaining(entity -> {
-				institutions.add(new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))});
-			});
-
-			log.info(String.format(GET_ALL_OK,tokenId));
-			return Response.ok(g.toJson(institutions)).build();
-		} catch(DatastoreException e) {
-			txn.rollback();
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
-
+	public Response listAll(@QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.listAll(token, Role.INSTITUTION);
 	}
 
 	/**
@@ -191,9 +151,9 @@ public class InstitutionResource extends AccountUtils {
 		
 
 		Key accountKey = datastore.allocateId(accountKeyFactory.setKind(ACCOUNT_KIND).newKey());
-		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
-		Key accountFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey());
-		Key institutionProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey());
+		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());
+		Key accountFeedKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey(accountKey.getId());
+		Key institutionProfileKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(INSTITUTION_PROFILE_KIND).newKey(accountKey.getId());
 
 		Timestamp now = Timestamp.now();
 
@@ -384,8 +344,8 @@ public class InstitutionResource extends AccountUtils {
 	 */
 	@PUT
 	@Path(UPDATE_VISIBILITY_PATH)
-	public Response updateVisibility(@PathParam(INSTITUTION_ID_PARAM) String id, ChangeVisibility data, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.updateVisibility(id, data, token);
+	public Response updateVisibility(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(VISIBILITY_PARAM)String visibility, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateVisibility(id, visibility, token);
 	}
 
 	/**
@@ -482,21 +442,22 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(GET_PROFILE_START, id, tokenId));
 
-		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<Entity> accountList = txn.run(accountQuery);
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			Entity account = accountList.next();
+			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -522,36 +483,17 @@ public class InstitutionResource extends AccountUtils {
 				}
 			}
 			
-			Query<Entity> profileQuery = Query.newEntityQueryBuilder().setKind(INSTITUTION_PROFILE_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
-			
-			QueryResults<Entity> profileList = txn.run(profileQuery);
+			Key profileKey = instProfileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
+			Entity instProfile = txn.get(profileKey);
+		
 			txn.commit();
 			
-			if(!profileList.hasNext()) {
+			if(instProfile == null) {
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-
-			Entity instProfile = profileList.next();
-			
-			if(profileList.hasNext()) {
-				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-
 	
-			List<Value<String>>  categoriesListValues = instProfile.getList(INSTITUTION_PROFILE_CATEGORIES_PROPERTY);
-			List<String> categoriesList = categoriesListValues.stream().map(value -> value.get()).collect(Collectors.toList());
-	
-			String[] categories = new String[categoriesList.size()];
-			categoriesList.toArray(categories);
-	
-			InstitutionProfile profile = new InstitutionProfile(
-					instProfile.getString(PROFILE_NAME_PROPERTY),
-					instProfile.getString(INSTITUTION_PROFILE_INITIALS_PROPERTY),
-					instProfile.getString(PROFILE_BIO_PROPERTY),
-					categories
-					);
+			InstitutionProfile profile = new InstitutionProfile(account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY),instProfile);
 	
 			log.info(String.format(GET_PROFILE_OK,id,tokenId));
 			return Response.ok(g.toJson(profile)).build();
@@ -640,21 +582,12 @@ public class InstitutionResource extends AccountUtils {
 				}
 			}
 
-			Query<Entity> profileQuery = Query.newEntityQueryBuilder().setKind(USER_PROFILE_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
-			
-			QueryResults<Entity> profileList = txn.run(profileQuery);
+			Key profileKey  = instProfileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Entity instProfile = txn.get(profileKey);
 	
-			if(!profileList.hasNext()) {
+			if(instProfile == null) {
 				txn.rollback();
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-
-			Entity instProfile = profileList.next();
-			
-			if(profileList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 
@@ -704,21 +637,21 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(GET_MEMBERS_START,id,tokenId));
 
-		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<Entity> accountList = txn.run(accountQuery);
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			Entity account = accountList.next();
+			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -749,7 +682,7 @@ public class InstitutionResource extends AccountUtils {
 			List<Key> members = new LinkedList<>();
 			memberList.forEachRemaining(member->{
 				long datastoreId = member.getLong(INSTITUTION_MEMBER_ID_PROPERTY);
-				members.add(userProfileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
+				members.add(accountKeyFactory.newKey(datastoreId));
 				
 			});
 			Key[] memberKeys = new Key[members.size()];
@@ -758,11 +691,11 @@ public class InstitutionResource extends AccountUtils {
 			Iterator<Entity> memberEntities = txn.get(memberKeys);
 			txn.commit();
 			
-			List<UserProfile> memberProfiles = new LinkedList<>();
-			memberEntities.forEachRemaining(profile->memberProfiles.add(new UserProfile(profile)));
+			List<Account> memberAccounts = new LinkedList<>();
+			memberEntities.forEachRemaining(memberAccount->memberAccounts.add(new Account(memberAccount,true)));
 			
 			log.info(String.format(GET_MEMBERS_OK,id,token));
-			return Response.ok(g.toJson(memberProfiles)).build();
+			return Response.ok(g.toJson(memberAccounts)).build();
 			
 		} catch(DatastoreException e) {
 			txn.rollback();

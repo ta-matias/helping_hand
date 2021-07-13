@@ -21,6 +21,7 @@ import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.Role;
+import helpinghand.util.account.Account;
 import helpinghand.util.backoffice.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
@@ -34,7 +35,6 @@ import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ROLE_PROPERTY;
-import static helpinghand.util.account.AccountUtils.ACCOUNT_STATUS_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_CREATION_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
@@ -279,8 +279,8 @@ public class BackOfficeResource {
 		try {
 			QueryResults<Entity> accounts = txn.run(accountQuery);
 			txn.commit();
-			List<String[]> data = new LinkedList<>();
-			accounts.forEachRemaining(account->data.add(new String[] {account.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(account.getBoolean(ACCOUNT_STATUS_PROPERTY))}));
+			List<Account> data = new LinkedList<>();
+			accounts.forEachRemaining(account->data.add(new Account(account,true)));
 			
 	
 			log.info(String.format(LIST_ROLE_OK, roleParam.name(),tokenId));

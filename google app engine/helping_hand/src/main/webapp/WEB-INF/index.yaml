@@ -1,0 +1,16 @@
+indexes:
+
+- kind: Account
+  properties:
+  - name: id
+  - name: visibility
+  
+- kind: Event
+  properties:
+  - name: creator
+  - name: status
+  
+- kind: Helper
+  properties:
+  - name: id
+  - name: current

@@ -74,10 +74,10 @@ public enum RBACRule {
 	DELETE_REPORT("GET_restricted_deleteReport", new Role[] {GBO}),// delete a report
 	
 	//EventResource
-	CREATE_EVENT("POST_event", new Role[] {USER,INSTITUTION}), // create an event
-	UPDATE_EVENT("PUT_event", new Role[] {USER,INSTITUTION}), // update the event's data
-	CANCEL_EVENT("DELETE_event", new Role[] {USER,INSTITUTION,GBO}), // cancel an event
-	END_EVENT("PUT_event_end", new Role[] {USER,INSTITUTION}), // finish an event
+	CREATE_EVENT("POST_event", new Role[] {INSTITUTION}), // create an event
+	UPDATE_EVENT("PUT_event", new Role[] {INSTITUTION}), // update the event's data
+	CANCEL_EVENT("DELETE_event", new Role[] {INSTITUTION,GBO}), // cancel an event
+	END_EVENT("PUT_event_end", new Role[] {INSTITUTION}), // finish an event
 	GET_EVENT("GET_event_get", new Role[] {USER,INSTITUTION,GBO}), // get the event's data
 	GET_ALL_EVENTS("GET_event", new Role[] {USER,INSTITUTION,GBO}), // list all events
 	JOIN_EVENT("POST_event_join", new Role[] {USER}), // add a participant to the event

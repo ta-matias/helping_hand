@@ -16,6 +16,7 @@ import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StringValue;
@@ -37,8 +38,6 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Logger;
 /**
  * @author PogChamp Software
@@ -53,10 +52,6 @@ public class UserResource extends AccountUtils {
 	private static final String FOLLOW_CONFLICT_ERROR = "[%s] is already registered as following [%s]";
 	private static final String UNFOLLOW_NOT_FOUND_ERROR = "[%s] is not registered as following [%s]";
 	private static final String REPEATED_FOLLOWER_ERROR = "[%s] is registered as following [%s] multiple times";
-
-	private static final String GET_ALL_START ="Attempting to get all users with token (%d)";
-	private static final String GET_ALL_OK ="Successfuly got all users with token (%d)";
-	private static final String GET_ALL_BAD_DATA_ERROR = "Get all users attempt failed due to bad input";
 
 	private static final String STATS_NOT_FOUND_ERROR = "User [%s] has no stats";
 
@@ -115,6 +110,7 @@ public class UserResource extends AccountUtils {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory =datastore.newKeyFactory().setKind(TOKEN_KIND);
 	private static final KeyFactory accountKeyFactory =datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	private static final KeyFactory profileKeyFactory = datastore.newKeyFactory().setKind(USER_PROFILE_KIND);
 	private static final KeyFactory statsKeyFactory =datastore.newKeyFactory().setKind(USER_STATS_KIND);
 
 	public UserResource() {super();}
@@ -128,42 +124,8 @@ public class UserResource extends AccountUtils {
 	 */
 	@GET
 	@Path(GET_USERS_PATH)
-	public Response getAll(@QueryParam(TOKEN_ID_PARAM) String token) {
-		if(badString(token)) {
-			log.info(GET_ALL_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).build();
-		}
-
-		long tokenId = Long.parseLong(token);
-
-		log.info(String.format(GET_ALL_START, tokenId));
-
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.USER.name())).build();
-
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-
-		try {
-			QueryResults<Entity> results= txn.run(query);	
-			txn.commit();
-			List<String[]> institutions = new LinkedList<>();
-
-			results.forEachRemaining(entity -> {
-				institutions.add(new String[] {entity.getString(ACCOUNT_ID_PROPERTY),Boolean.toString(entity.getBoolean(ACCOUNT_STATUS_PROPERTY))});
-			});
-
-			log.info(String.format(GET_ALL_OK,tokenId));
-			return Response.ok(g.toJson(institutions)).build();
-		} catch(DatastoreException e) {
-			txn.rollback();
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			if(txn.isActive()) {
-				txn.rollback();
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
+	public Response listUsers(@QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.listAll(token, Role.USER);
 
 	}
 
@@ -189,10 +151,10 @@ public class UserResource extends AccountUtils {
 		
 
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
-		Key accountInfoKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey());
-		Key accountFeedKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey());
-		Key userProfileKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey());
-		Key userStatsKey = datastore.allocateId(datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_STATS_KIND).newKey());
+		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());
+		Key accountFeedKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey(accountKey.getId());
+		Key userProfileKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey(accountKey.getId());
+		Key userStatsKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_STATS_KIND).newKey(accountKey.getId());
 
 		Timestamp now = Timestamp.now();
 
@@ -391,8 +353,8 @@ public class UserResource extends AccountUtils {
 	 */
 	@PUT
 	@Path(UPDATE_VISIBILITY_PATH)
-	public Response updateVisibility(@PathParam(USER_ID_PARAM) String id, ChangeVisibility data, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.updateVisibility(id, data, token);
+	public Response updateVisibility(@PathParam(USER_ID_PARAM) String id, @QueryParam(VISIBILITY_PARAM)String visibility, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateVisibility(id, visibility, token);
 	}
 
 	/**
@@ -489,21 +451,21 @@ public class UserResource extends AccountUtils {
 
 		log.info(String.format(GET_PROFILE_START,id,tokenId));
 
-		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 		try {
 		
-			QueryResults<Entity> accountList = txn.run(accountQuery);
+			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
 			
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			Entity account = accountList.next();
+			ProjectionEntity account = accountList.next();
 			
 			if(accountList.hasNext()) {
 				txn.rollback();
@@ -529,30 +491,15 @@ public class UserResource extends AccountUtils {
 				}
 			}
 			
-			Query<Entity> profileQuery = Query.newEntityQueryBuilder().setKind(USER_PROFILE_KIND).setFilter(PropertyFilter.hasAncestor(account.getKey())).build();
-			
-			QueryResults<Entity> profileList = txn.run(profileQuery);
+			Key profileKey  = profileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
+			Entity userProfile = txn.get(profileKey);
 			txn.commit();
 			
-			if(!profileList.hasNext()) {
+			if(userProfile == null) {
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-
-			Entity userProfile = profileList.next();
-			
-			if(profileList.hasNext()) {
-				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-	
-	
-	
-			UserProfile profile = new UserProfile(
-					userProfile.getString(PROFILE_NAME_PROPERTY),
-					userProfile.getString(PROFILE_BIO_PROPERTY)
-					);
-			
+			UserProfile profile = new UserProfile(account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY),userProfile);
 			
 			log.info(String.format(GET_PROFILE_OK,id,tokenId));
 			return Response.ok(g.toJson(profile)).build();
@@ -633,21 +580,11 @@ public class UserResource extends AccountUtils {
 				}
 			}
 
-			Query<Entity> profileQuery = Query.newEntityQueryBuilder().setKind(USER_PROFILE_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
+			Key profileKey  = profileKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Entity userProfile = txn.get(profileKey);
 			
-			QueryResults<Entity> profileList = txn.run(profileQuery);
-	
-			if(!profileList.hasNext()) {
-				txn.rollback();
+			if(userProfile == null) {
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-
-			Entity userProfile = profileList.next();
-			
-			if(profileList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 	
@@ -750,22 +687,12 @@ public class UserResource extends AccountUtils {
 			}
 
 
-			Query<Entity> statsQuery = Query.newEntityQueryBuilder().setKind(USER_STATS_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
-			
-			QueryResults<Entity> statsList = txn.run(statsQuery);
+			Key statsKey = statsKeyFactory.addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Entity statsEntity = txn.get(statsKey);
 			txn.commit();
 			
-			if(!statsList.hasNext()) {
-				txn.rollback();
+			if(statsEntity == null) {
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-
-			Entity statsEntity = statsList.next();
-			
-			if(statsList.hasNext()) {
-				txn.rollback();
-				log.severe(String.format(MULTIPLE_PROFILE_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			

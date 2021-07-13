@@ -370,7 +370,7 @@ public class AccessControlManager {
 		Query<Entity> rbacQuery = Query.newEntityQueryBuilder().setKind(RBAC_KIND).setFilter(PropertyFilter.eq(RBAC_ID_PROPERTY, operationId)).build(); 
 		
 		
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		Transaction txn = datastore.newTransaction();
 		
 		try {
 			

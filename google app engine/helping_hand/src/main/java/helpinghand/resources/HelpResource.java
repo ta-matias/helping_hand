@@ -30,6 +30,7 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.ProjectionEntity;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.Transaction;
@@ -548,13 +549,11 @@ public class HelpResource {
 	
 			long helperId = currentHelper.get(0).getLong(HELPER_ID_PROPERTY);
 			if(!addRatingToStats(helperId,true,ratingValue)) {
-				txn.rollback();
 				log.severe(String.format(RATING_ERROR, helperId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			String message = String.format(RATING_NOTIFICATION,tokenEntity.getString(TOKEN_OWNER_PROPERTY),ratingValue,helpEntity.getString(HELP_NAME_PROPERTY),helpId);
 			if(!addNotificationToFeed(helperId,message)) {
-				txn.rollback();
 				log.severe(String.format(NOTIFICATION_ERROR, helperId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -635,9 +634,10 @@ public class HelpResource {
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(helpKey);
 
-			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY)
+					.setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
 			
-			QueryResults<Entity> helperList = txn.run(helperQuery);
+			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
 	
 			List<Long> toNotify = new LinkedList<>();
 			
@@ -1067,10 +1067,10 @@ public class HelpResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 
-			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
+			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_CURRENT_PROPERTY).setKind(HELPER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_ID_PROPERTY, accountKey.getId()))).build();
 			
-			QueryResults<Entity> helperList = txn.run(helperQuery);
+			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
 			
 			if(!helperList.hasNext()) {
 				txn.rollback();
@@ -1078,7 +1078,7 @@ public class HelpResource {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
-			Entity helperEntity = helperList.next();
+			ProjectionEntity helperEntity = helperList.next();
 	
 			if(helperList.hasNext()) {
 				txn.rollback();
@@ -1132,9 +1132,9 @@ public class HelpResource {
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(helpKey);
 
-			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setProjection(HELPER_ID_PROPERTY).setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
 			
-			QueryResults<Entity> helperList = txn.run(helperQuery);
+			QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
 	
 			List<Long> toNotify = new LinkedList<>();
 			
