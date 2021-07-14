@@ -608,7 +608,7 @@ public class EventResource {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 	
-			if(!eventEntity.getBoolean(EVENT_STATUS_PROPERTY) || eventEntity.getTimestamp(EVENT_END_PROPERTY).compareTo(Timestamp.now()) >= 0) {
+			if(!eventEntity.getBoolean(EVENT_STATUS_PROPERTY) || Timestamp.now().compareTo(eventEntity.getTimestamp(EVENT_END_PROPERTY)) >= 0) {
 				txn.rollback();
 				log.warning(String.format(EVENT_ENDED_ERROR,eventEntity.getString(EVENT_NAME_PROPERTY),eventId));
 				return Response.status(Status.FORBIDDEN).build();
