@@ -1,5 +1,6 @@
 package helpinghand.resources;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -36,6 +37,7 @@ import com.google.datastore.v1.TransactionOptions.ReadOnly;
 import com.google.gson.Gson;
 
 import helpinghand.accesscontrol.Role;
+import helpinghand.util.account.Account;
 import helpinghand.util.event.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
@@ -138,6 +140,7 @@ public class EventResource {
 	private static final Logger log = Logger.getLogger(EventResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND); 
+	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND); 
 	private static final KeyFactory eventKeyFactory = datastore.newKeyFactory().setKind(EVENT_KIND); 
 
 	private final Gson g = new Gson();
@@ -872,13 +875,21 @@ public class EventResource {
 			}
 			
 			QueryResults<Entity> participantList = txn.run(participantQuery);
+			List<Key> participantKeys = new LinkedList<>();
+			participantList.forEachRemaining(participant->participantKeys.add(accountKeyFactory.newKey(participant.getLong(PARTICIPANT_ID_PROPERTY))));
+			
+			Key[] keyArray = new Key[participantKeys.size()];
+			participantKeys.toArray(keyArray);
+			
+			Iterator<Entity> participantEntities = txn.get(keyArray);
 			txn.commit();
 			
-			List<String> participants = new LinkedList<>();
-			participantList.forEachRemaining(participant->participants.add(participant.getString(PARTICIPANT_ID_PROPERTY)));
+			List<Account>participantAccounts = new LinkedList<>();
+			participantEntities.forEachRemaining(account->participantAccounts.add(new Account(account,false)));
+			
 			
 			log.info(String.format(LIST_EVENT_PARTICIPANTS_OK, eventEntity.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
-			return Response.ok(g.toJson(participants)).build();
+			return Response.ok(g.toJson(participantAccounts)).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));

@@ -59,6 +59,7 @@ import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
+import static helpinghand.resources.UserResource.USER_STATS_KIND;
 import static helpinghand.resources.UserResource.addRatingToStats;
 /**
  * @author PogChamp Software
@@ -859,7 +860,7 @@ public class HelpResource {
 			helperList.forEachRemaining(helperKey -> {
 				long datastoreId = helperKey.getLong(HELPER_ID_PROPERTY);
 				helperKeys.add(accountKeyFactory.newKey(datastoreId));
-				helperKeys.add(datastore.newKeyFactory().setKind(HELPER_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
+				helperKeys.add(datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
 			});
 			
 			Key[] statsKeys = new Key[helperKeys.size()];
