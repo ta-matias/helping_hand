@@ -90,7 +90,7 @@ public enum RBACRule {
 	CANCEL_HELP("DELETE_help", new Role[] {USER,INSTITUTION,GBO}), // cancel a help
 	FINISH_HELP("PUT_help_finish", new Role[] {USER,INSTITUTION}), // finish a help
 	GET_HELP("GET_help_get", new Role[] {USER,INSTITUTION}), // update the help's data
-	GET_ALL_HELP("GET_help", new Role[] {USER,GBO}), // list all helps
+	GET_ALL_HELP("GET_help", new Role[] {USER,INSTITUTION,GBO}), // list all helps
 	OFFER_HELP("POST_help_offer", new Role[] {USER}), // add a participant to help
 	LEAVE_HELP("DELETE_help_leave", new Role[] {USER}), // remove a participant from help
 	LIST_HELPERS("GET_help_helper", new Role[] {USER,INSTITUTION}), // choose a helper.

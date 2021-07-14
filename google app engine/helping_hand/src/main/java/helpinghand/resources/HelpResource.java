@@ -696,13 +696,14 @@ public class HelpResource {
 
 		long helpId = Long.parseLong(help);
 		
-		long helperId = Long.parseLong(helper);
 
 		log.info(String.format(CHOOSE_HELPER_START,helpId, tokenId));
 		
 		Key helpKey = helpKeyFactory.newKey(helpId);
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		Key helperKey = datastore.newKeyFactory().setKind(HELPER_KIND).addAncestor(PathElement.of(HELPER_KIND, helpId)).newKey(helperId);
+		
+		
+		Query<Key> helperAccountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, helper)).build();
 		
 		Query<Entity> currentHelperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND)
 				.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(helpKey),PropertyFilter.eq(HELPER_CURRENT_PROPERTY,true))).build();
@@ -735,14 +736,39 @@ public class HelpResource {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-
-			Entity helperEntity = txn.get(helperKey);
-	
-			if(helperEntity == null) {
+			
+			QueryResults<Key> helperAccountList = txn.run(helperAccountQuery);
+			
+			if(!helperAccountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, helper));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key helperAccountKey = helperAccountList.next();
+			
+			if(helperAccountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, helper));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(CompositeFilter.and(
+					PropertyFilter.eq(HELPER_ID_PROPERTY, helperAccountKey.getId()),PropertyFilter.hasAncestor(helpKey))).build();
+			
+			QueryResults<Entity> helperList = txn.run(helperQuery);
+			
+			if(!helperList.hasNext()) {
 				txn.rollback();
 				log.warning(String.format(HELPER_NOT_FOUND_ERROR, helper,helpId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
+			Entity helperEntity = helperList.next();
+			if(helperList.hasNext()) {
+				txn.rollback();
+				log.severe(MULTIPLE_HELPER_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
 	
 			if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
 				txn.rollback();
@@ -754,9 +780,9 @@ public class HelpResource {
 					.set(HELPER_CURRENT_PROPERTY, true)
 					.build();
 	
-			QueryResults<Entity> currentHelperList = txn.run(currentHelperQuery);
-	
 			Entity[] toUpdate = new Entity[] {updatedHelper};
+	
+			QueryResults<Entity> currentHelperList = txn.run(currentHelperQuery);
 	
 			if(currentHelperList.hasNext()) {
 				Entity currentHelper = currentHelperList.next();
@@ -860,10 +886,10 @@ public class HelpResource {
 				helperKeys.add(datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
 			});
 			
-			Key[] statsKeys = new Key[helperKeys.size()];
-			helperKeys.toArray(statsKeys);
+			Key[] keyArray = new Key[helperKeys.size()];
+			helperKeys.toArray(keyArray);
 			
-			Iterator<Entity> helperStats= txn.get(statsKeys);
+			Iterator<Entity> helperStats= txn.get(keyArray);
 			txn.commit();
 
 			List<HelperStats> statsList = new LinkedList<>();	
@@ -969,7 +995,7 @@ public class HelpResource {
 			}
 	
 			Entity helper = Entity.newBuilder(helperKey)
-					.set(HELPER_ID_PROPERTY,user)
+					.set(HELPER_ID_PROPERTY,accountKey.getId())
 					.set(HELPER_CURRENT_PROPERTY, false)
 					.build();
 		
