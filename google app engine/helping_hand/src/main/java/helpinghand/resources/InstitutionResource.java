@@ -642,7 +642,7 @@ public class InstitutionResource extends AccountUtils {
 	 */
 	@GET
 	@Path(GET_MEMBERS_PATH)
-	public Response getMembers(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(INSTITUTION_MEMBER_ID_PARAM) String token) {
+	public Response getMembers(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
 		if(badString(id) || badString(token)) {
 			log.warning(GET_MEMBERS_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
