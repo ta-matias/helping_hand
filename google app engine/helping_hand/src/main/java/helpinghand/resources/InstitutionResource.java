@@ -918,7 +918,7 @@ public class InstitutionResource extends AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 
-			Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND)
+			Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()), PropertyFilter.hasAncestor(institutionKey)))
 					.build();
 			
