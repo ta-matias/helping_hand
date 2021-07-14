@@ -36,11 +36,16 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
+import com.google.appengine.labs.repackaged.org.json.JSONException;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 
+import googleSendgridJava.Sendgrid;
+
 import static helpinghand.util.GeneralUtils.badPassword;
 import static helpinghand.util.GeneralUtils.badString;
+import static helpinghand.util.GeneralUtils.SENDGRID_USERNAME;
+import static helpinghand.util.GeneralUtils.SENDGRID_PASSWORD;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
@@ -114,6 +119,10 @@ public class AccountUtils {
 	private static final String UPDATE_EMAIL_OK = "Successfuly update email to [%s] with token (%d)";
 	private static final String UPDATE_EMAIL_BAD_DATA_ERROR = "Change email attempt failed due to bad inputs";
 	private static final String UPDATE_EMAIL_CONFLICT_ERROR = "There already exists an account with email [%s]";
+	private static final String OUR_EMAIL = "pogchampsoftware@gmail.com";
+	private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
+	private static final String EMAIL_VERIFICATION_TEXT = "Please click this link to verify your email.";
+	private static final String EMAIL_VERIFICATION_HTML = "<a href= %s>Verify Email</a>";
 
 	private static final String UPDATE_STATUS_START ="Attempting to update status with token (%d)";
 	private static final String UPDATE_STATUS_OK = "Successfuly updated status to [%s] with token (%d)";
@@ -632,7 +641,12 @@ public class AccountUtils {
 		long tokenId = Long.parseLong(token);
 
 		log.info(String.format(UPDATE_EMAIL_START,tokenId));
-
+		
+		
+		
+		
+		
+		
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
@@ -684,9 +698,32 @@ public class AccountUtils {
 			Entity updatedAccount = Entity.newBuilder(account)
 					.set(ACCOUNT_EMAIL_PROPERTY,email)
 					.build();
-
+			
+			
+			
+			
 			txn.update(updatedAccount);
 			txn.commit();
+			
+
+			String verificationUrl = getEmailVerificationUrl(account.getKey().getId());
+			
+			Sendgrid sender = new Sendgrid(SENDGRID_USERNAME,SENDGRID_PASSWORD);
+			
+			//TODO: finish
+			sender.use_headers = false;
+			sender.setTo(email);
+			sender.setFrom(OUR_EMAIL);
+			sender.setSubject(EMAIL_VERIFICATION_SUBJECT);
+			sender.setText(String.format(EMAIL_VERIFICATION_TEXT));
+			sender.setHtml(String.format(EMAIL_VERIFICATION_HTML,verificationUrl));
+			try{
+				sender.send();
+			}catch(JSONException e) {
+				log.severe("Failed to send email");
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
 			log.info(String.format(UPDATE_EMAIL_OK,email,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
@@ -1368,7 +1405,7 @@ public class AccountUtils {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, id)).newKey(accountKey.getId());
+			Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity feed = txn.get(feedKey);
 			txn.commit();
 			
@@ -1462,7 +1499,7 @@ public class AccountUtils {
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, id)).newKey(accountKey.getId());
+			Key feedKey = datastore.newKeyFactory().setKind(ACCOUNT_FEED_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			
 			Entity feed = txn.get(feedKey);
 			
@@ -1563,6 +1600,11 @@ public class AccountUtils {
 			}
 		}
 
+	}
+	
+	
+	protected static String getEmailVerificationUrl(long datastoreId) {
+		return "";
 	}
 
 }

@@ -230,7 +230,7 @@ public class EventResource {
 			String message = String.format(EVENT_CREATED_NOTIFICATION,data.name,id);
 			followerList.forEachRemaining(follower->{
 				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message))
-					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
+					log.warning(String.format(NOTIFICATION_ERROR,follower.getLong(FOLLOWER_ID_PROPERTY)));
 			});
 
 			log.info(String.format(CREATE_EVENT_OK, data.name,eventKey.getId(),tokenId));

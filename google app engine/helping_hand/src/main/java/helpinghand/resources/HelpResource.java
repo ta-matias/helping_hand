@@ -281,13 +281,10 @@ public class HelpResource {
 			
 			txn.add(help);
 			txn.commit();
-			
-			txn.add(help);
-			txn.commit();
 			String message = String.format(HELP_CREATED_NOTIFICATION,data.name,id);
 			followerList.forEachRemaining(follower->{
 				if(addNotificationToFeed(follower.getLong(FOLLOWER_ID_PROPERTY),message))
-					log.warning(String.format(NOTIFICATION_ERROR,follower.getString(FOLLOWER_ID_PROPERTY)));
+					log.warning(String.format(NOTIFICATION_ERROR,follower.getLong(FOLLOWER_ID_PROPERTY)));
 			});
 			
 			log.info(String.format(CREATE_HELP_OK, data.name, helpKey.getId(), tokenId));
@@ -656,7 +653,7 @@ public class HelpResource {
 			String message = String.format(HELP_CANCELED_NOTIFICATION,helpEntity.getString(HELP_NAME_PROPERTY));
 			toNotify.forEach(id->{
 				if(!addNotificationToFeed(id,message))
-					log.warning(NOTIFICATION_ERROR);
+					log.warning(String.format(NOTIFICATION_ERROR,id));
 			});
 			
 			log.info(String.format(CANCEL_HELP_OK,helpEntity.getString(HELP_NAME_PROPERTY), helpId,tokenId));
@@ -1030,7 +1027,20 @@ public class HelpResource {
 				log.warning(String.format(HELP_NOT_FOUND_ERROR, helpId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-	
+			
+			Query<Key> creatorQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, helpEntity.getString(HELP_CREATOR_PROPERTY))).build();
+			QueryResults<Key> creatorList = txn.run(creatorQuery);
+			if(!creatorList.hasNext()) {
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,helpEntity.getString(HELP_CREATOR_PROPERTY)));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			Key creatorKey = creatorList.next();
+			if(creatorList.hasNext()) {
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,helpEntity.getString(HELP_CREATOR_PROPERTY)));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			
 			Entity tokenEntity = txn.get(tokenKey);
 
 			if(tokenEntity == null) {
@@ -1079,9 +1089,9 @@ public class HelpResource {
 			}
 	
 			if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
-				if(!addNotificationToFeed(helpEntity.getLong(HELP_CREATOR_PROPERTY),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
+				if(!addNotificationToFeed(creatorKey.getId(),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
 					txn.rollback();
-					log.severe(String.format(NOTIFICATION_ERROR, helpEntity.getString(HELP_CREATOR_PROPERTY)));
+					log.severe(String.format(NOTIFICATION_ERROR, creatorKey.getId()));
 					return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 				}
 			}
@@ -1147,7 +1157,7 @@ public class HelpResource {
 			String message = String.format(HELP_CANCELED_NOTIFICATION,helpEntity.getString(HELP_NAME_PROPERTY));
 			toNotify.forEach(id->{
 				if(!addNotificationToFeed(id,message))
-					log.warning(NOTIFICATION_ERROR);
+					log.warning(String.format(NOTIFICATION_ERROR,id));
 			});
 			
 			return true;
