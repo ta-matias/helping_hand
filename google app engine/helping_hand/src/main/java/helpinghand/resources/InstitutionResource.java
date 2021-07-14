@@ -53,6 +53,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 /**
  * @author PogChamp Software
  *
@@ -753,6 +754,8 @@ public class InstitutionResource extends AccountUtils {
 		Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
 		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
 
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+
 		Transaction txn = datastore.newTransaction();
 
 		try {
@@ -787,7 +790,21 @@ public class InstitutionResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-
+			
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
 			memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(institutionKey),PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()))).build();
 
@@ -870,7 +887,21 @@ public class InstitutionResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-
+			
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
 			QueryResults<Key> accountList = txn.run(accountQuery);
 
 			if(!accountList.hasNext()) {
@@ -905,24 +936,6 @@ public class InstitutionResource extends AccountUtils {
 				txn.rollback();
 				log.severe(REPEATED_MEMBER_ERROR);
 				return Response.status(Status.NOT_FOUND).build();
-			}
-
-			Entity tokenEntity = txn.get(tokenKey);
-
-			if(tokenEntity == null) {
-				txn.rollback();
-				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
-			}
-
-			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-				Role role  = Role.getRole(tokenEntity.getString(AccessControlManager.TOKEN_ROLE_PROPERTY));
-				int minAccess = 1;//minimum access level required do execute this operation
-				if(role.getAccess() < minAccess) {
-					txn.rollback();
-					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-					return Response.status(Status.FORBIDDEN).build();
-				}
 			}
 
 			txn.delete(memberKey);

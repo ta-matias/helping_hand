@@ -139,7 +139,6 @@ public class EventResource {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND); 
 	private static final KeyFactory eventKeyFactory = datastore.newKeyFactory().setKind(EVENT_KIND); 
-	private static final KeyFactory participantKeyFactory = datastore.newKeyFactory().setKind(PARTICIPANT_KIND);
 
 	private final Gson g = new Gson();
 
@@ -654,7 +653,7 @@ public class EventResource {
 				return Response.status(Status.CONFLICT).build();
 			}
 	
-			Key participantKey = datastore.allocateId(participantKeyFactory.addAncestor(PathElement.of(EVENT_KIND, eventId)).newKey());
+			Key participantKey = datastore.allocateId(datastore.newKeyFactory().setKind(PARTICIPANT_KIND).addAncestor(PathElement.of(EVENT_KIND, eventId)).newKey());
 	
 			Entity participant = Entity.newBuilder(participantKey)
 					.set(PARTICIPANT_ID_PROPERTY, accountKey.getId())
