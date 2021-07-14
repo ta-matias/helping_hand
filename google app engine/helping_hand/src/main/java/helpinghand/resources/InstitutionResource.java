@@ -711,7 +711,7 @@ public class InstitutionResource extends AccountUtils {
 			List<Account> memberAccounts = new LinkedList<>();
 			memberEntities.forEachRemaining(memberAccount->memberAccounts.add(new Account(memberAccount,true)));
 
-			log.info(String.format(GET_MEMBERS_OK,id,token));
+			log.info(String.format(GET_MEMBERS_OK,id,tokenId));
 			return Response.ok(g.toJson(memberAccounts)).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
