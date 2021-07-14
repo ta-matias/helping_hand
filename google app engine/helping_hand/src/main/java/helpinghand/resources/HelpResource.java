@@ -353,7 +353,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -498,7 +498,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -618,7 +618,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
@@ -725,7 +725,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -840,7 +840,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 
 			if(!helpEntity.getString(HELP_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -936,7 +936,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
@@ -1035,7 +1035,7 @@ public class HelpResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);

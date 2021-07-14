@@ -184,7 +184,7 @@ public class EventResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
@@ -272,7 +272,7 @@ public class EventResource {
 		
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
-		Key tokenKey = tokenKeyFactory.newKey(eventId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Transaction txn = datastore.newTransaction();
 
@@ -290,7 +290,7 @@ public class EventResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!eventEntity.getString(EVENT_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
@@ -373,7 +373,7 @@ public class EventResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!eventEntity.getString(EVENT_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))){
@@ -470,7 +470,7 @@ public class EventResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!eventEntity.getString(EVENT_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -619,7 +619,7 @@ public class EventResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
@@ -727,7 +727,7 @@ public class EventResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);

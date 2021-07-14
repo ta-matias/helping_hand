@@ -485,7 +485,7 @@ public class UserResource extends AccountUtils {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) &&!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
@@ -577,7 +577,7 @@ public class UserResource extends AccountUtils {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 	
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
@@ -774,7 +774,7 @@ public class UserResource extends AccountUtils {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
@@ -883,7 +883,7 @@ public class UserResource extends AccountUtils {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);

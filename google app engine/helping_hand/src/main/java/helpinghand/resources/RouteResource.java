@@ -158,7 +158,7 @@ public class RouteResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
@@ -269,7 +269,7 @@ public class RouteResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			if(!routeEntity.getString(ROUTE_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {
@@ -346,7 +346,7 @@ public class RouteResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			if(!routeEntity.getString(ROUTE_CREATOR_PROPERTY).equals(tokenEntity.getString(TOKEN_OWNER_PROPERTY))) {

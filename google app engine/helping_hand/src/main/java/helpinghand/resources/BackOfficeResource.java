@@ -156,7 +156,7 @@ public class BackOfficeResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR,tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			QueryResults<Entity> accountList = txn.run(accountQuery);	
@@ -419,7 +419,7 @@ public class BackOfficeResource {
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.warning(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			Entity reportEntity = Entity.newBuilder(reportKey)
