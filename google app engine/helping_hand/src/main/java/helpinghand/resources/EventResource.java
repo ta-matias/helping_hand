@@ -112,7 +112,7 @@ public class EventResource {
 
 	public static final String PATH = "/event";
 	private static final String LIST_PATH = ""; // GET
-	private static final String LIST_BY_EVENT_PATH = "/{"+EVENT_ID_PARAM+"}/listUsers"; // GET
+	private static final String LIST_BY_EVENT_PATH = "/{"+EVENT_ID_PARAM+"}/list"; // GET
 	private static final String CREATE_PATH = ""; // POST
 	private static final String UPDATE_PATH = "/{"+EVENT_ID_PARAM+"}"; // PUT
 	private static final String CANCEL_PATH = "/{"+EVENT_ID_PARAM+"}"; // DELETE
