@@ -355,7 +355,7 @@ public class EventResource {
 		
 		Key eventKey = eventKeyFactory.newKey(eventId);
 		
-		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setFilter(PropertyFilter.hasAncestor(eventKey)).build();
+		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.hasAncestor(eventKey)).build();
 		
 		Transaction txn = datastore.newTransaction();
 
