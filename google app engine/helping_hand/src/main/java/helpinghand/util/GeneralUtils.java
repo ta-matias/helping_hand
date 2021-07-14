@@ -22,9 +22,6 @@ public class GeneralUtils {
 	public static final String NOTIFICATION_ERROR = "Error notifying user (%d)";
 	public static final String RATING_ERROR = "Error rating user [%s]";
 	
-	public static final String SENDGRID_USERNAME ="pogchampsoftware";
-	public static final String SENDGRID_PASSWORD = "bp4PhRAFb4fme7hp";
-	
 	
 	public static boolean badString(String s) {
 		if(s == null) 

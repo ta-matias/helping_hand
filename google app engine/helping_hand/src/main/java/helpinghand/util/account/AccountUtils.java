@@ -26,6 +26,7 @@ import helpinghand.util.event.EventData;
 import helpinghand.util.help.HelpData;
 import helpinghand.util.route.Route;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -35,17 +36,17 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
-
-import com.google.appengine.labs.repackaged.org.json.JSONException;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
-
-import googleSendgridJava.Sendgrid;
+import com.sendgrid.Method;
+import com.sendgrid.Request;
+import com.sendgrid.SendGrid;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Email;
 
 import static helpinghand.util.GeneralUtils.badPassword;
 import static helpinghand.util.GeneralUtils.badString;
-import static helpinghand.util.GeneralUtils.SENDGRID_USERNAME;
-import static helpinghand.util.GeneralUtils.SENDGRID_PASSWORD;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
@@ -121,8 +122,7 @@ public class AccountUtils {
 	private static final String UPDATE_EMAIL_CONFLICT_ERROR = "There already exists an account with email [%s]";
 	private static final String OUR_EMAIL = "pogchampsoftware@gmail.com";
 	private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
-	private static final String EMAIL_VERIFICATION_TEXT = "Please click this link to verify your email.";
-	private static final String EMAIL_VERIFICATION_HTML = "<a href= %s>Verify Email</a>";
+	private static final String EMAIL_VERIFICATION_CONTENT = "%s, click <a href = %s >here</a> to verify this email";
 
 	private static final String UPDATE_STATUS_START ="Attempting to update status with token (%d)";
 	private static final String UPDATE_STATUS_OK = "Successfuly updated status to [%s] with token (%d)";
@@ -642,11 +642,6 @@ public class AccountUtils {
 
 		log.info(String.format(UPDATE_EMAIL_START,tokenId));
 		
-		
-		
-		
-		
-		
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
@@ -699,30 +694,39 @@ public class AccountUtils {
 					.set(ACCOUNT_EMAIL_PROPERTY,email)
 					.build();
 			
+			Entity apiKey = txn.get(datastore.newKeyFactory().setKind("Secret").newKey("EMAIL_API_KEY"));
+			
+			if(apiKey == null) {
+				txn.rollback();
+				log.severe("API Key not found");
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 			
 			
 			
 			txn.update(updatedAccount);
 			txn.commit();
 			
-
+			//TODO:test
 			String verificationUrl = getEmailVerificationUrl(account.getKey().getId());
 			
-			Sendgrid sender = new Sendgrid(SENDGRID_USERNAME,SENDGRID_PASSWORD);
+			Email from  = new Email(OUR_EMAIL);
+			Email to = new Email(email);
+			Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,verificationUrl));
+			Mail mail = new Mail(from,EMAIL_VERIFICATION_SUBJECT,to,content);
 			
-			//TODO: finish
-			sender.use_headers = false;
-			sender.setTo(email);
-			sender.setFrom(OUR_EMAIL);
-			sender.setSubject(EMAIL_VERIFICATION_SUBJECT);
-			sender.setText(String.format(EMAIL_VERIFICATION_TEXT));
-			sender.setHtml(String.format(EMAIL_VERIFICATION_HTML,verificationUrl));
-			try{
-				sender.send();
-			}catch(JSONException e) {
-				log.severe("Failed to send email");
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
+			SendGrid sg = new SendGrid(apiKey.getString("value"));
+		    Request request = new Request();
+		    try {
+		    	request.setMethod(Method.POST);
+		        request.setEndpoint("mail/send");
+		        request.setBody(mail.build());
+		        com.sendgrid.Response response = sg.api(request);
+		        log.info("email sent to "+ email+", got status code: "+response.getStatusCode()+" and body: "+response.getBody());
+		    }catch(IOException e) {
+		    	log.severe("Could not send an email to "+email);
+		    	return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		    }
 			
 			log.info(String.format(UPDATE_EMAIL_OK,email,tokenId));
 			return Response.ok().build();
@@ -1604,7 +1608,7 @@ public class AccountUtils {
 	
 	
 	protected static String getEmailVerificationUrl(long datastoreId) {
-		return "";
+		return '"'+"www.google.com"+'"';
 	}
 
 }
