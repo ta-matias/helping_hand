@@ -963,7 +963,7 @@ public class UserResource extends AccountUtils {
 		Key accountKey = accountKeyFactory.newKey(datastoreId);
 		Key statsKey = datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, datastoreId)).newKey(datastoreId);
 		
-		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		Transaction txn = datastore.newTransaction();
 		
 		try {
 			Entity account = txn.get(accountKey);
