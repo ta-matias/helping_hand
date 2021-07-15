@@ -9,9 +9,3 @@ indexes:
   properties:
   - name: creator
   - name: status
-  
-- kind: Helper
-  ancestor: yes
-  properties:
-  - name: id
-  - name: current

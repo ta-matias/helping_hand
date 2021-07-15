@@ -355,13 +355,13 @@ public class AccountUtils {
 			Query<Key> participantQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, keyId)).build();
 			Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, keyId)).build();
 			Query<Key> followQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, keyId)).build();
-			Query<ProjectionEntity> helperQuery = Query.newProjectionEntityQueryBuilder().setKind(HELPER_KIND).setProjection(HELPER_CURRENT_PROPERTY).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
 			
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
 				QueryResults<Key> participantList = txn.run(participantQuery);
 				QueryResults<Key> followList = txn.run(followQuery);
-				QueryResults<ProjectionEntity> helperList = txn.run(helperQuery);
+				QueryResults<Entity> helperList = txn.run(helperQuery);
 				
 				memberList.forEachRemaining(membership->toDelete.add(membership));
 				participantList.forEachRemaining(participation->toDelete.add(participation));

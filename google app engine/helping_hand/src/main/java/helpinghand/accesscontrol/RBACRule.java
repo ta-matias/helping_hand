@@ -103,7 +103,11 @@ public enum RBACRule {
 	GET_ROUTE("GET_route_get", new Role[] {USER,INSTITUTION,GBO}),//get route info 
 	LIST_ROUTES("GET_route",new Role[] {USER,INSTITUTION,GBO}), // list all route's info 
 	START_ROUTE("PUT_route_start",new Role[] {USER}), //start doing a route TODO
-	END_ROUTE("PUT_route_end",new Role[] {USER}); //finish doing a route TODO
+	END_ROUTE("PUT_route_end",new Role[] {USER}), //finish doing a route TODO
+	
+	//EmailLinksResource
+	CONFIRM_EMAIL_UPDATE("PUT_links_email",new Role[] {ALL}),
+	CONFIRM_ACCOUNT_CREATION("PUT_links_account",new Role[] {ALL});
 	
 	public String operation;
 	public Role[] permitted;
