@@ -447,7 +447,7 @@ public class RouteResource {
 		
 		try {
 			QueryResults<Entity> routeList = txn.run(routeQuery);
-			
+			txn.commit();
 			List<Route> data = new LinkedList<>();
 			routeList.forEachRemaining(route->data.add(new Route(route)));
 			
