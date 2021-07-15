@@ -6,6 +6,7 @@ package helpinghand.resources;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import javax.ws.rs.Consumes;
@@ -58,6 +59,7 @@ import static helpinghand.util.account.AccountUtils.FOLLOWER_ID_PROPERTY;
 import static helpinghand.util.account.AccountUtils.FOLLOWER_KIND;
 import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 import static helpinghand.resources.UserResource.USER_STATS_KIND;
+import static helpinghand.resources.UserResource.USER_STATS_REQUESTS_PROMISED_PROPERTY;
 import static helpinghand.resources.UserResource.addRatingToStats;
 /**
  * @author PogChamp Software
@@ -70,6 +72,8 @@ public class HelpResource {
 	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose, [%s], has left the help request";
 	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
 	private static final String HELP_CREATED_NOTIFICATION = "Help request '%s' has been created by '%s'";
+	private static final String CHOSEN_HELPER_NOTIFICATION = "'%s' has chosen you to help in '%s', leaving now will negatively impact your reliability";
+	private static final String UNCHOSEN_HELPER_NOTIFICATION = "'%s' has chosen another person to help in '%s', leaving now will not longer negatively impact your reliability";
 	private static final String RATING_NOTIFICATION = "'%s' as rated you %d for your help in '%s'(%d)";
 	private static final String RATING_ERROR = "Error rating user (%d)";
 
@@ -222,7 +226,7 @@ public class HelpResource {
 	public Response createHelp(@QueryParam(TOKEN_ID_PARAM) String token, CreateHelp data) {
 		if(data.badData() || badString(token)) {
 			log.warning(CREATE_HELP_BAD_DATA_ERROR);
-			return Response.status(Status.BAD_REQUEST).entity("Invalid attributes!").build();
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 
 		long tokenId = Long.parseLong(token);
@@ -543,7 +547,7 @@ public class HelpResource {
 	
 			long helperId = currentHelper.get(0).getLong(HELPER_ID_PROPERTY);
 			
-			if(!addRatingToStats(helperId,true,ratingValue)) {
+			if(!addRatingToStats(helperId,ratingValue)) {
 				log.severe(String.format(RATING_ERROR,helperId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
@@ -631,17 +635,30 @@ public class HelpResource {
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(helpKey);
 
-			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setFilter(PropertyFilter.hasAncestor(helpKey)).build();
+			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.hasAncestor(helpKey)).build();
 			
 			QueryResults<Entity> helperList = txn.run(helperQuery);
 	
 			List<Long> toNotify = new LinkedList<>();
 			
+			AtomicLong currentHelperId = new AtomicLong(-1);
 			helperList.forEachRemaining(helper->{
+				long datastoreId = helper.getLong(HELPER_ID_PROPERTY);
 				toDelete.add(helper.getKey());
-				toNotify.add(helper.getLong(HELPER_ID_PROPERTY));
+				toNotify.add(datastoreId);
+				if(helper.getBoolean(HELPER_CURRENT_PROPERTY))currentHelperId.set(datastoreId);
 			});
-
+			if(currentHelperId.get() != -1) {
+				Key helperStatsKey = datastore.newKeyFactory().setKind(USER_STATS_KIND)
+						.addAncestor(PathElement.of(ACCOUNT_KIND, currentHelperId.get())).newKey(currentHelperId.get());
+				Entity helperStats = txn.get(helperStatsKey);
+				Entity updatedHelperStats = Entity.newBuilder(helperStats)
+						.set(USER_STATS_REQUESTS_PROMISED_PROPERTY, helperStats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)-1)
+						.build();
+				txn.update(updatedHelperStats);
+			}
+			
+			
 			Key[] keys =  new Key[toDelete.size()];
 			toDelete.toArray(keys);
 		
@@ -777,19 +794,38 @@ public class HelpResource {
 			Entity updatedHelper = Entity.newBuilder(helperEntity)
 					.set(HELPER_CURRENT_PROPERTY, true)
 					.build();
-	
-			Entity[] toUpdate = new Entity[] {updatedHelper};
+			
+			Key helperStatsKey = datastore.newKeyFactory().setKind(USER_STATS_KIND)
+					.addAncestor(PathElement.of(ACCOUNT_KIND, helperAccountKey.getId())).newKey(helperAccountKey.getId());
+			Entity helperStats = txn.get(helperStatsKey);
+			
+			//increase amount of promised requests for helper that becomes current helper
+			Entity updatedHelperStats = Entity.newBuilder(helperStats)
+					.set(USER_STATS_REQUESTS_PROMISED_PROPERTY, helperStats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)+1)
+					.build();
+			
+			Entity[] toUpdate = new Entity[] {updatedHelper,updatedHelperStats};
 	
 			QueryResults<Entity> currentHelperList = txn.run(currentHelperQuery);
-	
+			Entity currentHelper = null;
 			if(currentHelperList.hasNext()) {
-				Entity currentHelper = currentHelperList.next();
+				//if there was already a current helper, make him not the current  helper and reduce the amount of promised requests
+				 currentHelper = currentHelperList.next();
+	
+				
+				Key currentHelperStatsKey = datastore.newKeyFactory().setKind(USER_STATS_KIND)
+						.addAncestor(PathElement.of(ACCOUNT_KIND, currentHelper.getLong(HELPER_ID_PROPERTY))).newKey(currentHelper.getLong(HELPER_ID_PROPERTY));
+				Entity currentHelperStats = txn.get(currentHelperStatsKey);
+				
+				Entity updatedCurrentHelperStats = Entity.newBuilder(currentHelperStats)
+						.set(USER_STATS_REQUESTS_PROMISED_PROPERTY, helperStats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)-1)
+						.build();
 	
 				Entity updatedCurrentHelper = Entity.newBuilder(currentHelper)
 						.set(HELPER_CURRENT_PROPERTY, false)
 						.build();
-	
-				toUpdate = new Entity[] {updatedHelper,updatedCurrentHelper};
+				
+				toUpdate = new Entity[] {updatedHelper,updatedHelperStats,updatedCurrentHelper,updatedCurrentHelperStats};
 			}
 	
 			if(currentHelperList.hasNext()) {
@@ -800,6 +836,19 @@ public class HelpResource {
 		
 			txn.update(toUpdate);
 			txn.commit();
+			
+			String message = String.format(CHOSEN_HELPER_NOTIFICATION,helpEntity.getString(HELP_CREATOR_PROPERTY),helpEntity.getString(HELP_NAME_PROPERTY));
+			if(!addNotificationToFeed(helperEntity.getLong(HELPER_ID_PROPERTY),message)) {
+				log.warning(String.format(NOTIFICATION_ERROR, helperEntity.getLong(HELPER_ID_PROPERTY)));
+			}
+			
+			if(currentHelper != null) {
+				String message2 = String.format(UNCHOSEN_HELPER_NOTIFICATION,helpEntity.getString(HELP_CREATOR_PROPERTY),helpEntity.getString(HELP_NAME_PROPERTY));
+				if(!addNotificationToFeed(currentHelper.getLong(HELPER_ID_PROPERTY),message2)) {
+					log.warning(String.format(NOTIFICATION_ERROR, currentHelper.getLong(HELPER_ID_PROPERTY)));
+				}
+			}
+			
 			log.info(String.format(CHOOSE_HELPER_OK, helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {

@@ -952,7 +952,7 @@ public class UserResource extends AccountUtils {
 	 * @return true, if the rating was successfully added to the stats.
 	 * 		   false, otherwise.
 	 */
-	public static boolean addRatingToStats(long datastoreId,boolean finished,int rating) {
+	public static boolean addRatingToStats(long datastoreId,int rating) {
 		if( rating < 0 || rating > 5) {
 			log.warning(ADD_RATING_BAD_DATA_ERROR);
 			return false;
@@ -987,13 +987,8 @@ public class UserResource extends AccountUtils {
 			double oldPromised = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)).doubleValue();
 	
 			double newPromised = oldPromised++;
-			double newDone = oldDone;
-			double newRating = oldRating;
-	
-			if(finished) {
-				newDone++;
-				newRating = ((oldRating * oldDone)+rating)/newDone;
-			}
+			double newDone = oldDone++;
+			double newRating = ((oldRating * oldDone)+rating)/newDone;
 	
 			Entity updatedStats = Entity.newBuilder(stats)
 					.set(USER_STATS_RATING_PROPERTY, newRating)
