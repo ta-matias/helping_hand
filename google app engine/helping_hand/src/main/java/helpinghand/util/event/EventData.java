@@ -9,7 +9,8 @@ import static helpinghand.resources.EventResource.EVENT_CREATOR_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_DESCRIPTION_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_START_PROPERTY;
 import static helpinghand.resources.EventResource.EVENT_END_PROPERTY;
-import static helpinghand.resources.EventResource.EVENT_LOCATION_PROPERTY;
+import static helpinghand.resources.EventResource.EVENT_LOCATION_LATITUDE_PROPERTY;
+import static helpinghand.resources.EventResource.EVENT_LOCATION_LONGITUDE_PROPERTY;
 
 import com.google.cloud.datastore.Entity;
 /**
@@ -35,7 +36,7 @@ public class EventData {
 		this.description = event.getString(EVENT_DESCRIPTION_PROPERTY);
 		this.start = event.getTimestamp(EVENT_START_PROPERTY).toString();
 		this.end = event.getTimestamp(EVENT_END_PROPERTY).toString();
-		this.location = new double[] {event.getLatLng(EVENT_LOCATION_PROPERTY).getLatitude(),event.getLatLng(EVENT_LOCATION_PROPERTY).getLongitude()};
+		this.location = new double[] {event.getDouble(EVENT_LOCATION_LATITUDE_PROPERTY),event.getDouble(EVENT_LOCATION_LONGITUDE_PROPERTY)};
 	}
 	
 	public EventData(long id, String name, String creator, String description, String start, String end, double[] location) {

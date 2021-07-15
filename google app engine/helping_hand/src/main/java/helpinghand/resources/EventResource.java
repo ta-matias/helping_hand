@@ -25,7 +25,6 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
-import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
@@ -129,7 +128,8 @@ public class EventResource {
 	public static final String EVENT_DESCRIPTION_PROPERTY ="description";
 	public static final String EVENT_START_PROPERTY = "start";
 	public static final String EVENT_END_PROPERTY = "end";
-	public static final String EVENT_LOCATION_PROPERTY = "location";
+	public static final String EVENT_LOCATION_LATITUDE_PROPERTY = "location_latitude";
+	public static final String EVENT_LOCATION_LONGITUDE_PROPERTY = "location_longitude";
 	public static final String EVENT_STATUS_PROPERTY ="status";
 	private static final boolean EVENT_STATUS_DEFAULT = true;
 	private static final boolean EVENT_FINISHED_STATUS = false;
@@ -172,8 +172,6 @@ public class EventResource {
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
-		LatLng location = LatLng.of(data.location[0],data.location[1]);
-		
 		Timestamp start = Timestamp.parseTimestamp(data.start);
 		Timestamp end = Timestamp.parseTimestamp(data.end);
 
@@ -215,7 +213,8 @@ public class EventResource {
 					.set(EVENT_DESCRIPTION_PROPERTY, data.description)
 					.set(EVENT_START_PROPERTY,start)
 					.set(EVENT_END_PROPERTY, end)
-					.set(EVENT_LOCATION_PROPERTY, location)
+					.set(EVENT_LOCATION_LATITUDE_PROPERTY, data.location[0])
+					.set(EVENT_LOCATION_LONGITUDE_PROPERTY, data.location[1])
 					.set(EVENT_STATUS_PROPERTY, EVENT_STATUS_DEFAULT)
 					.build();
 			
@@ -486,8 +485,6 @@ public class EventResource {
 				}
 			}
 	
-			LatLng location = LatLng.of(data.location[0],data.location[1]);
-	
 			Timestamp start = Timestamp.parseTimestamp(data.start);
 			Timestamp end = Timestamp.parseTimestamp(data.end);
 	
@@ -496,7 +493,8 @@ public class EventResource {
 					.set(EVENT_DESCRIPTION_PROPERTY, data.description)
 					.set(EVENT_START_PROPERTY, start)
 					.set(EVENT_END_PROPERTY, end)
-					.set(EVENT_LOCATION_PROPERTY, location)
+					.set(EVENT_LOCATION_LATITUDE_PROPERTY, data.location[0])
+					.set(EVENT_LOCATION_LONGITUDE_PROPERTY, data.location[1])
 					.build();
 		
 			txn.update(updatedEvent);

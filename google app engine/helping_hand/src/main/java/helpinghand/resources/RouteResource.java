@@ -97,6 +97,8 @@ public class RouteResource {
 	public static final String ROUTE_CREATOR_PROPERTY = "creator";
 	public static final String ROUTE_NAME_PROPERTY = "name";
 	public static final String ROUTE_DESCRIPTION_PROPERTY = "description";
+	public static final String ROUTE_MAIN_POINT_LATITUDE ="main_latitude";
+	public static final String ROUTE_MAIN_POINT_LONGITUDE ="main_latitude";
 	public static final String ROUTE_POINTS_PROPERTY = "points";
 	public static final String ROUTE_CATEGORIES_PROPERTY = "categories";
 	
@@ -150,6 +152,8 @@ public class RouteResource {
 
 		ListValue categories = categoriesBuilder.build();
 		
+		double[] mainPoint = data.points.get(0);
+		
 		Transaction txn = datastore.newTransaction();
 		
 		try {
@@ -163,10 +167,14 @@ public class RouteResource {
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
 			
+			
+			
 			Entity routeEntity = Entity.newBuilder(routeKey)
 					.set(ROUTE_CREATOR_PROPERTY,id)
 					.set(ROUTE_NAME_PROPERTY,data.name)
 					.set(ROUTE_DESCRIPTION_PROPERTY,data.description)
+					.set(ROUTE_MAIN_POINT_LATITUDE, mainPoint[0])
+					.set(ROUTE_MAIN_POINT_LONGITUDE, mainPoint[1])
 					.set(ROUTE_POINTS_PROPERTY,points)
 					.set(ROUTE_CATEGORIES_PROPERTY,categories)
 					.build();
@@ -253,6 +261,8 @@ public class RouteResource {
 
 		ListValue categories = categoriesBuilder.build();
 		
+		double[] mainPoint = data.points.get(0);
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
@@ -284,6 +294,8 @@ public class RouteResource {
 					.set(ROUTE_CREATOR_PROPERTY,id)
 					.set(ROUTE_NAME_PROPERTY,data.name)
 					.set(ROUTE_DESCRIPTION_PROPERTY,data.description)
+					.set(ROUTE_MAIN_POINT_LATITUDE, mainPoint[0])
+					.set(ROUTE_MAIN_POINT_LONGITUDE, mainPoint[1])
 					.set(ROUTE_POINTS_PROPERTY,points)
 					.set(ROUTE_CATEGORIES_PROPERTY,categories)
 					.build();

@@ -29,7 +29,6 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
-import com.google.cloud.datastore.LatLng;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
@@ -147,8 +146,9 @@ public class HelpResource {
 	public static final String HELP_CREATOR_PROPERTY = "creator";
 	public static final String HELP_DESCRIPTION_PROPERTY = "description";
 	public static final String HELP_TIME_PROPERTY = "time";
-	public static final String HELP_LOCATION_PROPERTY = "location";
-
+	public static final String HELP_LOCATION_LATITUDE_PROPERTY = "location_latitude";
+	public static final String HELP_LOCATION_LONGITUDE_PROPERTY = "location_longitude";
+	
 	private static final String HELPER_ID_PARAM ="helperId";
 	public static final String HELPER_KIND ="Helper";
 	public static final String HELPER_ID_PROPERTY = "id";
@@ -235,8 +235,6 @@ public class HelpResource {
 		
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
-		LatLng location = LatLng.of(data.location[0],data.location[1]);
-		
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
 		Key helpKey = datastore.allocateId(helpKeyFactory.newKey());
@@ -276,7 +274,8 @@ public class HelpResource {
 					.set(HELP_CREATOR_PROPERTY,id)
 					.set(HELP_DESCRIPTION_PROPERTY, data.description)
 					.set(HELP_TIME_PROPERTY,time)
-					.set(HELP_LOCATION_PROPERTY,location)
+					.set(HELP_LOCATION_LATITUDE_PROPERTY,data.location[0])
+					.set(HELP_LOCATION_LONGITUDE_PROPERTY,data.location[1])
 					.build();
 
 			Query<Entity> followerQuery = Query.newEntityQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.hasAncestor(accountKey)).build();
@@ -331,7 +330,6 @@ public class HelpResource {
 
 		log.info(String.format(UPDATE_HELP_START,helpId, tokenId));
 		
-		LatLng location = LatLng.of(data.location[0],data.location[1]);
 		Timestamp time = Timestamp.parseTimestamp(data.time);
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
@@ -371,7 +369,8 @@ public class HelpResource {
 					.set(HELP_NAME_PROPERTY, data.name)
 					.set(HELP_DESCRIPTION_PROPERTY, data.description)
 					.set(HELP_TIME_PROPERTY,time)
-					.set(HELP_LOCATION_PROPERTY,location)
+					.set(HELP_LOCATION_LATITUDE_PROPERTY,data.location[0])
+					.set(HELP_LOCATION_LONGITUDE_PROPERTY,data.location[1])
 					.build();
 		
 			txn.update(updatedHelp);

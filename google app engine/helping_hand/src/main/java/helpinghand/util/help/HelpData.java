@@ -6,7 +6,8 @@ import static helpinghand.resources.HelpResource.HELP_NAME_PROPERTY;
 import static helpinghand.resources.HelpResource.HELP_CREATOR_PROPERTY;
 import static helpinghand.resources.HelpResource.HELP_DESCRIPTION_PROPERTY;
 import static helpinghand.resources.HelpResource.HELP_TIME_PROPERTY;
-import static helpinghand.resources.HelpResource.HELP_LOCATION_PROPERTY;
+import static helpinghand.resources.HelpResource.HELP_LOCATION_LATITUDE_PROPERTY;
+import static helpinghand.resources.HelpResource.HELP_LOCATION_LONGITUDE_PROPERTY;
 
 public class HelpData {
 	
@@ -25,7 +26,7 @@ public class HelpData {
 		this.creator = help.getString(HELP_CREATOR_PROPERTY);
 		this.description = help.getString(HELP_DESCRIPTION_PROPERTY);
 		this.time = help.getTimestamp(HELP_TIME_PROPERTY).toString();
-		this.location = new double[] {help.getLatLng(HELP_LOCATION_PROPERTY).getLatitude(),help.getLatLng(HELP_LOCATION_PROPERTY).getLongitude()};
+		this.location = new double[] {help.getDouble(HELP_LOCATION_LATITUDE_PROPERTY),help.getDouble(HELP_LOCATION_LONGITUDE_PROPERTY)};
 	}
 
 	public HelpData(long id, String name, String creator, String description, String time, double[] location) {
