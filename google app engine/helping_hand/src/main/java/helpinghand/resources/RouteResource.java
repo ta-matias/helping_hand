@@ -118,6 +118,8 @@ public class RouteResource {
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
 	private static final KeyFactory routeKeyFactory = datastore.newKeyFactory().setKind(ROUTE_KIND);
 	
+	public RouteResource() {}
+	
 	/**
 	 * 
 	 * @param token
