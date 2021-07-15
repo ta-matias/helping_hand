@@ -49,7 +49,6 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
-import static helpinghand.util.GeneralUtils.RATING_ERROR;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
@@ -72,6 +71,7 @@ public class HelpResource {
 	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
 	private static final String HELP_CREATED_NOTIFICATION = "Help request '%s' has been created by '%s'";
 	private static final String RATING_NOTIFICATION = "'%s' as rated you %d for your help in '%s'(%d)";
+	private static final String RATING_ERROR = "Error rating user (%d)";
 
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in HelpResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is HelpResource: Transaction was active";
@@ -544,7 +544,7 @@ public class HelpResource {
 			long helperId = currentHelper.get(0).getLong(HELPER_ID_PROPERTY);
 			
 			if(!addRatingToStats(helperId,true,ratingValue)) {
-				log.severe(String.format(RATING_ERROR, helperId));
+				log.severe(String.format(RATING_ERROR,helperId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
