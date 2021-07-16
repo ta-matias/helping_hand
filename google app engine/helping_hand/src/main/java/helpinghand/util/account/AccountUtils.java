@@ -26,7 +26,6 @@ import helpinghand.util.event.EventData;
 import helpinghand.util.help.HelpData;
 import helpinghand.util.route.Route;
 
-import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -38,12 +37,6 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.commons.codec.digest.DigestUtils;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
-import com.sendgrid.Method;
-import com.sendgrid.Request;
-import com.sendgrid.SendGrid;
-import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Content;
-import com.sendgrid.helpers.mail.objects.Email;
 
 import static helpinghand.util.GeneralUtils.badPassword;
 import static helpinghand.util.GeneralUtils.badString;
@@ -51,6 +44,7 @@ import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.EMAIL_REGEX;
+import static helpinghand.util.GeneralUtils.EMAIL_SENDING_ERROR;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
@@ -70,6 +64,7 @@ import static helpinghand.resources.HelpResource.HELPER_CURRENT_PROPERTY;
 import static helpinghand.resources.HelpResource.cancelHelp;
 import static helpinghand.resources.RouteResource.ROUTE_KIND;
 import static helpinghand.resources.RouteResource.ROUTE_CREATOR_PROPERTY;
+import static helpinghand.resources.EmailLinksResource.sendEmailVerification;
 /**
  * @author PogChamp Software
  *
@@ -120,9 +115,6 @@ public class AccountUtils {
 	private static final String UPDATE_EMAIL_OK = "Successfuly update email to [%s] with token (%d)";
 	private static final String UPDATE_EMAIL_BAD_DATA_ERROR = "Change email attempt failed due to bad inputs";
 	private static final String UPDATE_EMAIL_CONFLICT_ERROR = "There already exists an account with email [%s]";
-	private static final String OUR_EMAIL = "pogchampsoftware@gmail.com";
-	private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
-	private static final String EMAIL_VERIFICATION_CONTENT = "%s, click <a href = %s >here</a> to verify this email";
 
 	private static final String UPDATE_STATUS_START ="Attempting to update status with token (%d)";
 	private static final String UPDATE_STATUS_OK = "Successfuly updated status to [%s] with token (%d)";
@@ -225,10 +217,12 @@ public class AccountUtils {
 	public AccountUtils() {}
 
 	/**
-	 * 
-	 * @param token
-	 * @param role
-	 * @return
+	 * Lists all accounts
+	 * @param token - The token of the account requesting this operation.
+	 * @param role - The role of the user or the institution.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   500, otherwise.
 	 */
 	protected Response listAll(String token, Role role) {
 		if(badString(token)) {
@@ -270,12 +264,12 @@ public class AccountUtils {
 	/**
 	 * Deletes an existing account either user or institution.
 	 * @param id - The identification of the user/institution to be deleted.
-	 * @param token - The token of the account performing this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @param role - The role of the account.
 	 * @return 200, if the account was successfully deleted.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	protected Response deleteAccount(String id,String token,Role role) {
@@ -403,12 +397,12 @@ public class AccountUtils {
 
 	/**
 	 * Returns account data.
-	 * @param id - id of the account.
-	 * @param token - token performing request.
+	 * @param id - The identification of the user/institution.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	protected Response getAccount(String id, String token) {
@@ -533,12 +527,12 @@ public class AccountUtils {
 	 * Updates the password of the user/institution account.
 	 * @param id - The identification of the user/institution.
 	 * @param data - The updated password data for the user/institution account.
-	 * @param token - The token that is used to perform the operation
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the password was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current password for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	protected Response updatePassword(String id,ChangePassword data, String token) {
@@ -621,14 +615,14 @@ public class AccountUtils {
 
 	/**
 	 * Updates the email of the user/institution account.
-	 * @param id - The identification of the user/identification.
-	 * @param data - The updated email data for user/institution.
+	 * @param id - The identification of the user/institution.
+	 * @param email - The updated email for user/institution.
 	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the email was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist
 	 * 		   409, if there is already an account with the email.
 	 * 		   500, otherwise.
 	 */
@@ -673,63 +667,25 @@ public class AccountUtils {
 			}
 	
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
-				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-				int minAccess = 1;//minimum access level required do execute this operation
-				if(role.getAccess() < minAccess) {
-					txn.rollback();
-					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,role.getAccess(),minAccess));
-					return Response.status(Status.FORBIDDEN).build();
-				}
+				txn.rollback();
+				log.warning(String.format(TOKEN_OWNER_ERROR,tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			
 			Query<Key> checkQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY, email)).build();
-			
 			if(txn.run(checkQuery).hasNext()) {
 				txn.rollback();
 				log.warning(String.format(UPDATE_EMAIL_CONFLICT_ERROR,email));
 				return Response.status(Status.CONFLICT).build(); 
 			}
-
-			Entity updatedAccount = Entity.newBuilder(account)
-					.set(ACCOUNT_EMAIL_PROPERTY,email)
-					.build();
-			
-			Entity apiKey = txn.get(datastore.newKeyFactory().setKind("Secret").newKey("EMAIL_API_KEY"));
-			
-			if(apiKey == null) {
-				txn.rollback();
-				log.severe("API Key not found");
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-			
-			
-			
-			txn.update(updatedAccount);
 			txn.commit();
+			if(sendEmailVerification(account.getKey().getId(),account.getString(ACCOUNT_ID_PROPERTY),account.getString(ACCOUNT_EMAIL_PROPERTY))) {
+				log.info(String.format(UPDATE_EMAIL_OK,email,tokenId));
+				return Response.ok().build();
+			}
+			log.severe(String.format(EMAIL_SENDING_ERROR, email));
+	    	return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			
-			//TODO:test
-			String verificationUrl = getEmailVerificationUrl(account.getKey().getId());
-			
-			Email from  = new Email(OUR_EMAIL);
-			Email to = new Email(email);
-			Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,verificationUrl));
-			Mail mail = new Mail(from,EMAIL_VERIFICATION_SUBJECT,to,content);
-			
-			SendGrid sg = new SendGrid(apiKey.getString("value"));
-		    Request request = new Request();
-		    try {
-		    	request.setMethod(Method.POST);
-		        request.setEndpoint("mail/send");
-		        request.setBody(mail.build());
-		        com.sendgrid.Response response = sg.api(request);
-		        log.info("email sent to "+ email+", got status code: "+response.getStatusCode()+" and body: "+response.getBody());
-		    }catch(IOException e) {
-		    	log.severe("Could not send an email to "+email);
-		    	return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		    }
-			
-			log.info(String.format(UPDATE_EMAIL_OK,email,tokenId));
-			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -747,13 +703,13 @@ public class AccountUtils {
 	/**
 	 * Updates the status of the user/institution account.
 	 * @param id - The identification of the user/institution.
-	 * @param data - The updated status data for user/institution.
+	 * @param status - The updated status for user/institution.
 	 * @param token - The token of the user/institution requesting this operation.
 	 * @return 200, if the status was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the user/institution account does not exist.
 	 * 		   500, otherwise.
 	 */
 	protected Response updateStatus(String id, String status, String token) {
@@ -832,14 +788,14 @@ public class AccountUtils {
 
 	/**
 	 * Updates the visibility of the user/institution account.
-	 * @param id - The user/institution identification.
-	 * @param data - The updated visibility data for user/institution.
-	 * @param token - The token requesting this operation.
+	 * @param id - The identification of the user/institution.
+	 * @param visibility - The updated visibility for user/institution.
+	 * @param token - The token of the user/institution requesting this operation.
 	 * @return 200, if the visibility was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the user/institution account does not exist.
 	 * 		   500, otherwise.
 	 */
 	protected Response updateVisibility(String id, String visibility, String token) {
@@ -919,11 +875,11 @@ public class AccountUtils {
 	/**
 	 * Obtains the account info of the user/institution.
 	 * @param id - The identification of the user/institution.
-	 * @param token - The token requesting this operation.
+	 * @param token - The token of the user/institution requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise
 	 */
 	protected Response getAccountInfo(String id,String token) {
@@ -1275,10 +1231,14 @@ public class AccountUtils {
 	}
 
 	/**
-	 * 
-	 * @param id
-	 * @param token
-	 * @return
+	 * Obtains the list of routes created by the user/institution.
+	 * @param id - The identification of the user/institution.
+	 * @param token - The token of the account requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist or the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
 	 */
 	protected Response getAccountRoutes(String id,String token) {
 		if(badString(id)|| badString(token)) {
@@ -1357,11 +1317,12 @@ public class AccountUtils {
 	/**
 	 * Obtains the feed of the user/institution account.
 	 * @param id - The identification of the user/institution.
-	 * @param token - The token of the user/institution.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the user/institution account.
-	 * 		   404, if the user/institution account does not exist or the token does not exist. 
+	 * 		   403, if the token does not belong to the account or the token does not exist.
+	 * 		   404, if the account does not exist. 
+	 * 		   500, otherwise.
 	 */
 	protected Response getFeed(String id, String token) {
 		if(badString(token) || badString(id)) {
@@ -1440,13 +1401,13 @@ public class AccountUtils {
 
 	/**
 	 * Updates the feed of the user/institution account.
-	 * @param token - The token of the user/institution.
+	 * @param token - The token of the account requesting this operation.
 	 * @param id - The identification of the user/institution account.
 	 * @param data - The updated feed data.
 	 * @return 200, if the feed was successfully updated.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the user/institution account.
-	 * 		   404, if the user/institution account does not exist or the token does not exist.
+	 * 		   403, if the token does not belong to the account or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	protected Response updateFeed(String id, String token, AccountFeed data) {
@@ -1537,7 +1498,7 @@ public class AccountUtils {
 
 	/**
 	 * Adds a notification to feed of the user/institution.
-	 * @param user - The identification of the user/institution.
+	 * @param datastoreId - The identification of the user/institution.
 	 * @param message - The message to be added to the feed.
 	 * @return true, if the message was successfully added to the feed.
 	 * 		   false, otherwise.
@@ -1604,11 +1565,6 @@ public class AccountUtils {
 			}
 		}
 
-	}
-	
-	
-	protected static String getEmailVerificationUrl(long datastoreId) {
-		return '"'+"www.google.com"+'"';
 	}
 
 }

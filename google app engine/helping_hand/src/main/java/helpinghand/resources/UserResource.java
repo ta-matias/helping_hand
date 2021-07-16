@@ -36,6 +36,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
+import static helpinghand.resources.EmailLinksResource.sendAccountVerification;
 
 import java.util.logging.Logger;
 /**
@@ -113,7 +114,7 @@ public class UserResource extends AccountUtils {
 
 	/**
 	 * Obtains a list with the id and current status of all users
-	 * @param token - token of the user doing this operation
+	 * @param token - token of the account requesting this operation
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
 	 * 		   500, otherwise.
@@ -184,8 +185,8 @@ public class UserResource extends AccountUtils {
 				.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_RATING)
 				.build();
 		
-		Query<Key> idQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
-		Query<Key> emailQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
+		Query<Key> idQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
+		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
 		
 		Transaction txn = datastore.newTransaction();
 
@@ -225,13 +226,13 @@ public class UserResource extends AccountUtils {
 	}
 
 	/**
-	 * Deletes an existing user account
+	 * Deletes an existing user account.
 	 * @param id - The identification of the user to be deleted.
-	 * @param token - The token of the account performing this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the account was successfully deleted.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@DELETE
@@ -242,12 +243,12 @@ public class UserResource extends AccountUtils {
 	
 	/**
 	 * Returns account data.
-	 * @param id - id of the account.
-	 * @param token - token performing request.
+	 * @param id - The identification of the user.
+	 * @param token - The token of the user requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@GET
@@ -287,12 +288,12 @@ public class UserResource extends AccountUtils {
 	 * Updates the password of the user account.
 	 * @param id - The identification of the user.
 	 * @param data - The updated password data for the user account.
-	 * @param token - The token that is used to perform the operation
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the password was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current password for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -305,13 +306,13 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Updates the email of the user account.
 	 * @param id - The identification of the user.
-	 * @param data - The updated email data for user.
+	 * @param email - The updated email for user.
 	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the email was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist
 	 * 		   409, if there is already an account with the email.
 	 * 		   500, otherwise.
 	 */
@@ -325,13 +326,13 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Updates the status of the user account.
 	 * @param id - The identification of the user.
-	 * @param data - The updated status data for user.
-	 * @param token - The token of the user requesting this operation.
+	 * @param status - The updated status for user.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the status was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -342,14 +343,14 @@ public class UserResource extends AccountUtils {
 
 	/**
 	 * Updates the visibility of the user account.
-	 * @param id - The user identification.
-	 * @param data - The updated visibility data for user.
-	 * @param token - The token requesting this operation.
+	 * @param id - The identification of the user.
+	 * @param visibility - The updated visibility for user.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the visibility was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -361,11 +362,11 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Obtains the account info of the user.
 	 * @param id - The identification of the user.
-	 * @param token - The token requesting this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise
 	 */
 	@GET
@@ -380,11 +381,11 @@ public class UserResource extends AccountUtils {
 	 * Updates the user account info.
 	 * @param id - The identification of the user.
 	 * @param data - The updated account info data for user.
-	 * @param token - The token requesting this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the account info was successfully updated.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -397,11 +398,12 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Obtains the list of the events created by the user.
 	 * @param id - The identification of the user.
-	 * @param token - The token of the user.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_EVENTS_PATH)
@@ -412,11 +414,12 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Obtains the list of help requests created by the user.
 	 * @param id - The identification of the user.
-	 * @param token - The token of the user.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the user account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_HELP_PATH)
@@ -425,10 +428,14 @@ public class UserResource extends AccountUtils {
 	}
 	
 	/**
-	 * 
-	 * @param id
-	 * @param token
-	 * @return
+	 * Obtains the list of routes created by the user.
+	 * @param id - The identification of the user.
+	 * @param token - The token of the account requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist or the token cannot execute the operation with the current access level.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_ROUTES_PATH)
@@ -439,7 +446,7 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Obtains the profile of the user.
 	 * @param id - The user identification to obtain the profile.
-	 * @param token - The token of the user requesting this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   403, if the token cannot execute the operation with the current access level.
 	 * 		   404, if the user does not exist or the token does not exist
@@ -528,12 +535,12 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Updates the profile of the user.
 	 * @param id - The user identification who is going to update the profile.
-	 * @param token - The authentication token of the user.
+	 * @param token - The token of the account requesting this operation.
 	 * @param data - The updated profile of the user.
 	 * @return 200, if the update was successful.
 	 * 		   400, if the updated profile is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -590,7 +597,7 @@ public class UserResource extends AccountUtils {
 				}
 			}
 
-			Key profileKey  = datastore.newKeyFactory().setKind(USER_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
+			Key profileKey = datastore.newKeyFactory().setKind(USER_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).newKey(accountKey.getId());
 			Entity userProfile = txn.get(profileKey);
 			
 			if(userProfile == null) {
@@ -625,11 +632,12 @@ public class UserResource extends AccountUtils {
 	/**
 	 * Obtains the feed of the user account.
 	 * @param id - The identification of the user.
-	 * @param token - The token of the user requesting this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the user account.
-	 * 		   404, if the user account does not exist or the token does not exist. 
+	 * 		   403, if the token does not belong to the account or the token does not exist.
+	 * 		   404, if the account does not exist. 
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_FEED_PATH)
@@ -639,13 +647,13 @@ public class UserResource extends AccountUtils {
 
 	/**
 	 * Updates the feed of the user account.
-	 * @param token - The token of the user requesting this operation.
+	 * @param token - The token of the account requesting this operation.
 	 * @param id - The identification of the user account.
 	 * @param data - The updated feed data.
 	 * @return 200, if the feed was successfully updated.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the user account.
-	 * 		   404, if the user account does not exist or the token does not exist.
+	 * 		   403, if the token does not belong to the account or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -839,8 +847,10 @@ public class UserResource extends AccountUtils {
 	 * @param token - The token of the user requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist.
 	 * 		   404, if the user to be unfollowed does not exist or the user that owns the token does not exist
 	 * 		   or the user is not following another user.
+	 * 		   409, if the user is registered as following user with id multiple times.
 	 * 		   500, otherwise.
 	 */
 	@DELETE
@@ -946,14 +956,13 @@ public class UserResource extends AccountUtils {
 
 	/**
 	 * Adds rating to stats.
-	 * @param user - The user identification to update his stats.
-	 * @param finished - The boolean saying if the event/help is finished or not. 
+	 * @param datatstoreId - The user identification to update his stats.
 	 * @param rating - The rating for the user.
 	 * @return true, if the rating was successfully added to the stats.
 	 * 		   false, otherwise.
 	 */
 	public static boolean addRatingToStats(long datastoreId,int rating) {
-		if( rating < 0 || rating > 5) {
+		if(rating < 0 || rating > 5) {
 			log.warning(ADD_RATING_BAD_DATA_ERROR);
 			return false;
 		}

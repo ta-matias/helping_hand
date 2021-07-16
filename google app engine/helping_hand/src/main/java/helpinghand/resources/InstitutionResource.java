@@ -54,6 +54,8 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
+import static helpinghand.resources.EmailLinksResource.sendAccountVerification;
+
 /**
  * @author PogChamp Software
  *
@@ -116,8 +118,8 @@ public class InstitutionResource extends AccountUtils {
 	public InstitutionResource() {super();}
 
 	/**
-	 * Obtains a list with the id and current status of all institutions
-	 * @param token - token of the user doing this operation
+	 * Obtains a list with the id and current status of all institutions.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
 	 * 		   500, otherwise.
@@ -183,10 +185,10 @@ public class InstitutionResource extends AccountUtils {
 				.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
 				.set(INSTITUTION_PROFILE_CATEGORIES_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
 				.build();
-		
+
 		Query<Key> idQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,data.id)).build();
 		Query<Key> emailQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,data.email)).build();
-		
+
 		Transaction txn = datastore.newTransaction();
 
 		try {
@@ -197,15 +199,15 @@ public class InstitutionResource extends AccountUtils {
 				log.warning(String.format(CREATE_ID_CONFLICT_ERROR,data.id));
 				return Response.status(Status.CONFLICT).build();
 			} 
-			
+
 			QueryResults<Key> emailCheck = txn.run(emailQuery);
-			
+
 			if(emailCheck.hasNext()) {
 				txn.rollback();
 				log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,data.email));
 				return Response.status(Status.CONFLICT).build();
 			}
-			
+
 			txn.add(account,accountInfo,accountFeed,institutionProfile);
 			txn.commit();
 			log.info(String.format(CREATE_OK,data.id,Role.INSTITUTION.name()));
@@ -225,13 +227,13 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * Deletes an existing institution account
+	 * Deletes an existing institution account.
 	 * @param id - The identification of the institution to be deleted.
-	 * @param token - The token of the account performing this operation
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the account was successfully deleted.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@DELETE
@@ -242,12 +244,12 @@ public class InstitutionResource extends AccountUtils {
 
 	/**
 	 * Returns account data.
-	 * @param id - id of the account.
-	 * @param token - token performing request.
+	 * @param id - The identification of the institution.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@GET
@@ -285,14 +287,14 @@ public class InstitutionResource extends AccountUtils {
 
 	/**
 	 * Updates the password of the institution account.
-	 * @param id - The institution identification to update the password.
+	 * @param id - The identification of the institution.
 	 * @param data - The updated password data for the institution account.
-	 * @param token - The token that is used to perform the operation
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the password was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current password for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -302,15 +304,15 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * Updates the email of the user/institution account.
-	 * @param id - The institution identification to update the email.
-	 * @param data - The updated email data for institution.
-	 * @param token - The token of the account requesting this operation.
+	 * Updates the email of the institution account.
+	 * @param id - The identification of the institution.
+	 * @param email - The updated email for institution.
+	 * @param token - The token of the institution requesting this operation.
 	 * @return 200, if the email was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist
 	 * 		   409, if there is already an account with the email.
 	 * 		   500, otherwise.
 	 */
@@ -322,14 +324,14 @@ public class InstitutionResource extends AccountUtils {
 
 	/**
 	 * Updates the status of the institution account.
-	 * @param id - The institution identification to update the status.
-	 * @param data - The updated status data for institution.
+	 * @param id - The identification of the institution.
+	 * @param status - The updated status for institution.
 	 * @param token - The token of the institution requesting this operation.
 	 * @return 200, if the status was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -339,15 +341,15 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * Updates the visibility of the user/institution account.
-	 * @param id - The institution identification to update the visibility.
-	 * @param data - The updated visibility data for institution.
+	 * Updates the visibility of the institution account.
+	 * @param id - The identification of the institution.
+	 * @param visibility - The updated visibility for institution.
 	 * @param token - The token of the institution requesting this operation.
 	 * @return 200, if the visibility was successfully updated.
 	 * 		   400, if the data is invalid.
 	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
-	 * 		   with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -357,15 +359,14 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * Updates the institution account info.
-	 * @param id - The institution identification to update the account info.
-	 * @param data - The updated account info data for institution.
+	 * Obtains the account info of the institution.
+	 * @param id - The identification of the institution.
 	 * @param token - The token of the institution requesting this operation.
-	 * @return 200, if the account info was successfully updated.
+	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
-	 * 		   500, otherwise.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise
 	 */
 	@GET
 	@Path(GET_INFO_PATH)
@@ -375,14 +376,15 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * Obtains the account info of the institution.
-	 * @param id - The institution identification.
+	 * Updates the institution account info.
+	 * @param id - The identification of the institution.
+	 * @param data - The updated account info data for institution.
 	 * @param token - The token of the institution requesting this operation.
-	 * @return 200, if the operation was successful.
+	 * @return 200, if the account info was successfully updated.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
-	 * 		   500, otherwise
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
 	 */
 	@PUT
 	@Path(UPDATE_INFO_PATH)
@@ -397,8 +399,9 @@ public class InstitutionResource extends AccountUtils {
 	 * @param token - The token of the institution requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_EVENTS_PATH)
@@ -409,11 +412,12 @@ public class InstitutionResource extends AccountUtils {
 	/**
 	 * Obtains the list of help requests created by the institution.
 	 * @param id - The identification of the institution.
-	 * @param token - The token of the institution requesting this operation.
+	 * @param token - The token of the institution.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_HELP_PATH)
@@ -422,10 +426,14 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * 
-	 * @param id
-	 * @param token
-	 * @return
+	 * Obtains the list of routes created by the institution.
+	 * @param id - The identification of institution.
+	 * @param token - The token of the institution requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist or the token cannot execute the operation with the current access level.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_ROUTES_PATH)
@@ -435,12 +443,12 @@ public class InstitutionResource extends AccountUtils {
 
 	/**
 	 * Obtains the institution profile.
-	 * @param id - The institution id that is going to be used to obtain its data.
-	 * @param token - The token id from this institution.
+	 * @param id - The identification of the institution that is going to be used to obtain its data.
+	 * @param token - The token of the institution requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the institution does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@GET
@@ -456,36 +464,36 @@ public class InstitutionResource extends AccountUtils {
 		log.info(String.format(GET_PROFILE_START, id, tokenId));
 
 		Query<ProjectionEntity> accountQuery = Query.newProjectionEntityQueryBuilder().setProjection(ACCOUNT_VISIBILITY_PROPERTY).setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-		
+
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-		
+
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
-		
+
 		try {
 			QueryResults<ProjectionEntity> accountList = txn.run(accountQuery);
-			
+
 			if(!accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			ProjectionEntity account = accountList.next();
-			
+
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
+
 			Entity tokenEntity = txn.get(tokenKey);
-	
+
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-	
+
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				Role role  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
 				int minAccess = 1;//minimum access level required do execute this operation
@@ -495,19 +503,19 @@ public class InstitutionResource extends AccountUtils {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-			
+
 			Key profileKey = datastore.newKeyFactory().setKind(INSTITUTION_PROFILE_KIND).addAncestor(PathElement.of(ACCOUNT_KIND, account.getKey().getId())).newKey(account.getKey().getId());
 			Entity instProfile = txn.get(profileKey);
-		
+
 			txn.commit();
-			
+
 			if(instProfile == null) {
 				log.severe(String.format(PROFILE_NOT_FOUND_ERROR,id));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-	
+
 			InstitutionProfile profile = new InstitutionProfile(account.getBoolean(ACCOUNT_VISIBILITY_PROPERTY),instProfile);
-	
+
 			log.info(String.format(GET_PROFILE_OK,id,tokenId));
 			return Response.ok(g.toJson(profile)).build();
 		} catch(DatastoreException e) {
@@ -521,18 +529,18 @@ public class InstitutionResource extends AccountUtils {
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
-		
+
 	}
 
 	/**
 	 * Updates the institution profile.
-	 * @param id - The institution identification.
-	 * @param token - The token identification from this institution.
+	 * @param id - The institution identification that is going to update the profile.
+	 * @param token - The token of the account requesting this operation.
 	 * @param data - The updated data for this institution.
 	 * @return 200, if the institution has successfully updated its data.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -631,13 +639,13 @@ public class InstitutionResource extends AccountUtils {
 	}
 
 	/**
-	 * Obtains the list of subscribers given the institution id.
-	 * @param id - The institution id which is going to be used to obtain the users.
-	 * @param token - The token id to see if it has privilege to execute this operation.
+	 * Obtains the list of subscribers given the identification of the institution.
+	 * @param id - The identification of the institution that is going to be used to obtain the users.
+	 * @param token - The token of the institution requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the institution does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the institution does not exist.
 	 * 		   500, otherwise.
 	 */
 	@GET
@@ -729,13 +737,13 @@ public class InstitutionResource extends AccountUtils {
 
 	/**
 	 * Adds a new user to the institution.
-	 * @param id - The institution id where the user is going to subscribe.
-	 * @param memberId - The user id who is going to subscribe to the institution.
-	 * @param token - The token id of the user who is going to subscribe to the institution.
+	 * @param id - The identification of the institution where the user is going to subscribe.
+	 * @param memberId - The identification of the user who is going to subscribe to the institution.
+	 * @param token - The token of the account requesting this operation.
 	 * @return 200, if the join was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
-	 * 		   404, if the member does not exist or the institution does not exist or the token does not exist.
+	 * 		   403, if the token cannot execute the operation with the current access level or the token does not exist.
+	 * 		   404, if the member does not exist or the institution does not exist.
 	 * 		   409, if the memberId is already a member of the institution.
 	 * 		   500, otherwise.
 	 */
@@ -751,8 +759,8 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(ADD_MEMBER_START,memberId,id,tokenId));
 
-		Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
-		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
+		Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
+		Query<Key> institutionQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 
@@ -772,7 +780,7 @@ public class InstitutionResource extends AccountUtils {
 			if(memberCheck.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, memberId));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 
 			QueryResults<Key> institutionCheck = txn.run(institutionQuery);
@@ -788,23 +796,23 @@ public class InstitutionResource extends AccountUtils {
 			if(institutionCheck.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
+
 			Entity tokenEntity = txn.get(tokenKey);
-			
+
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-			
+
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				txn.rollback();
 				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-			
+
 			memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.hasAncestor(institutionKey),PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()))).build();
 
@@ -847,9 +855,9 @@ public class InstitutionResource extends AccountUtils {
 	 * @param token - The token id of the user who is going to be removed from the institution.
 	 * @return 200, if the removal was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot execute the operation with the current access level.
+	 * 		   403, if the token does not belong to the owner or the token does not exist.
 	 * 		   404, if the institution does not exist or the memberId is not a member of the institution
-	 * 		   or the token does not exist.
+	 * 		   or the member does not exist or the same user is registered in an institution repeatedly.
 	 * 		   500, otherwise.
 	 */
 	@DELETE
@@ -864,10 +872,10 @@ public class InstitutionResource extends AccountUtils {
 
 		log.info(String.format(REMOVE_MEMBER_START,memberId,id,tokenId));
 
-		Query<Key> institutionQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
+		Query<Key> institutionQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 
-		Query<Key> accountQuery  = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
+		Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,memberId)).build();
 
 		Transaction txn = datastore.newTransaction();
 
@@ -879,29 +887,29 @@ public class InstitutionResource extends AccountUtils {
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			Key institutionKey = institutionCheck.next();
-			
+
 			if(institutionCheck.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
-				return Response.status(Status.NOT_FOUND).build();
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
-			
+
 			Entity tokenEntity = txn.get(tokenKey);
-			
+
 			if(tokenEntity == null) {
 				txn.rollback();
 				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-			
+
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				txn.rollback();
 				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-			
+
 			QueryResults<Key> accountList = txn.run(accountQuery);
 
 			if(!accountList.hasNext()) {
@@ -909,19 +917,19 @@ public class InstitutionResource extends AccountUtils {
 				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, memberId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
-			
+
 			Key memberAccountKey = accountList.next();
-			
+
 			if(accountList.hasNext()) {
 				txn.rollback();
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, memberId));
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 
-			Query<Key> memberQuery  = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
+			Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND)
 					.setFilter(CompositeFilter.and(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, memberAccountKey.getId()), PropertyFilter.hasAncestor(institutionKey)))
 					.build();
-			
+
 			QueryResults<Key> memberCheck = txn.run(memberQuery);
 
 			if(!memberCheck.hasNext()) {
@@ -959,11 +967,12 @@ public class InstitutionResource extends AccountUtils {
 	/**
 	 * Obtains the feed of the institution account.
 	 * @param id - The identification of the institution.
-	 * @param token - The token of the institution requesting this operation.
+	 * @param token - The token requesting this operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the institution account.
-	 * 		   404, if the institution account does not exist or the token does not exist. 
+	 * 		   403, if the token does not belong to the account or the token does not exist.
+	 * 		   404, if the account does not exist. 
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_FEED_PATH)
@@ -973,13 +982,13 @@ public class InstitutionResource extends AccountUtils {
 
 	/**
 	 * Updates the feed of the institution account.
-	 * @param token - The token of the institution.
+	 * @param token - The token of the user/institution requesting this operation
 	 * @param id - The identification of the institution account.
 	 * @param data - The updated feed data.
 	 * @return 200, if the feed was successfully updated.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not belong to the institution account.
-	 * 		   404, if the institution account does not exist or the token does not exist.
+	 * 		   403, if the token does not belong to the account or the token does not exist.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT

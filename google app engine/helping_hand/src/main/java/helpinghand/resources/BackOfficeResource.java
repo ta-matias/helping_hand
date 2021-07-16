@@ -126,8 +126,9 @@ public class BackOfficeResource {
 	 * @param token - The token of the account that is performing this operation.
 	 * @return 200, if the update was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot alter higher or same level account or the token cannot change the role to a higher level.
-	 * 		   404, if the account does not exist or the token does not exist.
+	 * 		   403, if the token cannot alter higher or same level account or the token cannot change the role to a higher level
+	 * 		   or the token does not exist or there was an attempt to change the role of SuperUser.
+	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -148,7 +149,7 @@ public class BackOfficeResource {
 		
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
 		
-		Transaction txn =  datastore.newTransaction();
+		Transaction txn = datastore.newTransaction();
 		
 		try {
 			Entity tokenEntity = txn.get(tokenKey);
@@ -257,6 +258,7 @@ public class BackOfficeResource {
 	 * @param token - The token of the account that is performing the operation.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(LIST_ROLE_PATH)
@@ -371,7 +373,7 @@ public class BackOfficeResource {
 	 * Initializes the map that is going to be used to list the daily statistics.
 	 * @param start - The start date of the statistics.
 	 * @param end - The end date of the statistics.
-	 * @return data
+	 * @return data with statistics.
 	 */
 	private Map<Instant, Integer> initializeMap(Instant start, Instant end) {
 		Map<Instant, Integer> data = new HashMap<>();
@@ -387,10 +389,13 @@ public class BackOfficeResource {
 	}
 	
 	/**
-	 * 
-	 * @param token
-	 * @param data
-	 * @return
+	 * Creates a new report.
+	 * @param token - The token of the account requesting this operation.
+	 * @param data - The report creation data.
+	 * @return 200, if the report was successfully created.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist.
+	 * 		   500, otherwise.
 	 */
 	@POST
 	@Path(CREATE_REPORT_PATH)
@@ -449,10 +454,13 @@ public class BackOfficeResource {
 	}
 	
 	/**
-	 * 
-	 * @param token
-	 * @param report
-	 * @return
+	 * Obtains the report data.
+	 * @param token - the token of the account requesting this operation.
+	 * @param report - The identification of the report.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   404, if the report does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_REPORT_PATH)
@@ -477,7 +485,6 @@ public class BackOfficeResource {
 			txn.commit();
 			
 			if(reportEntity == null) {
-				txn.rollback();
 				log.warning(String.format(REPORT_NOT_FOUND_ERROR, reportId));
 				return Response.status(Status.NOT_FOUND).build();
 			}
@@ -501,9 +508,11 @@ public class BackOfficeResource {
 	}
 	
 	/**
-	 * 
-	 * @param token
-	 * @return
+	 * Obtains the list of the reports created by the account.
+	 * @param token - The token of the account requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(LIST_REPORTS_PATH)
@@ -545,10 +554,13 @@ public class BackOfficeResource {
 	}
 	
 	/**
-	 * 
-	 * @param token
-	 * @param report
-	 * @return
+	 * Deletes a report.
+	 * @param token - The token of the account requesting this operation.
+	 * @param report - The report identification to be deleted.
+	 * @return 200, if the report was successfully deleted.
+	 * 		   400, if the data is invalid.
+	 * 		   404, if the report does not exist.
+	 * 		   500, otherwise.
 	 */
 	@DELETE
 	@Path(DELETE_REPORT_PATH)

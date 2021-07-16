@@ -16,6 +16,8 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 
 import helpinghand.resources.BackOfficeResource;
+import helpinghand.resources.EmailLinksResource;
+
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 /**
  * @author PogChamp Software
@@ -34,6 +36,7 @@ public class AccessControlFilter implements ContainerRequestFilter {
 	private static final String INITIALIZING_RBAC_POLICY_OK = "Successfuly created RBACPolicy entities";
 	
 	private static final String BACK_OFFICE_RESOURCE = BackOfficeResource.PATH.substring(1); //removing the '/'
+	private static final String EMAIL_LINKS_RESOURCE = EmailLinksResource.PATH.substring(1); //removing the '/'
 	
 	public AccessControlFilter() {}
 	
@@ -63,7 +66,7 @@ public class AccessControlFilter implements ContainerRequestFilter {
 		operationId += "_"+resource;
 		
 		if(pathSegs.size() > 1) {
-			if(resource.equals(BACK_OFFICE_RESOURCE))
+			if(resource.equals(BACK_OFFICE_RESOURCE) || resource.equals(EMAIL_LINKS_RESOURCE))
 				operationId += "_"+pathSegs.get(1).getPath();
 			else {
 				for(int i = 2; i < pathSegs.size(); i++)

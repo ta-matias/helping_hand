@@ -74,7 +74,7 @@ public class RouteResource {
 	private static final String UPDATE_ROUTE_START = "Attempting to update route (%d) with token (%d)";
 	private static final String UPDATE_ROUTE_OK = "Successfuly update route (%d) with token (%d)";
 	private static final String UPDATE_ROUTE_BAD_DATA_ERROR = "Update route attempt failed due to bad inputs";
-	private static final String ROUTE_CREATOR_ERROR = "Route (%d)  cannot be updated by user [%s]";
+	private static final String ROUTE_CREATOR_ERROR = "Route (%d) cannot be updated by user [%s]";
 	
 	private static final String GET_ROUTE_START = "Attempting to get route (%d) with token (%d)";
 	private static final String GET_ROUTE_OK = "Successfuly got route (%d) with token (%d)";
@@ -121,10 +121,14 @@ public class RouteResource {
 	public RouteResource() {}
 	
 	/**
-	 * 
-	 * @param token
-	 * @param data
-	 * @return
+	 * Creates a new route.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @param data - The route creation data.
+	 * @return 200, if the route was successfully created.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
 	 */
 	@POST
 	@Path(CREATE_PATH)
@@ -168,8 +172,6 @@ public class RouteResource {
 			}
 			
 			String id = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
-			
-			
 			
 			Entity routeEntity = Entity.newBuilder(routeKey)
 					.set(ROUTE_CREATOR_PROPERTY,id)
@@ -227,11 +229,15 @@ public class RouteResource {
 	}
 	
 	/**
-	 * 
-	 * @param route
-	 * @param token
-	 * @param data
-	 * @return
+	 * Updates the data of the route.
+	 * @param route - The identification of the route to be updated.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @param data - The updated data of the route.
+	 * @return 200, if the route was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist or the route cannot be updated by the user.
+	 * 		   404, if the route does not exist.
+	 * 		   500, otherwise.
 	 */
 	@PUT
 	@Path(UPDATE_PATH)
@@ -321,10 +327,14 @@ public class RouteResource {
 	}
 	
 	/**
-	 * 
-	 * @param route
-	 * @param token
-	 * @return
+	 * Deletes the route.
+	 * @param route - The route identification to be deleted.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @return 200, if the route was successfully deleted.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token does not exist or the route cannot be updated by the user.
+	 * 		   404, if the route does not exist.
+	 * 		   500, otherwise.
 	 */
 	@DELETE
 	@Path(DELETE_PATH)
@@ -388,10 +398,13 @@ public class RouteResource {
 	}
 	
 	/**
-	 * 
-	 * @param route
-	 * @param token
-	 * @return
+	 * Obtains the data of the route.
+	 * @param route - The route identification to obtain its data.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   404, if the route does not exist.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(GET_PATH)
@@ -439,9 +452,11 @@ public class RouteResource {
 	}
 	
 	/**
-	 * 
-	 * @param token
-	 * @return
+	 * Obtains the list of routes created by the user/institution.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   500, otherwise.
 	 */
 	@GET
 	@Path(LIST_PATH)
@@ -462,6 +477,7 @@ public class RouteResource {
 		try {
 			QueryResults<Entity> routeList = txn.run(routeQuery);
 			txn.commit();
+			
 			List<Route> data = new LinkedList<>();
 			routeList.forEachRemaining(route->data.add(new Route(route)));
 			
