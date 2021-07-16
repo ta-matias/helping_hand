@@ -53,16 +53,16 @@ public class EmailLinksResource {
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in EmailLinksResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error in EmailLinksResource: Transaction was active";
-	private static final String SECRET_NOT_FOUND_ERROR = "Secret [%s] not found, it may have expired";
-	private static final String WRONG_SECRET_ERROR = "Secret [%s] does not belong to (%d) or has expired";
+	private static final String SECRET_NOT_FOUND_ERROR = "Secret (%d) not found, it may have expired";
+	private static final String WRONG_SECRET_ERROR = "Secret (%d) does not belong to (%d) or has expired";
 	
-	private static final String CONFIRM_EMAIL_UPDATE_START = "Starting email update for account(%d) with secret[%s]";
+	private static final String CONFIRM_EMAIL_UPDATE_START = "Starting email update for account(%d) with secret(%d)";
 	private static final String CONFIRM_EMAIL_UPDATE_OK= "Email update successful";
 	private static final String CONFIRM_EMAIL_UPDATE_BAD_DATA_ERROR = "Email update confirmation failed due to bad inputs";
 	private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
 	private static final String EMAIL_VERIFICATION_CONTENT = "%s, click <a href = %s >here</a> to verify this email and complete the email change.";
 	
-	private static final String CONFIRM_ACCOUNT_CREATION_START = "Confirming creation of account(%d) with secret[%s]";
+	private static final String CONFIRM_ACCOUNT_CREATION_START = "Confirming creation of account(%d) with secret(%d)";
 	private static final String CONFIRM_ACCOUNT_CREATION_OK= "Account confirmation successful";
 	private static final String CONFIRM_ACCOUNT_CREATION_BAD_DATA_ERROR = "Account creation confirmation failed due to bad inputs";
 	private static final String ACCOUNT_VERIFICATION_SUBJECT = "Account creation verification";
@@ -83,8 +83,8 @@ public class EmailLinksResource {
 	public static final String DATASTORE_ID_PARAM = "id";
 	public static final String EMAIL_PARAM = "email";
 	
-	public static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+"/"+PATH+"/"+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
-	public static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+"/"+PATH+"/"+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
+	public static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
+	public static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
 	
 	private static final long SECRET_DURATION = 1;//1h
 	
@@ -93,7 +93,7 @@ public class EmailLinksResource {
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
 	private static final KeyFactory emailSecretKeyFactory = datastore.newKeyFactory().setKind(EMAIL_SECRET_KIND);
-	private static final KeyFactory accountSecretKeyFactory = datastore.newKeyFactory().setKind(EMAIL_SECRET_KIND);
+	private static final KeyFactory accountSecretKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_SECRET_KIND);
 	
 	public EmailLinksResource() {}
 	
@@ -103,17 +103,17 @@ public class EmailLinksResource {
 	public Response confirmEmailUpdate(@QueryParam(SECRET_PARAM)String secret, 
 			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString, @QueryParam(EMAIL_PARAM)String email) {
 			
-		if(badString(secret) || badString(datastoreIdString) || email.matches(EMAIL_REGEX)) {
+		if(badString(secret) || badString(datastoreIdString) || !email.matches(EMAIL_REGEX)) {
 			log.severe(CONFIRM_EMAIL_UPDATE_BAD_DATA_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		
-		
+		long secretId = Long.parseLong(secret);
 		long datastoreId = Long.parseLong(datastoreIdString);
-		log.info(String.format(CONFIRM_EMAIL_UPDATE_START, datastoreId,secret));
+		log.info(String.format(CONFIRM_EMAIL_UPDATE_START, datastoreId,secretId));
 		
 		Key accountKey = accountKeyFactory.newKey(datastoreId);
-		Key secretKey = emailSecretKeyFactory.newKey(secret);
+		Key secretKey = emailSecretKeyFactory.newKey(secretId);
 		
 		
 		Transaction txn = datastore.newTransaction();
@@ -121,11 +121,11 @@ public class EmailLinksResource {
 			Entity secretEntity = txn.get(secretKey);
 			if(secretEntity == null) {
 				txn.rollback();
-				log.warning(String.format(SECRET_NOT_FOUND_ERROR,secret));
+				log.warning(String.format(SECRET_NOT_FOUND_ERROR,secretId));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
-			if(!secretEntity.getString(EMAIL_SECRET_ACCOUNT_PROPERTY).equals(datastoreIdString) || 
+			if(secretEntity.getLong(EMAIL_SECRET_ACCOUNT_PROPERTY) != datastoreId || 
 					Timestamp.now().compareTo(secretEntity.getTimestamp(EMAIL_SECRET_EXPIRATION_PROPERTY)) >= 0) {
 				
 				txn.delete(secretKey);
@@ -180,28 +180,32 @@ public class EmailLinksResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		
-		
+		long secretId = Long.parseLong(secret);
 		long datastoreId = Long.parseLong(datastoreIdString);
-		log.info(String.format(CONFIRM_ACCOUNT_CREATION_START, datastoreId,secret));
+		log.info(String.format(CONFIRM_ACCOUNT_CREATION_START, datastoreId,secretId));
 		
 		Key accountKey = accountKeyFactory.newKey(datastoreId);
-		Key secretKey = accountSecretKeyFactory.newKey(secret);
+		Key secretKey = accountSecretKeyFactory.newKey(secretId);
 		
 		
 		Transaction txn = datastore.newTransaction();
 		try {
 			Entity secretEntity = txn.get(secretKey);
 			if(secretEntity == null) {
+				
 				txn.rollback();
-				log.warning(String.format(SECRET_NOT_FOUND_ERROR,secret));
+			
+				log.warning(String.format(SECRET_NOT_FOUND_ERROR,secretId));
 				return Response.status(Status.FORBIDDEN).build();
 			}
-			
-			if(!secretEntity.getString(EMAIL_SECRET_ACCOUNT_PROPERTY).equals(datastoreIdString) || 
-					Timestamp.now().compareTo(secretEntity.getTimestamp(EMAIL_SECRET_EXPIRATION_PROPERTY)) >= 0) {
+		
+			if(secretEntity.getLong(ACCOUNT_SECRET_ACCOUNT_PROPERTY) != datastoreId || 
+					Timestamp.now().compareTo(secretEntity.getTimestamp(ACCOUNT_SECRET_EXPIRATION_PROPERTY)) >= 0) {
 				
 				txn.delete(secretKey);
+				
 				txn.commit();
+				
 				log.severe(String.format(WRONG_SECRET_ERROR,datastoreId));
 				return Response.status(Status.FORBIDDEN).build();
 			}
@@ -210,8 +214,11 @@ public class EmailLinksResource {
 			Entity accountEntity  = txn.get(accountKey);
 			
 			if(accountEntity == null) {
+				
 				txn.delete(secretKey);
+				
 				txn.commit();
+				
 				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,Long.toString(datastoreId)));
 				return Response.status(Status.NOT_FOUND).build();
 			}
@@ -221,7 +228,9 @@ public class EmailLinksResource {
 					.build();
 			
 			txn.update(updatedAccount);
+			
 			txn.delete(secretKey);
+			
 			txn.commit();
 			
 			log.info(CONFIRM_ACCOUNT_CREATION_OK);
@@ -289,17 +298,7 @@ public class EmailLinksResource {
 		    }catch(IOException e) {
 		    	log.severe(String.format(EMAIL_SENDING_ERROR, email));
 		    	return false;
-		    }catch(DatastoreException e) {
-				txn.rollback();
-				log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-				return false;
-			} finally {
-				if(txn.isActive()) {
-					txn.rollback();
-					log.severe(TRANSACTION_ACTIVE_ERROR);
-					return false;
-				}
-			}
+		    }
 		    
 		    txn.add(emailSecret);
 		    txn.commit();
@@ -365,17 +364,7 @@ public class EmailLinksResource {
 		    }catch(IOException e) {
 		    	log.severe(String.format(EMAIL_SENDING_ERROR, email));
 		    	return false;
-		    }catch(DatastoreException e) {
-				txn.rollback();
-				log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
-				return false;
-			} finally {
-				if(txn.isActive()) {
-					txn.rollback();
-					log.severe(TRANSACTION_ACTIVE_ERROR);
-					return false;
-				}
-			}
+		    }
 		    txn.add(accountSecret);
 		    txn.commit();
 		    log.info(String.format(EMAIL_SENDING_OK, email));

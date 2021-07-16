@@ -202,8 +202,8 @@ public class AccountUtils {
 	protected static final String STATUS_PARAM = "status";
 	protected static final String EMAIL_PARAM = "email";
 	
-	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = true;
-	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = true;//false in final release
+	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = false;
+	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = false;//false in final release
 	protected static final boolean ACCOUNT_VISIBLE_DEFAULT = true;
 	protected static final String DEFAULT_PROPERTY_VALUE_STRING = "";
 	protected static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
@@ -679,7 +679,7 @@ public class AccountUtils {
 				return Response.status(Status.CONFLICT).build(); 
 			}
 			txn.commit();
-			if(sendEmailVerification(account.getKey().getId(),account.getString(ACCOUNT_ID_PROPERTY),account.getString(ACCOUNT_EMAIL_PROPERTY))) {
+			if(sendEmailVerification(account.getKey().getId(),id,email)) {
 				log.info(String.format(UPDATE_EMAIL_OK,email,tokenId));
 				return Response.ok().build();
 			}

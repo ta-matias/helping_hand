@@ -209,9 +209,13 @@ public class InstitutionResource extends AccountUtils {
 			}
 
 			txn.add(account,accountInfo,accountFeed,institutionProfile);
-			txn.commit();
-			log.info(String.format(CREATE_OK,data.id,Role.INSTITUTION.name()));
-			return Response.ok().build();
+			if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
+				log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
+				txn.commit();
+				return Response.ok().build();
+			}
+			txn.rollback();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
