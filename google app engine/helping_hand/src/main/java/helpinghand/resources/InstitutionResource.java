@@ -209,7 +209,7 @@ public class InstitutionResource extends AccountUtils {
 			}
 
 			txn.add(account,accountInfo,accountFeed,institutionProfile);
-			log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
+			log.info(String.format(CREATE_OK, data.id, Role.INSTITUTION.name()));
 			txn.commit();
 			return Response.ok().build();
 			/*if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
