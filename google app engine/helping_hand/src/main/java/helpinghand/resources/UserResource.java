@@ -209,14 +209,14 @@ public class UserResource extends AccountUtils {
 			
 			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
 			
+			txn.commit();
+			log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
+			return Response.ok().build();
 			/*if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
-				txn.commit();
-				log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
-				return Response.ok().build();
 				
-			}*/
+			}
 			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();*/
 			
 			
 		} catch(DatastoreException e) {
