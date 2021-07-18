@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -351,7 +350,8 @@ public class BackOfficeResource {
 				map.put(creation, counter);
 			});
 
-			List<String[]> data = map.keySet().stream().map(key -> new String[] {key.toString().substring(0,10),map.get(key).toString()}).collect(Collectors.toList());
+			List<DailyStat> data = new LinkedList<>();
+			map.keySet().forEach(key-> data.add(new DailyStat(key.toString().substring(0,10),map.get(key))));
 
 			log.info(String.format(DAILY_STATS_OK, start, end, tokenId));
 			return Response.ok(g.toJson(data)).build();

@@ -209,11 +209,11 @@ public class InstitutionResource extends AccountUtils {
 			}
 
 			txn.add(account,accountInfo,accountFeed,institutionProfile);
-			if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
+			/*if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
 				log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
 				txn.commit();
 				return Response.ok().build();
-			}
+			}*/
 			txn.rollback();
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} catch(DatastoreException e) {
