@@ -24,6 +24,7 @@ public enum RBACRule {
 	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password
 	UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,GBO}), // update a user's email
+	UPDATE_USER_AVATAR("PUT_user_avatar", new Role[] {USER}), // update a user's avatar
 	UPDATE_USER_STATUS("PUT_user_status", new Role[] {USER,GBO}), //update a user's status
 	UPDATE_USER_VISIBILITY("PUT_user_visibility", new Role[] {USER,GBO}), // update a user's visibility
 	UPDATE_USER_INFO("PUT_user_info", new Role[] {USER,GBO}), // update a user's account info
@@ -48,6 +49,7 @@ public enum RBACRule {
 	GET_ALL_INSTITUTIONS("GET_institution", new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)
 	UPDATE_INSTITUTION_PASSWORD("PUT_institution_password", new Role[] {INSTITUTION,GBO}),// update an institution's password
 	UPDATE_INSTITUTION_EMAIL("PUT_institution_email", new Role[] {INSTITUTION,GBO}),// update an institution's email
+	UPDATE_INSTITUTION_AVATAR("PUT_institution_avatar", new Role[] {INSTITUTION}), // update a user's avatar
 	UPDATE_INSTITUTION_STATUS("PUT_institution_status", new Role[] {INSTITUTION,GBO}),// update an institution's status
 	UPDATE_INSTITUTION_VISIBILITY("PUT_institution_visibility", new Role[] {INSTITUTION,GBO}),// update an institution's visibility
 	UPDATE_INSTITUTION_INFO("PUT_institution_info", new Role[] {INSTITUTION,GBO}),// update an institution's account info

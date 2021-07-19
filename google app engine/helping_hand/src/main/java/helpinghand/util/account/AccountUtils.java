@@ -215,8 +215,8 @@ public class AccountUtils {
 	protected static final String EMAIL_PARAM = "email";
 	protected static final String AVATAR_PARAM = "avatar";
 	
-	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = false;
-	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = false;//false in final release
+	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = true;
+	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = true;//false in final release
 	protected static final boolean ACCOUNT_VISIBLE_DEFAULT = true;
 	protected static final String DEFAULT_PROPERTY_VALUE_STRING = "";
 	protected static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
