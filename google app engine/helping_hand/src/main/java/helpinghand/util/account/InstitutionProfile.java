@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Value;
 
+import static helpinghand.util.account.AccountUtils.PROFILE_AVATAR_PROPERTY;
 import static helpinghand.util.account.AccountUtils.PROFILE_NAME_PROPERTY;
 import static helpinghand.util.account.AccountUtils.PROFILE_BIO_PROPERTY;
 import static helpinghand.util.account.AccountUtils.INSTITUTION_PROFILE_INITIALS_PROPERTY;
@@ -14,6 +15,7 @@ import static helpinghand.util.account.AccountUtils.INSTITUTION_PROFILE_CATEGORI
 public class InstitutionProfile {
 	
 	public boolean visibility;
+	public String avatar;
 	public String name;
 	public String initials;
 	public String bio;
@@ -23,6 +25,7 @@ public class InstitutionProfile {
 	
 	public InstitutionProfile(boolean visibility, Entity profile) {
 		this.visibility = visibility;
+		this.avatar = profile.getString(PROFILE_AVATAR_PROPERTY);
 		this.name = profile.getString(PROFILE_NAME_PROPERTY);
 		this.initials = profile.getString(INSTITUTION_PROFILE_INITIALS_PROPERTY);
 		this.bio = profile.getString(PROFILE_BIO_PROPERTY);

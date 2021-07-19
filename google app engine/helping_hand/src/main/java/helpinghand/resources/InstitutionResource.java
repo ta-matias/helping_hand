@@ -52,6 +52,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERT
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.resources.EmailLinksResource.sendAccountVerification;
@@ -95,6 +96,7 @@ public class InstitutionResource extends AccountUtils {
 	private static final String LOGOUT_PATH="/{"+INSTITUTION_ID_PARAM+"}/logout"; //POST
 	private static final String UPDATE_PASSWORD_PATH="/{"+INSTITUTION_ID_PARAM+"}/password"; //PUT
 	private static final String UPDATE_EMAIL_PATH="/{"+INSTITUTION_ID_PARAM+"}/email"; //PUT
+	private static final String UPDATE_AVATAR_PATH="/{"+INSTITUTION_ID_PARAM+"}/avatar"; //PUT
 	private static final String UPDATE_STATUS_PATH="/{"+INSTITUTION_ID_PARAM+"}/status"; //PUT
 	private static final String UPDATE_VISIBILITY_PATH="/{"+INSTITUTION_ID_PARAM+"}/visibility";//PUT
 	private static final String UPDATE_INFO_PATH="/{"+INSTITUTION_ID_PARAM+"}/info"; //PUT
@@ -180,6 +182,7 @@ public class InstitutionResource extends AccountUtils {
 				.build();
 
 		Entity institutionProfile = Entity.newBuilder(institutionProfileKey)
+				.set(PROFILE_AVATAR_PROPERTY, DEFAULT_AVATAR)
 				.set(PROFILE_NAME_PROPERTY, data.name)
 				.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
 				.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
@@ -325,7 +328,24 @@ public class InstitutionResource extends AccountUtils {
 	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(EMAIL_PARAM) String email, @QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.updateEmail(id, email, token);
 	}
-
+	
+	/**
+	 * Updates the avatar of the institution account.
+	 * @param id - The identification of the institution.
+	 * @param avatar - The id of the new avatar for institution.
+	 * @param token - The token of the institution requesting this operation.
+	 * @return 200, if the avatar was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation or the token does not exist.
+	 * 		   404, if the institution does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_AVATAR_PATH)
+	public Response updateAvatar(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(AVATAR_PARAM) String avatar, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateAvatar(id, avatar, token);
+	}
+	
 	/**
 	 * Updates the status of the institution account.
 	 * @param id - The identification of the institution.

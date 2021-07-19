@@ -45,6 +45,13 @@ import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.EMAIL_REGEX;
 import static helpinghand.util.GeneralUtils.EMAIL_SENDING_ERROR;
+import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
+import static helpinghand.util.GeneralUtils.AVATAR_1;
+import static helpinghand.util.GeneralUtils.AVATAR_2;
+import static helpinghand.util.GeneralUtils.AVATAR_3;
+import static helpinghand.util.GeneralUtils.AVATAR_4;
+import static helpinghand.util.GeneralUtils.AVATAR_5;
+import static helpinghand.util.GeneralUtils.AVATAR_6;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
@@ -115,7 +122,11 @@ public class AccountUtils {
 	private static final String UPDATE_EMAIL_OK = "Successfuly update email to [%s] with token (%d)";
 	private static final String UPDATE_EMAIL_BAD_DATA_ERROR = "Change email attempt failed due to bad inputs";
 	private static final String UPDATE_EMAIL_CONFLICT_ERROR = "There already exists an account with email [%s]";
-
+	
+	private static final String UPDATE_AVATAR_START ="Attempting to update avatar with token (%d)";
+	private static final String UPDATE_AVATAR_OK = "Successfuly updated avatar to (%d) with token (%d)";
+	private static final String UPDATE_AVATAR_BAD_DATA_ERROR = "Change avatar attempt failed due to bad inputs";
+	
 	private static final String UPDATE_STATUS_START ="Attempting to update status with token (%d)";
 	private static final String UPDATE_STATUS_OK = "Successfuly updated status to [%s] with token (%d)";
 	private static final String UPDATE_STATUS_BAD_DATA_ERROR = "Change status attempt failed due to bad inputs";
@@ -186,6 +197,7 @@ public class AccountUtils {
 	public static final String INSTITUTION_PROFILE_KIND = "InstitutionProfile";
 	public static final String PROFILE_NAME_PROPERTY = "name";
 	public static final String PROFILE_BIO_PROPERTY = "bio";
+	public static final String PROFILE_AVATAR_PROPERTY ="avatar";
 	public static final String INSTITUTION_PROFILE_INITIALS_PROPERTY = "initials";
 	public static final String INSTITUTION_PROFILE_CATEGORIES_PROPERTY = "categories";
 
@@ -201,6 +213,7 @@ public class AccountUtils {
 	protected static final String VISIBILITY_PARAM = "visibility";
 	protected static final String STATUS_PARAM = "status";
 	protected static final String EMAIL_PARAM = "email";
+	protected static final String AVATAR_PARAM = "avatar";
 	
 	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = false;
 	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = false;//false in final release
@@ -700,6 +713,122 @@ public class AccountUtils {
 
 	}
 
+	/**
+	 * Updates the status of the user/institution account.
+	 * @param id - The identification of the user/institution.
+	 * @param status - The updated status for user/institution.
+	 * @param token - The token of the user/institution requesting this operation.
+	 * @return 200, if the status was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the password is not the current for the account or the token cannot execute the operation
+	 * 		   with the current access level or the token does not exist.
+	 * 		   404, if the user/institution account does not exist.
+	 * 		   500, otherwise.
+	 */
+	protected Response updateAvatar(String id, String avatar, String token) {
+		if(badString(avatar)||badString(id) || badString(token)) {
+			log.warning(UPDATE_AVATAR_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+
+		long tokenId = Long.parseLong(token);
+		int avatarId = Integer.parseInt(avatar);
+		
+		String newAvatar ="";
+		switch(avatarId) {
+		case 0:
+			newAvatar = DEFAULT_AVATAR;
+			break;
+		case 1:
+			newAvatar = AVATAR_1;
+			break;
+		case 2:
+			newAvatar = AVATAR_2;
+			break;
+		case 3:
+			newAvatar = AVATAR_3;
+			break;
+		case 4:
+			newAvatar = AVATAR_4;
+			break;
+		case 5:
+			newAvatar = AVATAR_5;
+			break;
+		case 6:
+			newAvatar = AVATAR_6;
+			break;
+		default:
+			newAvatar = DEFAULT_AVATAR;
+			break;
+		}
+
+		log.info(String.format(UPDATE_AVATAR_START,tokenId));
+
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction();
+
+		try {
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_NOT_FOUND_ERROR,id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Entity account = accountList.next();
+			
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+	
+			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_OWNER_ERROR,tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			String profileType = account.getString(ACCOUNT_ROLE_PROPERTY).equals(Role.INSTITUTION.name())?INSTITUTION_PROFILE_KIND:USER_PROFILE_KIND;
+			Key profileKey = datastore.newKeyFactory().setKind(profileType).addAncestor(PathElement.of(ACCOUNT_KIND,account.getKey().getId())).newKey(account.getKey().getId());
+			Entity accountProfile = txn.get(profileKey);
+	
+			
+			
+			
+			Entity updatedProfile = Entity.newBuilder(accountProfile)
+					.set(PROFILE_AVATAR_PROPERTY,newAvatar)
+					.build();
+
+			txn.update(updatedProfile);
+			txn.commit();
+			log.info(String.format(UPDATE_AVATAR_OK,avatarId,tokenId));
+			return Response.ok().build();
+		} catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+
+	}
+	
 	/**
 	 * Updates the status of the user/institution account.
 	 * @param id - The identification of the user/institution.

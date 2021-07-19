@@ -36,6 +36,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
+import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
 import static helpinghand.resources.EmailLinksResource.sendAccountVerification;
 
 import java.util.logging.Logger;
@@ -90,6 +91,7 @@ public class UserResource extends AccountUtils {
 	private static final String GET_PATH ="/{" + USER_ID_PARAM + "}/account";//GET
 	private static final String UPDATE_PASSWORD_PATH ="/{" + USER_ID_PARAM + "}/password";//PUT
 	private static final String UPDATE_EMAIL_PATH = "/{" + USER_ID_PARAM + "}/email";//PUT
+	private static final String UPDATE_AVATAR_PATH = "/{"+ USER_ID_PARAM+"}/avatar";//PUT
 	private static final String UPDATE_STATUS_PATH="/{"+USER_ID_PARAM+"}/status";//PUT
 	private static final String UPDATE_VISIBILITY_PATH="/{"+USER_ID_PARAM+"}/visibility";//PUT
 	private static final String UPDATE_INFO_PATH = "/{" + USER_ID_PARAM + "}/info";//PUT
@@ -171,6 +173,7 @@ public class UserResource extends AccountUtils {
 				.build();
 
 		Entity userProfile = Entity.newBuilder(userProfileKey)
+				.set(PROFILE_AVATAR_PROPERTY, DEFAULT_AVATAR)
 				.set(PROFILE_NAME_PROPERTY, DEFAULT_PROPERTY_VALUE_STRING)
 				.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
 				.build();
@@ -331,6 +334,23 @@ public class UserResource extends AccountUtils {
 		return super.updateEmail(id,email, token);
 	}
 
+	/**
+	 * Updates the avatar of the user account.
+	 * @param id - The identification of the user.
+	 * @param avatar - The id of the new avatar for user.
+	 * @param token - The token of the user requesting this operation.
+	 * @return 200, if the avatar was successfully updated.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the token cannot execute the operation or the token does not exist.
+	 * 		   404, if the user does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(UPDATE_AVATAR_PATH)
+	public Response updateAvatar(@PathParam(USER_ID_PARAM) String id, @QueryParam(AVATAR_PARAM) String avatar, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateAvatar(id, avatar, token);
+	}
+	
 	/**
 	 * Updates the status of the user account.
 	 * @param id - The identification of the user.

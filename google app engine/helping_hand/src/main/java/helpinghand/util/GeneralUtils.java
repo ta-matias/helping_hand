@@ -31,6 +31,15 @@ public class GeneralUtils {
 	public static final String APP_SECRET_KIND = "Secret";
 	public static final String APP_SECRET_VALUE_PROPERTY = "value";
 	
+	public static final String DEFAULT_AVATAR ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/default_avatar.png";
+	public static final String AVATAR_1 ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/avatar_1.png";
+	public static final String AVATAR_2 ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/avatar_2.png";
+	public static final String AVATAR_3 ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/avatar_3.png";
+	public static final String AVATAR_4 ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/avatar_4.png";
+	public static final String AVATAR_5 ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/avatar_5.png";
+	public static final String AVATAR_6 ="https://storage.googleapis.com/thehelpinghand.appspot.com/avatars/avatar_6.png";
+	
+	
 	
 	public static boolean badString(String s) {
 		if(s == null) 
