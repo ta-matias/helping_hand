@@ -73,7 +73,7 @@ public class EmailLinksResource {
 	
 	public static final String EMAIL_SECRET_KIND = "EmailSecret";
 	public static final String EMAIL_SECRET_ACCOUNT_PROPERTY = "account";
-	private static final String EMAIL_SECRET_EXPIRATION_PROPERTY = "expires";
+	public static final String EMAIL_SECRET_EXPIRATION_PROPERTY = "expires";
 	
 	public static final String ACCOUNT_SECRET_KIND = "AccountSecret";
 	public static final String ACCOUNT_SECRET_ACCOUNT_PROPERTY = "account";

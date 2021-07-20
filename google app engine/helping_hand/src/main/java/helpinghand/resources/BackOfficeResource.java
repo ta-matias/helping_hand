@@ -10,6 +10,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
@@ -31,12 +33,44 @@ import static helpinghand.accesscontrol.AccessControlManager.updateTokenRole;
 import static helpinghand.resources.UserResource.USER_ID_PARAM;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.APP_SECRET_KIND;
+import static helpinghand.util.GeneralUtils.APP_SECRET_VALUE_PROPERTY;
+import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
+import static helpinghand.util.GeneralUtils.OUR_EMAIL;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_EMAIL_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_PASSWORD_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ROLE_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_CREATION_PROPERTY;
-import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
-import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_VISIBILITY_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_STATUS_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_INFO_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_INFO_PHONE_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_INFO_ADDRESS_1_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_INFO_ADDRESS_2_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_INFO_CITY_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_INFO_ZIPCODE_PROPERTY;
+import static helpinghand.resources.UserResource.USER_PROFILE_KIND;
+import static helpinghand.util.account.AccountUtils.PROFILE_NAME_PROPERTY;
+import static helpinghand.util.account.AccountUtils.PROFILE_BIO_PROPERTY;
+import static helpinghand.util.account.AccountUtils.PROFILE_AVATAR_PROPERTY;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_FEED_KIND;
+import static helpinghand.util.account.AccountUtils.ACCOUNT_FEED_NOTIFICATIONS_PROPERTY;
+import static helpinghand.resources.UserResource.USER_STATS_KIND;
+import static helpinghand.resources.UserResource.USER_STATS_REQUESTS_PROMISED_PROPERTY;
+import static helpinghand.resources.UserResource.USER_STATS_REQUESTS_DONE_PROPERTY;
+import static helpinghand.resources.UserResource.USER_STATS_RATING_PROPERTY;
+import static helpinghand.util.account.AccountUtils.CREATE_ID_CONFLICT_ERROR;
+import static helpinghand.util.account.AccountUtils.CREATE_EMAIL_CONFLICT_ERROR;
+
+import static helpinghand.util.account.AccountUtils.DEFAULT_PROPERTY_VALUE_STRING;
+import static helpinghand.util.account.AccountUtils.DEFAULT_PROPERTY_VALUE_STRINGLIST;
+import static helpinghand.resources.UserResource.USER_STATS_INITIAL_RATING;
+import static helpinghand.resources.UserResource.USER_STATS_INITIAL_REQUESTS;
+
 /**
  * @author PogChamp Software
  *
@@ -87,6 +121,15 @@ public class BackOfficeResource {
 	private static final String DELETE_REPORT_OK = "Successfulty deleted report (%d) with token (%d)";
 	private static final String DELETE_REPORT_BAD_DATA_ERROR = "Delete report attempt failed due to bad inputs";
 	
+	private static final String CREATE_SU_START = "Attempting to create SU account with id [%s] and role [%s]";
+	private static final String CREATE_SU_OK = "Successfully created SU account [%s] and role [%s]";
+	private static final String CREATE_SU_BAD_SECRET_ERROR = "SU account creation failed due to bad secret input";
+	private static final String CREATE_SU_PASSWORD_NOT_SET_ERROR = "SU account creation failed due to the secret password not being set";
+	private static final String CREATE_SU_WRONG_PASSWORD_ERROR = "SU account creation failed due to wrong secret password";
+	private static final String CREATE_SU_CREDENTIALS_NOT_SET_ERROR = "SU account creation failed due to id or password not being set";
+	private static final String MULTIPLE_SU_ERROR = "There are multiple SU accounts";
+	private static final String WRONG_SU_ERROR = "The existing SU account does not follow the set credentials";
+	
 	private static final String USER_ROLE_PARAM = "role";
 	private static final String START_DATE_PARAM = "startDate";
 	private static final String END_DATE_PARAM = "endDate";
@@ -97,6 +140,11 @@ public class BackOfficeResource {
 	public static final String REPORT_CREATOR_PROPERTY = "creator";
 	public static final String REPORT_SUBJECT_PROPERTY = "subject";
 	public static final String REPORT_TEXT_PROPERTY = "text";
+	
+	private static final String SECRET_PASSWORD_PARAM = "secretPassword";
+	private static final String SU_ID_KEY = "SU_ID";
+	private static final String SU_PASSWORD_KEY = "SU_PASSWORD";
+	private static final String CREATE_SU_PASSWORD_KEY = "CREATE_SU_PASSWORD";
 
 	// Paths
 	public static final String PATH = "/restricted";
@@ -108,6 +156,7 @@ public class BackOfficeResource {
 	private static final String GET_REPORT_PATH = "/getReport"; // GET
 	private static final String LIST_REPORTS_PATH = "/listReports"; // GET
 	private static final String DELETE_REPORT_PATH = "/deleteReport"; // DELETE
+	private static final String CREATE_SU_PATH = "/createSU";
 
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(BackOfficeResource.class.getName());
@@ -607,5 +656,163 @@ public class BackOfficeResource {
 		}
 		
 	}
+	
+	@POST
+	@Path(CREATE_SU_PATH)
+	public Response createSU(@QueryParam(SECRET_PASSWORD_PARAM)String secret) {
+		if(badString( secret)) {
+			log.warning(CREATE_SU_BAD_SECRET_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		
+		KeyFactory secretKeyFactory = datastore.newKeyFactory().setKind(APP_SECRET_KIND);
+		Key suIdKey = secretKeyFactory.newKey(SU_ID_KEY);
+		Key suPasswordKey = secretKeyFactory.newKey(SU_PASSWORD_KEY);
+		Key createSuPasswordKey = secretKeyFactory.newKey(CREATE_SU_PASSWORD_KEY);
+		
+		
+		Query<Entity> suQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.SU.name())).build();
+		
+		log.info(CREATE_SU_START);
+		
+		Transaction txn =  datastore.newTransaction();
+		try {
+			Entity createSuPassword = txn.get(createSuPasswordKey);
+			if(createSuPassword == null) {
+				txn.rollback();
+				log.severe(CREATE_SU_PASSWORD_NOT_SET_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			if(!createSuPassword.getString(APP_SECRET_VALUE_PROPERTY).equals(DigestUtils.sha512Hex(secret))) {
+				txn.rollback();
+				log.warning(CREATE_SU_WRONG_PASSWORD_ERROR);
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Entity suId = txn.get(suIdKey);
+			Entity suPassword = txn.get(suPasswordKey);
+			if(suId ==null || suPassword == null) {
+				txn.rollback();
+				log.severe(CREATE_SU_CREDENTIALS_NOT_SET_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			
+			QueryResults<Entity> suList = txn.run(suQuery);
+			txn.commit();
+			if(suList.hasNext()) {
+				Entity suAccount = suList.next();
+				if(suAccount.getString(ACCOUNT_ID_PROPERTY).equals(suId.getString(APP_SECRET_VALUE_PROPERTY))){
+					if(suList.hasNext()) {
+						log.severe(MULTIPLE_SU_ERROR);
+						return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+					}
+					return Response.ok().build();
+				}
+				log.severe(WRONG_SU_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+			return createSuAccount(suId.getString(APP_SECRET_VALUE_PROPERTY),suPassword.getString(APP_SECRET_VALUE_PROPERTY));
+			
+		} catch (DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	private Response createSuAccount(String id , String encryptedPassword) {
 
+		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
+		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());
+		Key accountFeedKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey(accountKey.getId());
+		Key userProfileKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_PROFILE_KIND).newKey(accountKey.getId());
+		Key userStatsKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_STATS_KIND).newKey(accountKey.getId());
+
+		Timestamp now = Timestamp.now();
+
+		Entity account = Entity.newBuilder(accountKey)
+				.set(ACCOUNT_ID_PROPERTY, id)
+				.set(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)
+				.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(encryptedPassword).setExcludeFromIndexes(true).build())
+				.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
+				.set(ACCOUNT_CREATION_PROPERTY,now)
+				.set(ACCOUNT_STATUS_PROPERTY,true)
+				.set(ACCOUNT_VISIBILITY_PROPERTY, false)
+				.build();
+
+		Entity accountInfo = Entity.newBuilder(accountInfoKey)
+				.set(ACCOUNT_INFO_PHONE_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+				.set(ACCOUNT_INFO_ADDRESS_1_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+				.set(ACCOUNT_INFO_ADDRESS_2_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+				.set(ACCOUNT_INFO_ZIPCODE_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
+				.set(ACCOUNT_INFO_CITY_PROPERTY,DEFAULT_PROPERTY_VALUE_STRING)
+				.build();
+
+		Entity userProfile = Entity.newBuilder(userProfileKey)
+				.set(PROFILE_AVATAR_PROPERTY, DEFAULT_AVATAR)
+				.set(PROFILE_NAME_PROPERTY, DEFAULT_PROPERTY_VALUE_STRING)
+				.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
+				.build();
+
+		Entity accountFeed = Entity.newBuilder(accountFeedKey)
+				.set(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY, DEFAULT_PROPERTY_VALUE_STRINGLIST)
+				.build();
+
+		Entity userStats = Entity.newBuilder(userStatsKey)
+				.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,USER_STATS_INITIAL_REQUESTS)
+				.set(USER_STATS_REQUESTS_DONE_PROPERTY,USER_STATS_INITIAL_REQUESTS)
+				.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_RATING)
+				.build();
+		
+		Query<Key> idQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
+		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)).build();
+		
+		Transaction txn = datastore.newTransaction();
+
+		try {
+			QueryResults<Key> idCheck = txn.run(idQuery);
+
+			if(idCheck.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(CREATE_ID_CONFLICT_ERROR,id));
+				return Response.status(Status.CONFLICT).build();
+			} 
+			
+			QueryResults<Key> emailCheck = txn.run(emailQuery);
+			
+			if(emailCheck.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(CREATE_EMAIL_CONFLICT_ERROR,OUR_EMAIL));
+				return Response.status(Status.CONFLICT).build();
+			}
+			
+			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
+			
+			txn.commit();
+			log.info(CREATE_SU_OK);
+			return Response.ok().build();
+			
+		} catch(DatastoreException e) {
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			txn.rollback();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	
 }

@@ -92,8 +92,8 @@ public class AccountUtils {
 	
 	protected static final String CREATE_START = "Attempting to create account with id [%s] and role [%s]";
 	protected static final String CREATE_OK = "Successfuly created account [%s] and role [%s]";
-	protected static final String CREATE_ID_CONFLICT_ERROR = "Account with id [%s] already exists";
-	protected static final String CREATE_EMAIL_CONFLICT_ERROR = "Account with id [%s] already exists";
+	public static final String CREATE_ID_CONFLICT_ERROR = "Account with id [%s] already exists";
+	public static final String CREATE_EMAIL_CONFLICT_ERROR = "Account with id [%s] already exists";
 	protected static final String CREATE_BAD_DATA_ERROR = "Account creation attempt failed due to bad inputs";
 
 	private static final String DELETE_START = "Attempting to delete account [%s] with token (%d)";
@@ -215,11 +215,11 @@ public class AccountUtils {
 	protected static final String EMAIL_PARAM = "email";
 	protected static final String AVATAR_PARAM = "avatar";
 	
-	protected static final boolean ACCOUNT_STATUS_DEFAULT_USER = true;
+	public static final boolean ACCOUNT_STATUS_DEFAULT_USER = true;
 	protected static final boolean ACCOUNT_STATUS_DEFAULT_INSTITUTION = true;//false in final release
-	protected static final boolean ACCOUNT_VISIBLE_DEFAULT = true;
-	protected static final String DEFAULT_PROPERTY_VALUE_STRING = "";
-	protected static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
+	public static final boolean ACCOUNT_VISIBILITY_DEFAULT = true;
+	public static final String DEFAULT_PROPERTY_VALUE_STRING = "";
+	public static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
 
 	protected static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
@@ -935,7 +935,7 @@ public class AccountUtils {
 
 		long tokenId = Long.parseLong(token);
 		
-		boolean visibilityBoolean = Boolean.getBoolean(visibility);
+		boolean visibilityBoolean = Boolean.parseBoolean(visibility);
 
 		log.info(String.format(UPDATE_VISIBILITY_START,tokenId));
 

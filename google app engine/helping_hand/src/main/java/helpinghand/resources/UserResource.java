@@ -161,7 +161,7 @@ public class UserResource extends AccountUtils {
 				.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
 				.set(ACCOUNT_CREATION_PROPERTY,now)
 				.set(ACCOUNT_STATUS_PROPERTY,ACCOUNT_STATUS_DEFAULT_USER)
-				.set(ACCOUNT_VISIBILITY_PROPERTY, ACCOUNT_VISIBLE_DEFAULT)
+				.set(ACCOUNT_VISIBILITY_PROPERTY, ACCOUNT_VISIBILITY_DEFAULT)
 				.build();
 
 		Entity accountInfo = Entity.newBuilder(accountInfoKey)
