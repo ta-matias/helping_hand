@@ -750,11 +750,14 @@ public class BackOfficeResource {
 				Entity suAccount = suList.next();
 				if(suAccount.getString(ACCOUNT_ID_PROPERTY).equals(id)){
 					if(suList.hasNext()) {
+						txn.rollback();
 						log.severe(MULTIPLE_SU_ERROR);
 						return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 					}
+					txn.commit();
 					return Response.ok().build();
 				}
+				txn.rollback();
 				log.severe(WRONG_SU_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
