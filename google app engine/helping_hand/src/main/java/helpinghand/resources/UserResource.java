@@ -249,7 +249,7 @@ public class UserResource extends AccountUtils {
 	@DELETE
 	@Path(DELETE_PATH)
 	public Response deleteAccount(@PathParam(USER_ID_PARAM) String id, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.deleteAccount(id,token,Role.USER);
+		return super.deleteAccount(id,token);
 	}
 	
 	/**
@@ -294,7 +294,7 @@ public class UserResource extends AccountUtils {
 	public Response logout(@QueryParam(TOKEN_ID_PARAM) String token) {
 		return super.logout(token);
 	}
-
+	
 	/**
 	 * Updates the password of the user account.
 	 * @param id - The identification of the user.

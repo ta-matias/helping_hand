@@ -285,7 +285,7 @@ public class AccountUtils {
 	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
-	protected Response deleteAccount(String id,String token,Role role) {
+	protected Response deleteAccount(String id,String token) {
 		if(badString(id)||badString(token)) {
 			log.warning(DELETE_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
@@ -364,6 +364,8 @@ public class AccountUtils {
 			Query<Key> memberQuery = Query.newKeyQueryBuilder().setKind(INSTITUTION_MEMBER_KIND).setFilter(PropertyFilter.eq(INSTITUTION_MEMBER_ID_PROPERTY, keyId)).build();
 			Query<Key> followQuery = Query.newKeyQueryBuilder().setKind(FOLLOWER_KIND).setFilter(PropertyFilter.eq(FOLLOWER_ID_PROPERTY, keyId)).build();
 			Query<Entity> helperQuery = Query.newEntityQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, keyId)).build();
+			
+			Role role = Role.getRole(txn.get(accountKey).getString(ACCOUNT_ROLE_PROPERTY));
 			
 			if(!role.equals(Role.INSTITUTION)) {
 				QueryResults<Key> memberList = txn.run(memberQuery);
