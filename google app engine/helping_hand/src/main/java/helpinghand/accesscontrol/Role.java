@@ -12,7 +12,7 @@ public enum Role {
 	USER(0),
 	INSTITUTION(0),
 	GBO(1),
-	SU(2);
+	SYSADMIN(2);
 	
 	private int access;
 	

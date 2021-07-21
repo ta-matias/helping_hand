@@ -226,7 +226,7 @@ public class BackOfficeResource {
 	
 			Role accountRole = Role.getRole(oldAccount.getString(ACCOUNT_ROLE_PROPERTY));
 			
-			if(accountRole.equals(Role.SU)) {
+			if(accountRole.equals(Role.SYSADMIN)) {
 				txn.rollback();
 				log.severe(String.format(SU_CHANGE_ERROR, id));
 				return Response.status(Status.FORBIDDEN).build();
@@ -706,7 +706,7 @@ public class BackOfficeResource {
 		
 		
 		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)).build();
-		Query<Entity> suQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.SU.name())).build();
+		Query<Entity> suQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.SYSADMIN.name())).build();
 		
 		log.info(CREATE_SU_START);
 		
@@ -739,7 +739,7 @@ public class BackOfficeResource {
 					.set(ACCOUNT_ID_PROPERTY, id)
 					.set(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)
 					.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(encryptedPassword).setExcludeFromIndexes(true).build())
-					.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
+					.set(ACCOUNT_ROLE_PROPERTY,Role.SYSADMIN.name())
 					.set(ACCOUNT_CREATION_PROPERTY,now)
 					.set(ACCOUNT_STATUS_PROPERTY,true)
 					.set(ACCOUNT_VISIBILITY_PROPERTY, false)

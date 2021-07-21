@@ -334,7 +334,8 @@ public class AccountUtils {
 	
 			if(!tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
 				Role tokenRole  = Role.getRole(tokenEntity.getString(TOKEN_ROLE_PROPERTY));
-				int minAccess = 1;//minimum access level required do execute this operation
+				Role accountRole = Role.getRole(txn.get(accountKey).getString(ACCOUNT_ROLE_PROPERTY));
+				int minAccess = accountRole.getAccess()+1;//minimum access level required do execute this operation
 				if(tokenRole.getAccess() < minAccess) {
 					txn.rollback();
 					log.warning(String.format(TOKEN_ACCESS_INSUFFICIENT_ERROR,tokenId,tokenRole.getAccess(),minAccess));

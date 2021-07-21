@@ -19,7 +19,7 @@ public enum RBACRule {
 	CREATE_USER("POST_user", new Role[] {ALL}), //create a user account
 	DELETE_USER("DELETE_user", new Role[] {USER,GBO}), //delete a user account
 	LOGIN_USER("POST_user_login", new Role[] {ALL}), //login as a user
-	LOGOUT_USER("DELETE_user_logout", new Role[] {USER,GBO,SU}), //logout as a user
+	LOGOUT_USER("DELETE_user_logout", new Role[] {USER,GBO,SYSADMIN}), //logout as a user
 	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
 	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password
@@ -66,8 +66,8 @@ public enum RBACRule {
 	GET_INSTITUTION_ROUTES("GET_institution_routes",new Role[] {USER,INSTITUTION,GBO}), // lists all routes created by the institution
 	
 	//BackofficeResource
-	UPDATE_USER_ROLE("PUT_restricted_updateAccountRole", new Role[] {SU}), // update a user account's role
-	UPDATE_TOKEN_ROLE("PUT_restricted_updateTokenRole", new Role[] {USER,GBO,SU}), // update a token's current role
+	UPDATE_USER_ROLE("PUT_restricted_updateAccountRole", new Role[] {SYSADMIN}), // update a user account's role
+	UPDATE_TOKEN_ROLE("PUT_restricted_updateTokenRole", new Role[] {USER,GBO,SYSADMIN}), // update a token's current role
 	GET_USERS_ROLE("GET_restricted_listRole", new Role[] {GBO}), // get all accounts of a certain role
 	GET_DAILY_STATS("GET_restricted_dailyUsers", new Role[] {GBO}),// get number of accounts created between 2 dates
 	CREATE_REPORT("POST_restricted_createReport", new Role[] {USER,INSTITUTION,GBO}),// create a report
