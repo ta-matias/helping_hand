@@ -346,17 +346,14 @@ public class AccountUtils {
 			List<Key> toDelete = new LinkedList<>();
 			toDelete.add(accountKey);
 	
+			//delete stored account data
 			QueryResults<Key> childrenList = txn.run(childrenQuery);
 			childrenList.forEachRemaining(child->toDelete.add(child));
 			
+			//get created events and help requests
 			QueryResults<ProjectionEntity> eventList = txn.run(eventQuery);
-			eventList.forEachRemaining(event->{
-				if(event.getBoolean(EVENT_STATUS_PROPERTY))
-					cancelEvent(event.getKey().getId());
-			});
-			
 			QueryResults<Key> helpList = txn.run(helpQuery);
-			helpList.forEachRemaining(help->cancelHelp(help.getId()));
+			
 			
 			long keyId = accountKey.getId();
 			
@@ -368,6 +365,7 @@ public class AccountUtils {
 			Role role = Role.getRole(txn.get(accountKey).getString(ACCOUNT_ROLE_PROPERTY));
 			
 			if(!role.equals(Role.INSTITUTION)) {
+				//delete participation in events/help requests, follows and memberships in institutions
 				QueryResults<Key> memberList = txn.run(memberQuery);
 				QueryResults<Key> participantList = txn.run(participantQuery);
 				QueryResults<Key> followList = txn.run(followQuery);
@@ -395,6 +393,14 @@ public class AccountUtils {
 		
 			txn.delete(keys);
 			txn.commit();
+			
+			eventList.forEachRemaining(event->{
+				if(event.getBoolean(EVENT_STATUS_PROPERTY))
+					cancelEvent(event.getKey().getId());
+			});
+			helpList.forEachRemaining(help->cancelHelp(help.getId()));
+			
+			
 			log.info(String.format(DELETE_OK,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
