@@ -94,6 +94,7 @@ public class BackOfficeResource {
 	private static final String UPDATE_TOKEN_ROLE_BAD_DATA_ERROR = "Update current token role attempt failed due to bad inputs";
 	private static final String UPDATE_TOKEN_ROLE_UPDATE_ERROR = "Update current token role attempt failed while changing account's role";
 	private static final String SU_CHANGE_ERROR ="Error in AccessControlManager: There was an attempt to change role of SuperUser [%s]";
+	private static final String INSTITUTION_CHANGE_ERROR ="Error in AccessControlManager: There was an attempt to change role of an Institution [%s]";
 
 	private static final String LIST_ROLE_START = "Attempting to get [%s] accounts with token (%d)";
 	private static final String LIST_ROLE_OK = "Successfulty to got [%s] accounts with token (%d)";
@@ -225,6 +226,12 @@ public class BackOfficeResource {
 			}
 	
 			Role accountRole = Role.getRole(oldAccount.getString(ACCOUNT_ROLE_PROPERTY));
+			
+			if(accountRole.equals(Role.INSTITUTION)) {
+				txn.rollback();
+				log.severe(String.format(INSTITUTION_CHANGE_ERROR, id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
 			
 			if(accountRole.equals(Role.SYSADMIN)) {
 				txn.rollback();
