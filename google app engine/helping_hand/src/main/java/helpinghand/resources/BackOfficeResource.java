@@ -35,7 +35,7 @@ import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
 import static helpinghand.util.GeneralUtils.APP_SECRET_KIND;
 import static helpinghand.util.GeneralUtils.APP_SECRET_VALUE_PROPERTY;
-import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
+import static helpinghand.util.GeneralUtils.AVATAR_0;
 import static helpinghand.util.GeneralUtils.OUR_EMAIL;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
@@ -696,7 +696,7 @@ public class BackOfficeResource {
 				.build();
 
 		Entity userProfile = Entity.newBuilder(userProfileKey)
-				.set(PROFILE_AVATAR_PROPERTY, DEFAULT_AVATAR)
+				.set(PROFILE_AVATAR_PROPERTY, AVATAR_0)
 				.set(PROFILE_NAME_PROPERTY, DEFAULT_PROPERTY_VALUE_STRING)
 				.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
 				.build();

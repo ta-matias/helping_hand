@@ -52,7 +52,7 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERT
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
-import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
+import static helpinghand.util.GeneralUtils.AVATAR_0;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.resources.EmailLinksResource.sendAccountVerification;
@@ -182,7 +182,7 @@ public class InstitutionResource extends AccountUtils {
 				.build();
 
 		Entity institutionProfile = Entity.newBuilder(institutionProfileKey)
-				.set(PROFILE_AVATAR_PROPERTY, DEFAULT_AVATAR)
+				.set(PROFILE_AVATAR_PROPERTY, AVATAR_0)
 				.set(PROFILE_NAME_PROPERTY, data.name)
 				.set(INSTITUTION_PROFILE_INITIALS_PROPERTY, data.initials)
 				.set(PROFILE_BIO_PROPERTY, StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())

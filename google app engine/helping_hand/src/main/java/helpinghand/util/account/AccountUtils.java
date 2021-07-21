@@ -45,7 +45,7 @@ import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.EMAIL_REGEX;
 import static helpinghand.util.GeneralUtils.EMAIL_SENDING_ERROR;
-import static helpinghand.util.GeneralUtils.DEFAULT_AVATAR;
+import static helpinghand.util.GeneralUtils.AVATAR_0;
 import static helpinghand.util.GeneralUtils.AVATAR_1;
 import static helpinghand.util.GeneralUtils.AVATAR_2;
 import static helpinghand.util.GeneralUtils.AVATAR_3;
@@ -740,7 +740,7 @@ public class AccountUtils {
 		String newAvatar ="";
 		switch(avatarId) {
 		case 0:
-			newAvatar = DEFAULT_AVATAR;
+			newAvatar = AVATAR_0;
 			break;
 		case 1:
 			newAvatar = AVATAR_1;
@@ -761,7 +761,7 @@ public class AccountUtils {
 			newAvatar = AVATAR_6;
 			break;
 		default:
-			newAvatar = DEFAULT_AVATAR;
+			newAvatar = AVATAR_0;
 			break;
 		}
 
