@@ -990,7 +990,7 @@ public class UserResource extends AccountUtils {
 	 * 		   false, otherwise.
 	 */
 	public static boolean addRatingToStats(long datastoreId,int rating) {
-		if(rating < 0 || rating > 5) {
+		if(rating < 1 || rating > 5) {
 			log.warning(ADD_RATING_BAD_DATA_ERROR);
 			return false;
 		}

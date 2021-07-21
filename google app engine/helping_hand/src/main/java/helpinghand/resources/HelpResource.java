@@ -471,7 +471,7 @@ public class HelpResource {
 
 		int ratingValue = Integer.parseInt(rating);
 
-		if(badString(help) || badString(token) || ratingValue < 0 || ratingValue > 5) {
+		if(badString(help) || badString(token) || ratingValue < 1 || ratingValue > 5) {
 			log.warning(FINISH_HELP_BAD_DATA_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
