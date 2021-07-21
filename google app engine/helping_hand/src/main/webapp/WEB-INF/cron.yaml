@@ -1,0 +1,8 @@
+cron:
+- description: "Sweep datastore of old tokens"
+  url: /rest/cron/tokens
+  schedule: every 1 hours
+  
+- description: "Sweep datastore of old secrets"
+  url: /rest/cron/secrets
+  schedule: every 1 hours

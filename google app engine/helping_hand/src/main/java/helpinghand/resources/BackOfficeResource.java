@@ -121,8 +121,8 @@ public class BackOfficeResource {
 	private static final String DELETE_REPORT_OK = "Successfulty deleted report (%d) with token (%d)";
 	private static final String DELETE_REPORT_BAD_DATA_ERROR = "Delete report attempt failed due to bad inputs";
 	
-	private static final String CREATE_SU_START = "Attempting to create SU account with id [%s] and role [%s]";
-	private static final String CREATE_SU_OK = "Successfully created SU account [%s] and role [%s]";
+	private static final String CREATE_SU_START = "Attempting to create SU account with set credentials";
+	private static final String CREATE_SU_OK = "Successfully created SU account with set credentials";
 	private static final String CREATE_SU_BAD_SECRET_ERROR = "SU account creation failed due to bad secret input";
 	private static final String CREATE_SU_PASSWORD_NOT_SET_ERROR = "SU account creation failed due to the secret password not being set";
 	private static final String CREATE_SU_WRONG_PASSWORD_ERROR = "SU account creation failed due to wrong secret password";
@@ -671,66 +671,6 @@ public class BackOfficeResource {
 		Key suPasswordKey = secretKeyFactory.newKey(SU_PASSWORD_KEY);
 		Key createSuPasswordKey = secretKeyFactory.newKey(CREATE_SU_PASSWORD_KEY);
 		
-		
-		Query<Entity> suQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.SU.name())).build();
-		
-		log.info(CREATE_SU_START);
-		
-		Transaction txn =  datastore.newTransaction();
-		try {
-			Entity createSuPassword = txn.get(createSuPasswordKey);
-			if(createSuPassword == null) {
-				txn.rollback();
-				log.severe(CREATE_SU_PASSWORD_NOT_SET_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-			if(!createSuPassword.getString(APP_SECRET_VALUE_PROPERTY).equals(DigestUtils.sha512Hex(secret))) {
-				txn.rollback();
-				log.warning(CREATE_SU_WRONG_PASSWORD_ERROR);
-				return Response.status(Status.FORBIDDEN).build();
-			}
-			
-			Entity suId = txn.get(suIdKey);
-			Entity suPassword = txn.get(suPasswordKey);
-			if(suId ==null || suPassword == null) {
-				txn.rollback();
-				log.severe(CREATE_SU_CREDENTIALS_NOT_SET_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-			
-			
-			QueryResults<Entity> suList = txn.run(suQuery);
-			txn.commit();
-			if(suList.hasNext()) {
-				Entity suAccount = suList.next();
-				if(suAccount.getString(ACCOUNT_ID_PROPERTY).equals(suId.getString(APP_SECRET_VALUE_PROPERTY))){
-					if(suList.hasNext()) {
-						log.severe(MULTIPLE_SU_ERROR);
-						return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-					}
-					return Response.ok().build();
-				}
-				log.severe(WRONG_SU_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-			
-			return createSuAccount(suId.getString(APP_SECRET_VALUE_PROPERTY),suPassword.getString(APP_SECRET_VALUE_PROPERTY));
-			
-		} catch (DatastoreException e) {
-			txn.rollback();
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			if (txn.isActive()) {
-				txn.rollback();
-				log.severe(TRANSACTION_ACTIVE_ERROR);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-			}
-		}
-	}
-	
-	private Response createSuAccount(String id , String encryptedPassword) {
-
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());
 		Key accountFeedKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_FEED_KIND).newKey(accountKey.getId());
@@ -738,16 +678,6 @@ public class BackOfficeResource {
 		Key userStatsKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(USER_STATS_KIND).newKey(accountKey.getId());
 
 		Timestamp now = Timestamp.now();
-
-		Entity account = Entity.newBuilder(accountKey)
-				.set(ACCOUNT_ID_PROPERTY, id)
-				.set(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)
-				.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(encryptedPassword).setExcludeFromIndexes(true).build())
-				.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
-				.set(ACCOUNT_CREATION_PROPERTY,now)
-				.set(ACCOUNT_STATUS_PROPERTY,true)
-				.set(ACCOUNT_VISIBILITY_PROPERTY, false)
-				.build();
 
 		Entity accountInfo = Entity.newBuilder(accountInfoKey)
 				.set(ACCOUNT_INFO_PHONE_PROPERTY,StringValue.newBuilder(DEFAULT_PROPERTY_VALUE_STRING).setExcludeFromIndexes(true).build())
@@ -773,12 +703,61 @@ public class BackOfficeResource {
 				.set(USER_STATS_RATING_PROPERTY,USER_STATS_INITIAL_RATING)
 				.build();
 		
-		Query<Key> idQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
-		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)).build();
 		
-		Transaction txn = datastore.newTransaction();
-
+		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)).build();
+		Query<Entity> suQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.SU.name())).build();
+		
+		log.info(CREATE_SU_START);
+		
+		Transaction txn =  datastore.newTransaction();
 		try {
+			Entity createSuPassword = txn.get(createSuPasswordKey);
+			if(createSuPassword == null) {
+				txn.rollback();
+				log.severe(CREATE_SU_PASSWORD_NOT_SET_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			if(!createSuPassword.getString(APP_SECRET_VALUE_PROPERTY).equals(DigestUtils.sha512Hex(secret))) {
+				txn.rollback();
+				log.warning(CREATE_SU_WRONG_PASSWORD_ERROR);
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Entity suId = txn.get(suIdKey);
+			Entity suEncryptedPassword = txn.get(suPasswordKey);
+			if(suId ==null || suEncryptedPassword == null) {
+				txn.rollback();
+				log.severe(CREATE_SU_CREDENTIALS_NOT_SET_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			String id = suId.getString(APP_SECRET_VALUE_PROPERTY);
+			String encryptedPassword = suEncryptedPassword.getString(APP_SECRET_VALUE_PROPERTY);
+			
+			Query<Key> idQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,id)).build();
+			Entity account = Entity.newBuilder(accountKey)
+					.set(ACCOUNT_ID_PROPERTY, id)
+					.set(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)
+					.set(ACCOUNT_PASSWORD_PROPERTY, StringValue.newBuilder(encryptedPassword).setExcludeFromIndexes(true).build())
+					.set(ACCOUNT_ROLE_PROPERTY,Role.USER.name())
+					.set(ACCOUNT_CREATION_PROPERTY,now)
+					.set(ACCOUNT_STATUS_PROPERTY,true)
+					.set(ACCOUNT_VISIBILITY_PROPERTY, false)
+					.build();
+			
+			QueryResults<Entity> suList = txn.run(suQuery);
+			if(suList.hasNext()) {
+				Entity suAccount = suList.next();
+				if(suAccount.getString(ACCOUNT_ID_PROPERTY).equals(id)){
+					if(suList.hasNext()) {
+						log.severe(MULTIPLE_SU_ERROR);
+						return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+					}
+					return Response.ok().build();
+				}
+				log.severe(WRONG_SU_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
 			QueryResults<Key> idCheck = txn.run(idQuery);
 
 			if(idCheck.hasNext()) {
@@ -799,20 +778,20 @@ public class BackOfficeResource {
 			
 			txn.commit();
 			log.info(CREATE_SU_OK);
+			
 			return Response.ok().build();
 			
-		} catch(DatastoreException e) {
-			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+		} catch (DatastoreException e) {
 			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
-			if(txn.isActive()) {
+			if (txn.isActive()) {
 				txn.rollback();
 				log.severe(TRANSACTION_ACTIVE_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 		}
 	}
-	
 	
 }
