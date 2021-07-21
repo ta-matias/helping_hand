@@ -75,7 +75,7 @@ public class CronResource {
 	public Response sweepTokens() {
 		
 		log.info(SWEEP_TOKENS_START);
-		Query<Key> tokenQuery = Query.newKeyQueryBuilder().setKind(TOKEN_KIND).setFilter(PropertyFilter.ge(TOKEN_EXPIRATION_PROPERTY, Timestamp.now())).build();
+		Query<Key> tokenQuery = Query.newKeyQueryBuilder().setKind(TOKEN_KIND).setFilter(PropertyFilter.le(TOKEN_EXPIRATION_PROPERTY, Timestamp.now())).build();
 		
 		Transaction txn = datastore.newTransaction();
 		try {
@@ -84,7 +84,6 @@ public class CronResource {
 			tokenKeyList.forEachRemaining(tokenKey->keyList.add(tokenKey));
 			Key[] keyArray = new Key[keyList.size()];
 			keyList.toArray(keyArray);
-			
 			txn.delete(keyArray);
 			txn.commit();
 			log.info(SWEEP_TOKENS_OK);
@@ -111,8 +110,8 @@ public class CronResource {
 	public Response sweepSecrets() {
 		
 		log.info(SWEEP_SECRETS_START);
-		Query<Key> emailSecretsQuery = Query.newKeyQueryBuilder().setKind(EMAIL_SECRET_KIND).setFilter(PropertyFilter.ge(EMAIL_SECRET_EXPIRATION_PROPERTY, Timestamp.now())).build();
-		Query<Entity> accountSecretsQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_SECRET_KIND).setFilter(PropertyFilter.ge(ACCOUNT_SECRET_EXPIRATION_PROPERTY, Timestamp.now())).build();
+		Query<Key> emailSecretsQuery = Query.newKeyQueryBuilder().setKind(EMAIL_SECRET_KIND).setFilter(PropertyFilter.le(EMAIL_SECRET_EXPIRATION_PROPERTY, Timestamp.now())).build();
+		Query<Entity> accountSecretsQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_SECRET_KIND).setFilter(PropertyFilter.le(ACCOUNT_SECRET_EXPIRATION_PROPERTY, Timestamp.now())).build();
 		KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
 		Transaction txn = datastore.newTransaction();
 		try {
@@ -127,7 +126,6 @@ public class CronResource {
 			});
 			Key[] keyArray = new Key[keyList.size()];
 			keyList.toArray(keyArray);
-			
 			txn.delete(keyArray);
 			txn.commit();
 			Key[] accountKeysArray = new Key[accountKeysList.size()];

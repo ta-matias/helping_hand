@@ -110,7 +110,11 @@ public enum RBACRule {
 	
 	//EmailLinksResource
 	CONFIRM_EMAIL_UPDATE("PUT_links_email",new Role[] {ALL}),
-	CONFIRM_ACCOUNT_CREATION("PUT_links_account",new Role[] {ALL});
+	CONFIRM_ACCOUNT_CREATION("PUT_links_account",new Role[] {ALL}),
+	
+	//CronResource
+	SWEEP_TOKENS("GET_cron_tokens",new Role[] {ALL}),
+	SWEEP_SECRETS("GET_cron_secrets",new Role[] {ALL});
 	
 	public String operation;
 	public Role[] permitted;

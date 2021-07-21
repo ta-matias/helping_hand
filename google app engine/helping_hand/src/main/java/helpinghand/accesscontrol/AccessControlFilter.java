@@ -16,6 +16,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 
 import helpinghand.resources.BackOfficeResource;
+import helpinghand.resources.CronResource;
 import helpinghand.resources.EmailLinksResource;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
@@ -37,6 +38,7 @@ public class AccessControlFilter implements ContainerRequestFilter {
 	
 	private static final String BACK_OFFICE_RESOURCE = BackOfficeResource.PATH.substring(1); //removing the '/'
 	private static final String EMAIL_LINKS_RESOURCE = EmailLinksResource.PATH.substring(1); //removing the '/'
+	private static final String CRON_RESOURCE = CronResource.PATH.substring(1);//removes the '/'
 	
 	public AccessControlFilter() {}
 	
@@ -66,12 +68,22 @@ public class AccessControlFilter implements ContainerRequestFilter {
 		operationId += "_"+resource;
 		
 		if(pathSegs.size() > 1) {
-			if(resource.equals(BACK_OFFICE_RESOURCE) || resource.equals(EMAIL_LINKS_RESOURCE))
+			if(resource.equals(BACK_OFFICE_RESOURCE) || resource.equals(EMAIL_LINKS_RESOURCE) || resource.equals(CRON_RESOURCE))
 				operationId += "_"+pathSegs.get(1).getPath();
 			else {
 				for(int i = 2; i < pathSegs.size(); i++)
 					operationId += "_"+pathSegs.get(i).getPath();
 			}
+		}
+		
+		if(resource.equals(CRON_RESOURCE)) {
+			log.info("Attempting to run cron endpoint");
+			String cronHeader = requestContext.getHeaderString("X-Appengine-Cron");
+			if(cronHeader == null || cronHeader.isEmpty()) {
+				log.warning("Tried to run cron endpoint whithout being cron");
+				requestContext.abortWith(Response.status(Status.FORBIDDEN).build());
+			}
+			
 		}
 		
 		log.info(String.format(TOKEN_INFO,operationId,tokenId));
