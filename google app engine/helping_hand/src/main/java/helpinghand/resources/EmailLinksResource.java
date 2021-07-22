@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.logging.Logger;
 
-import javax.ws.rs.PUT;
+import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
@@ -98,7 +98,7 @@ public class EmailLinksResource {
 	public EmailLinksResource() {}
 	
 	
-	@PUT
+	@GET
 	@Path(CONFIRM_EMAIL_UPDATE_PATH)
 	public Response confirmEmailUpdate(@QueryParam(SECRET_PARAM)String secret, 
 			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString, @QueryParam(EMAIL_PARAM)String email) {
@@ -170,7 +170,7 @@ public class EmailLinksResource {
 		
 	}
 	
-	@PUT
+	@GET
 	@Path(CONFIRM_ACCOUNT_CREATION_PATH)
 	public Response confirmAccountCreation(@QueryParam(SECRET_PARAM)String secret, 
 			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString) {
