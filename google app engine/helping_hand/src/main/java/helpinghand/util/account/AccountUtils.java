@@ -1688,15 +1688,25 @@ public class AccountUtils {
 				return false;
 			}
 
-			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
-			
-			while(notifications.size()>= FEED_MAX_SIZE)notifications.remove(0);
-			
+			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);			
 			ListValue.Builder feedBuilder = ListValue.newBuilder();
+			if(notifications.size() >= FEED_MAX_SIZE) {
+				List<String> notificationStrings = new LinkedList<>();
+				notifications.stream().forEach(notification->notificationStrings.add(notification.get()));
+				while(notificationStrings.size()>= FEED_MAX_SIZE) {
+					notificationStrings.remove(0);
+				}
+				notificationStrings.forEach(notification->{
+					feedBuilder.addValue(StringValue.newBuilder(notification).setExcludeFromIndexes(true).build());
+				});
+			}else {
+				
+				notifications.forEach(notification->{
+					feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
+				});
+			}
+			
 	
-			notifications.forEach(notification->{
-				feedBuilder.addValue(StringValue.newBuilder(notification.get()).setExcludeFromIndexes(true).build());
-			});
 			
 			feedBuilder.addValue(StringValue.newBuilder(message).setExcludeFromIndexes(true).build());
 			

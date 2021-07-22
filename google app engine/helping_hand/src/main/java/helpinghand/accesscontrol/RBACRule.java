@@ -23,15 +23,15 @@ public enum RBACRule {
 	GET_USER("GET_user_account", new Role[] {USER,GBO}), //get user account
 	GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
 	UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password
-	UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,GBO}), // update a user's email
-	UPDATE_USER_AVATAR("PUT_user_avatar", new Role[] {USER,GBO,SYSADMIN}), // update a user's avatar
+	UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,INSTITUTION,GBO}), // update a user's email
+	UPDATE_USER_AVATAR("PUT_user_avatar", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), // update a user's avatar
 	UPDATE_USER_STATUS("PUT_user_status", new Role[] {USER,GBO,SYSADMIN}), //update a user's status
 	UPDATE_USER_VISIBILITY("PUT_user_visibility", new Role[] {USER,GBO}), // update a user's visibility
 	UPDATE_USER_INFO("PUT_user_info", new Role[] {USER,GBO}), // update a user's account info
 	GET_USER_INFO("GET_user_info", new Role[] {USER,INSTITUTION,GBO}), //get a user's account info
 	UPDATE_USER_PROFILE("PUT_user_profile", new Role[] {USER,GBO}), // update a user's profile
 	GET_USER_PROFILE("GET_user_profile", new Role[] {USER,INSTITUTION,GBO}), //get a user's profile
-	GET_USER_FEED("GET_user_feed", new Role[] {USER}), // get all user feeds
+	GET_USER_FEED("GET_user_feed", new Role[] {USER,INSTITUTION}), // get all user feeds
 	UPDATE_USER_FEED("PUT_user_feed", new Role[] {USER}), // update a user feed
 	GET_USER_STATS("GET_user_stats",new Role[] {USER,INSTITUTION}), // get user's stats
 	FOLLOW("POST_user_follow",new Role[] {USER}), // user follows another user
