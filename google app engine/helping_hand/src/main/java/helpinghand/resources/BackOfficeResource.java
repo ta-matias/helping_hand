@@ -127,14 +127,14 @@ public class BackOfficeResource {
 	private static final String DELETE_REPORT_OK = "Successfulty deleted report (%d) with token (%d)";
 	private static final String DELETE_REPORT_BAD_DATA_ERROR = "Delete report attempt failed due to bad inputs";
 	
-	private static final String CREATE_SU_START = "Attempting to create SU account with set credentials";
-	private static final String CREATE_SU_OK = "Successfully created SU account with set credentials";
-	private static final String CREATE_SU_BAD_SECRET_ERROR = "SU account creation failed due to bad secret input";
-	private static final String CREATE_SU_PASSWORD_NOT_SET_ERROR = "SU account creation failed due to the secret password not being set";
-	private static final String CREATE_SU_WRONG_PASSWORD_ERROR = "SU account creation failed due to wrong secret password";
-	private static final String CREATE_SU_CREDENTIALS_NOT_SET_ERROR = "SU account creation failed due to id or password not being set";
-	private static final String MULTIPLE_SU_ERROR = "There are multiple SU accounts";
-	private static final String WRONG_SU_ERROR = "The existing SU account does not follow the set credentials";
+	private static final String CREATE_SYSADMIN_START = "Attempting to create SYSADMIN account with set credentials";
+	private static final String CREATE_SYSADMIN_OK = "Successfully created SYSADMIN account with set credentials";
+	private static final String CREATE_SYSADMIN_BAD_SECRET_ERROR = "SYSADMIN account creation failed due to bad secret input";
+	private static final String CREATE_SYSADMIN_PASSWORD_NOT_SET_ERROR = "SYSADMIN account creation failed due to the secret password not being set";
+	private static final String CREATE_SYSADMIN_WRONG_PASSWORD_ERROR = "SYSADMIN account creation failed due to wrong secret password";
+	private static final String CREATE_SYSADMIN_CREDENTIALS_NOT_SET_ERROR = "SYSADMIN account creation failed due to id or password not being set";
+	private static final String MULTIPLE_SYSADMIN_ERROR = "There are multiple SYSADMIN accounts";
+	private static final String WRONG_SYSADMIN_ERROR = "The existing SYSADMIN account does not follow the set credentials";
 	
 	private static final String USER_ROLE_PARAM = "role";
 	private static final String START_DATE_PARAM = "startDate";
@@ -163,7 +163,7 @@ public class BackOfficeResource {
 	private static final String LIST_REPORTS_PATH = "/listReports"; // GET
 	private static final String RESPOND_REPORT_PATH = "/respondReport"; // PUT
 	private static final String DELETE_REPORT_PATH = "/deleteReport"; // DELETE
-	private static final String CREATE_SU_PATH = "/createSU";
+	private static final String CREATE_SYSADMIN_PATH = "/createSysadmin";
 
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(BackOfficeResource.class.getName());
@@ -759,10 +759,10 @@ public class BackOfficeResource {
 	}
 	
 	@POST
-	@Path(CREATE_SU_PATH)
-	public Response createSU(@QueryParam(SECRET_PASSWORD_PARAM)String secret) {
+	@Path(CREATE_SYSADMIN_PATH)
+	public Response createSysadmin(@QueryParam(SECRET_PASSWORD_PARAM)String secret) {
 		if(badString( secret)) {
-			log.warning(CREATE_SU_BAD_SECRET_ERROR);
+			log.warning(CREATE_SYSADMIN_BAD_SECRET_ERROR);
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 		
@@ -808,19 +808,19 @@ public class BackOfficeResource {
 		Query<Key> emailQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_EMAIL_PROPERTY,OUR_EMAIL)).build();
 		Query<Entity> suQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ROLE_PROPERTY, Role.SYSADMIN.name())).build();
 		
-		log.info(CREATE_SU_START);
+		log.info(CREATE_SYSADMIN_START);
 		
 		Transaction txn =  datastore.newTransaction();
 		try {
 			Entity createSuPassword = txn.get(createSuPasswordKey);
 			if(createSuPassword == null) {
 				txn.rollback();
-				log.severe(CREATE_SU_PASSWORD_NOT_SET_ERROR);
+				log.severe(CREATE_SYSADMIN_PASSWORD_NOT_SET_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			if(!createSuPassword.getString(APP_SECRET_VALUE_PROPERTY).equals(DigestUtils.sha512Hex(secret))) {
 				txn.rollback();
-				log.warning(CREATE_SU_WRONG_PASSWORD_ERROR);
+				log.warning(CREATE_SYSADMIN_WRONG_PASSWORD_ERROR);
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
@@ -828,7 +828,7 @@ public class BackOfficeResource {
 			Entity suEncryptedPassword = txn.get(suPasswordKey);
 			if(suId ==null || suEncryptedPassword == null) {
 				txn.rollback();
-				log.severe(CREATE_SU_CREDENTIALS_NOT_SET_ERROR);
+				log.severe(CREATE_SYSADMIN_CREDENTIALS_NOT_SET_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			String id = suId.getString(APP_SECRET_VALUE_PROPERTY);
@@ -851,14 +851,14 @@ public class BackOfficeResource {
 				if(suAccount.getString(ACCOUNT_ID_PROPERTY).equals(id)){
 					if(suList.hasNext()) {
 						txn.rollback();
-						log.severe(MULTIPLE_SU_ERROR);
+						log.severe(MULTIPLE_SYSADMIN_ERROR);
 						return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 					}
 					txn.commit();
 					return Response.ok().build();
 				}
 				txn.rollback();
-				log.severe(WRONG_SU_ERROR);
+				log.severe(WRONG_SYSADMIN_ERROR);
 				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
@@ -881,7 +881,7 @@ public class BackOfficeResource {
 			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
 			
 			txn.commit();
-			log.info(CREATE_SU_OK);
+			log.info(CREATE_SYSADMIN_OK);
 			
 			return Response.ok().build();
 			
