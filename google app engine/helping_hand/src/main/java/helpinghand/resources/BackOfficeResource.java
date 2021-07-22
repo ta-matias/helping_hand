@@ -65,7 +65,7 @@ import static helpinghand.resources.UserResource.USER_STATS_REQUESTS_DONE_PROPER
 import static helpinghand.resources.UserResource.USER_STATS_RATING_PROPERTY;
 import static helpinghand.util.account.AccountUtils.CREATE_ID_CONFLICT_ERROR;
 import static helpinghand.util.account.AccountUtils.CREATE_EMAIL_CONFLICT_ERROR;
-
+import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 import static helpinghand.util.account.AccountUtils.DEFAULT_PROPERTY_VALUE_STRING;
 import static helpinghand.util.account.AccountUtils.DEFAULT_PROPERTY_VALUE_STRINGLIST;
 import static helpinghand.resources.UserResource.USER_STATS_INITIAL_RATING;
@@ -117,6 +117,11 @@ public class BackOfficeResource {
 	private static final String LIST_REPORTS_START = "Attempting to list reports with token (%d)";
 	private static final String LIST_REPORTS_OK ="Successfulty listed reports with token (%d)";
 	private static final String LIST_REPORTS_BAD_DATA_ERROR = "List reports attempt failed due to bad inputs";
+
+	private static final String RESPOND_REPORT_START = "Attempting to respond to report (%d) with token (%d)";
+	private static final String RESPOND_REPORT_OK = "Successfulty responded to report (%d) with token (%d)";
+	private static final String RESPOND_REPORT_BAD_DATA_ERROR = "Respond to report attempt failed due to bad inputs";
+	private static final String RESPOND_REPORT_NOTIFICATION =" %s viu o seu report em %s e respondeu : %s";
 	
 	private static final String DELETE_REPORT_START = "Attempting to delete report (%d) with token (%d)";
 	private static final String DELETE_REPORT_OK = "Successfulty deleted report (%d) with token (%d)";
@@ -156,6 +161,7 @@ public class BackOfficeResource {
 	private static final String CREATE_REPORT_PATH = "/createReport"; // POST
 	private static final String GET_REPORT_PATH = "/getReport"; // GET
 	private static final String LIST_REPORTS_PATH = "/listReports"; // GET
+	private static final String RESPOND_REPORT_PATH = "/respondReport"; // PUT
 	private static final String DELETE_REPORT_PATH = "/deleteReport"; // DELETE
 	private static final String CREATE_SU_PATH = "/createSU";
 
@@ -610,6 +616,91 @@ public class BackOfficeResource {
 		
 	}
 	
+	
+	/**
+	 * Responds to a report.
+	 * @param token - The token of the account requesting this operation.
+	 * @param report - The report identification to be responded.
+	 * @return 200, if the report was successfully responded to.
+	 * 		   400, if the data is invalid.
+	 * 		   404, if the report does not exist.
+	 * 		   500, otherwise.
+	 */
+	@PUT
+	@Path(RESPOND_REPORT_PATH)
+	public Response respondReport(@QueryParam(TOKEN_ID_PARAM)String token, @QueryParam(REPORT_ID_PARAM)String report, ReportResponse data) {
+		if(badString(token) || badString(report) || data.badData()) {
+			log.warning(RESPOND_REPORT_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId = Long.parseLong(token);
+		
+		long reportId = Long.parseLong(report);
+		
+		log.info(String.format(RESPOND_REPORT_START, reportId,tokenId));
+		
+		Key reportKey = reportKeyFactory.newKey(reportId);
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+
+		try {
+			Entity reportEntity = txn.get(reportKey);
+			
+			if(reportEntity == null) {
+				txn.rollback();
+				log.warning(String.format(REPORT_NOT_FOUND_ERROR, reportId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			
+			Entity tokenEntity = txn.get(tokenKey);
+			
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_NOT_FOUND_ERROR, reportId));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			String creator = reportEntity.getString(REPORT_CREATOR_PROPERTY);
+			
+			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY,creator)).build();
+			QueryResults<Key> accountList = txn.run(accountQuery);
+			txn.commit();
+			
+			if(!accountList.hasNext()) {
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR,creator));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Key accountKey = accountList.next();
+			if(accountList.hasNext()) {
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, creator));
+			}
+			
+			String date = Timestamp.now().toString();
+			String message = String.format(RESPOND_REPORT_NOTIFICATION,tokenEntity.getString(TOKEN_OWNER_PROPERTY),date,data.message);
+			if(!addNotificationToFeed(accountKey.getId(),message)) {
+				
+			}
+			
+			log.info(String.format(RESPOND_REPORT_OK,reportId,tokenId));
+			return Response.ok().build();
+		} catch (DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR, e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+		
+	}
+	
+	
+	
+	
 	/**
 	 * Deletes a report.
 	 * @param token - The token of the account requesting this operation.
@@ -646,6 +737,8 @@ public class BackOfficeResource {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 			
+			
+
 			txn.delete(reportKey);
 			txn.commit();
 			

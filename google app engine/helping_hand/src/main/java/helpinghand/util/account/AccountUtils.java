@@ -78,7 +78,7 @@ import static helpinghand.resources.EmailLinksResource.sendEmailVerification;
  *
  */
 public class AccountUtils {
-
+	
 	protected static final String DATASTORE_EXCEPTION_ERROR = "Error in AccountUtils: %s";
 	protected static final String TRANSACTION_ACTIVE_ERROR = "Error in AccountUtils: Transaction was active";
 	protected static final String ACCOUNT_NOT_FOUND_ERROR_2 = "Account that owns token (%d) does not exist";
@@ -221,6 +221,7 @@ public class AccountUtils {
 	public static final boolean ACCOUNT_VISIBILITY_DEFAULT = true;
 	public static final String DEFAULT_PROPERTY_VALUE_STRING = "";
 	public static final ListValue DEFAULT_PROPERTY_VALUE_STRINGLIST = ListValue.newBuilder().build();
+	private static final int FEED_MAX_SIZE = 20;
 
 	protected static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(AccountUtils.class.getName());
@@ -1528,7 +1529,7 @@ public class AccountUtils {
 			} 
 	
 			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
-			List<String> notificationList = notifications.stream().map(notification->notification.get()).collect(Collectors.toList());
+			List<Notification> notificationList = notifications.stream().map(notification->new Notification(notification.get())).collect(Collectors.toList());
 	
 			log.info(String.format(GET_FEED_OK,id,tokenId));
 			return Response.ok(g.toJson(notificationList)).build();
@@ -1682,7 +1683,9 @@ public class AccountUtils {
 			}
 
 			List<Value<String>> notifications = feed.getList(ACCOUNT_FEED_NOTIFICATIONS_PROPERTY);
-	
+			
+			while(notifications.size()>= FEED_MAX_SIZE)notifications.remove(0);
+			
 			ListValue.Builder feedBuilder = ListValue.newBuilder();
 	
 			notifications.forEach(notification->{

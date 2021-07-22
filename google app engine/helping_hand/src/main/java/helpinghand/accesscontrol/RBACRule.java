@@ -73,6 +73,7 @@ public enum RBACRule {
 	CREATE_REPORT("POST_restricted_createReport", new Role[] {USER,INSTITUTION,GBO}),// create a report
 	GET_REPORT("GET_restricted_getReport", new Role[] {GBO}),//get a report
 	LIST_REPORTS("GET_restricted_listReports", new Role[] {GBO}),// list all reports
+	RESPOND_REPORT("PUT_restricted_respondReport", new Role[] {GBO}),// respond to a report
 	DELETE_REPORT("DELETE_restricted_deleteReport", new Role[] {GBO}),// delete a report
 	CREATE_SU("POST_restricted_createSU",new Role[] {ALL}),//create SU
 	
