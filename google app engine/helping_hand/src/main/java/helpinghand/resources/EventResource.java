@@ -61,9 +61,10 @@ import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 @Path(EventResource.PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class EventResource {
-
+	
 	private static final String EVENT_CREATED_NOTIFICATION = "Evento '%s' criado por '%s'";
 	private static final String EVENT_CANCELED_NOTIFICATION = "Evento '%s' foi cancelado";
+	private static final String EVENT_END_NOTIFICATION = "Evento '%s'(%d) terminou";
 
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in EventResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is EventResource: Transaction was active";
@@ -276,7 +277,9 @@ public class EventResource {
 		Key eventKey = eventKeyFactory.newKey(eventId);
 
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
-
+		
+		Query<Entity> participantQuery = Query.newEntityQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.hasAncestor(eventKey)).build();
+		
 		Transaction txn = datastore.newTransaction();
 
 		try {
@@ -310,10 +313,11 @@ public class EventResource {
 					.set(EVENT_STATUS_PROPERTY, EVENT_FINISHED_STATUS)
 					.build();
 
-			//TODO:Do something to participants?
-
+			QueryResults<Entity> participantList = txn.run(participantQuery);
 			txn.update(updatedEvent);
 			txn.commit();
+			String message = String.format(EVENT_END_NOTIFICATION, eventEntity.getString(EVENT_NAME_PROPERTY),eventId);
+			participantList.forEachRemaining(participant->addNotificationToFeed(participant.getLong(PARTICIPANT_ID_PROPERTY),message));
 			log.info(String.format(END_EVENT_OK, updatedEvent.getString(EVENT_NAME_PROPERTY),eventId,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {

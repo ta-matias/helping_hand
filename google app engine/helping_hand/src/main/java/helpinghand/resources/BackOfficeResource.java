@@ -1,6 +1,8 @@
 package helpinghand.resources;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -380,7 +382,7 @@ public class BackOfficeResource {
 
 		long tokenId = Long.parseLong(token);
 
-		Timestamp startTimestamp ;
+		Timestamp startTimestamp;
 		Timestamp endTimestamp;
 		
 		try {
@@ -676,7 +678,9 @@ public class BackOfficeResource {
 				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, creator));
 			}
 			
-			String date = Timestamp.now().toString();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("E, dd MMMM yyyy hh:mm:ss");
+			LocalDateTime now =  LocalDateTime.now();
+			String date =formatter.format(now);
 			String message = String.format(RESPOND_REPORT_NOTIFICATION,tokenEntity.getString(TOKEN_OWNER_PROPERTY),date,data.message);
 			if(!addNotificationToFeed(accountKey.getId(),message)) {
 				
