@@ -62,8 +62,8 @@ import static helpinghand.util.account.AccountUtils.addNotificationToFeed;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class EventResource {
 
-	private static final String EVENT_CREATED_NOTIFICATION = "Event '%s' has been created by '%s'";
-	private static final String EVENT_CANCELED_NOTIFICATION = "Event '%s' has been canceled";
+	private static final String EVENT_CREATED_NOTIFICATION = "Evento '%s' criado por '%s'";
+	private static final String EVENT_CANCELED_NOTIFICATION = "Evento '%s' foi cancelado";
 
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in EventResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is EventResource: Transaction was active";

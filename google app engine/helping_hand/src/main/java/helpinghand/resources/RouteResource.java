@@ -57,7 +57,7 @@ import static helpinghand.util.GeneralUtils.badString;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class RouteResource {
 	
-	private static final String ROUTE_CREATED_NOTIFICATION = "Route '%s' as been created by '%s'";
+	private static final String ROUTE_CREATED_NOTIFICATION = "Percurso '%s' criado por '%s'";
 	
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in RouteResource: %s";
 	private static final String TRANSACTION_ACTIVE_ERROR = "Error is RouteResource: Transaction was active";

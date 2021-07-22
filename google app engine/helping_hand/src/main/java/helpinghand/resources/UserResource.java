@@ -1021,16 +1021,17 @@ public class UserResource extends AccountUtils {
 	
 			double oldRating = stats.getDouble(USER_STATS_RATING_PROPERTY);
 			double oldDone = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_DONE_PROPERTY)).doubleValue();
-			double oldPromised = Long.valueOf(stats.getLong(USER_STATS_REQUESTS_PROMISED_PROPERTY)).doubleValue();
-	
-			double newPromised = oldPromised++;
-			double newDone = oldDone++;
+			log.info("Old rating -> "+oldRating+" Old done -> "+oldDone);
+			
+			
+			
+			double newDone = oldDone+ 1.0;
 			double newRating = ((oldRating * oldDone)+rating)/newDone;
+			log.info("New rating -> "+newRating+" New done -> "+newDone);
 	
 			Entity updatedStats = Entity.newBuilder(stats)
 					.set(USER_STATS_RATING_PROPERTY, newRating)
 					.set(USER_STATS_REQUESTS_DONE_PROPERTY,Double.valueOf(newDone).longValue())
-					.set(USER_STATS_REQUESTS_PROMISED_PROPERTY,Double.valueOf(newPromised).longValue())
 					.build();
 
 			txn.update(updatedStats);

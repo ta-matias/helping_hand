@@ -68,12 +68,12 @@ import static helpinghand.resources.UserResource.addRatingToStats;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class HelpResource {
 
-	private static final String CURRENT_HELPER_LEFT_NOTIFICATION = "The helper you chose, [%s], has left the help request";
-	private static final String HELP_CANCELED_NOTIFICATION = "Help request '%s' has been canceled";
-	private static final String HELP_CREATED_NOTIFICATION = "Help request '%s' has been created by '%s'";
-	private static final String CHOSEN_HELPER_NOTIFICATION = "'%s' has chosen you to help in '%s', leaving now will negatively impact your reliability";
-	private static final String UNCHOSEN_HELPER_NOTIFICATION = "'%s' has chosen another person to help in '%s', leaving now will not longer negatively impact your reliability";
-	private static final String RATING_NOTIFICATION = "'%s' as rated you %d for your help in '%s'(%d)";
+	public static final String CURRENT_HELPER_LEFT_NOTIFICATION = "O ajudante escolhido, [%s], deixou de oferecer ajuda num dos seus pedidos";
+	private static final String HELP_CANCELED_NOTIFICATION = "O pedido de ajuda '%s' foi cancelado";
+	private static final String HELP_CREATED_NOTIFICATION = "Pedido de ajuda '%s' criado por '%s'";
+	private static final String CHOSEN_HELPER_NOTIFICATION = "'%s' escolheu-o para o ajudar no pedido '%s', deixar de oferecer ajuda agora irá afetar a sua fiabilidade";
+	private static final String UNCHOSEN_HELPER_NOTIFICATION = "'%s' escolheu outra pessoa para o ajudar em '%s', deixar de oferecer ajuda já não afetará a sua fiabilidade";
+	private static final String RATING_NOTIFICATION = "'%s' classificou-o com %d pela sua ajuda em '%s'(%d)";
 	private static final String RATING_ERROR = "Error rating user (%d)";
 
 	private static final String DATASTORE_EXCEPTION_ERROR = "Error in HelpResource: %s";

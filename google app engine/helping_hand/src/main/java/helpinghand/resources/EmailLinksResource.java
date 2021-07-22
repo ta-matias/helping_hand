@@ -60,13 +60,13 @@ public class EmailLinksResource {
 	private static final String CONFIRM_EMAIL_UPDATE_OK= "Email update successful";
 	private static final String CONFIRM_EMAIL_UPDATE_BAD_DATA_ERROR = "Email update confirmation failed due to bad inputs";
 	private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
-	private static final String EMAIL_VERIFICATION_CONTENT = "%s, click <a href = %s >here</a> to verify this email and complete the email change.";
+	private static final String EMAIL_VERIFICATION_CONTENT = "%s, clique <a href = %s >aqui</a> para verificar este email e completar a alteração do seu email.";
 	
 	private static final String CONFIRM_ACCOUNT_CREATION_START = "Confirming creation of account(%d) with secret(%d)";
 	private static final String CONFIRM_ACCOUNT_CREATION_OK= "Account confirmation successful";
 	private static final String CONFIRM_ACCOUNT_CREATION_BAD_DATA_ERROR = "Account creation confirmation failed due to bad inputs";
 	private static final String ACCOUNT_VERIFICATION_SUBJECT = "Account creation verification";
-	private static final String ACCOUNT_VERIFICATION_CONTENT = "%s, click <a href = %s >here</a> to verify this email and enable your account.";
+	private static final String ACCOUNT_VERIFICATION_CONTENT = "%s, clique <a href = %s >aqui</a> para verificar este email e completar a criaçao da sua conta.";
 	
 	private static final String CONFIRM_EMAIL_UPDATE_PATH = "/email";
 	private static final String CONFIRM_ACCOUNT_CREATION_PATH="/account";

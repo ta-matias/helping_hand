@@ -63,6 +63,7 @@ import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
 import static helpinghand.resources.EventResource.PARTICIPANT_KIND;
 import static helpinghand.resources.EventResource.PARTICIPANT_ID_PROPERTY;
 import static helpinghand.resources.EventResource.cancelEvent;
+import static helpinghand.resources.HelpResource.CURRENT_HELPER_LEFT_NOTIFICATION;
 import static helpinghand.resources.HelpResource.HELP_KIND;
 import static helpinghand.resources.HelpResource.HELP_CREATOR_PROPERTY;
 import static helpinghand.resources.HelpResource.HELPER_KIND;
@@ -364,6 +365,7 @@ public class AccountUtils {
 			
 			Role role = Role.getRole(txn.get(accountKey).getString(ACCOUNT_ROLE_PROPERTY));
 			
+			List<Long> notifyOfLeaving = new LinkedList<>();
 			if(!role.equals(Role.INSTITUTION)) {
 				//delete participation in events/help requests, follows and memberships in institutions
 				QueryResults<Key> memberList = txn.run(memberQuery);
@@ -378,7 +380,12 @@ public class AccountUtils {
 				helperList.forEachRemaining(helper->{
 					toDelete.add(helper.getKey());
 					if(helper.getBoolean(HELPER_CURRENT_PROPERTY)) {
-						//TODO:notify help creator
+						Key helpKey = helper.getKey().getParent();
+						Entity helpEntity = txn.get(helpKey);
+						Query<Key> creatorQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND)
+						.setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, helpEntity.getString(HELP_CREATOR_PROPERTY))).build();
+						QueryResults<Key> creatorList = txn.run(creatorQuery);
+						notifyOfLeaving.add(creatorList.next().getId());
 					}
 				});
 			}
@@ -399,7 +406,10 @@ public class AccountUtils {
 					cancelEvent(event.getKey().getId());
 			});
 			helpList.forEachRemaining(help->cancelHelp(help.getId()));
-			
+			notifyOfLeaving.forEach(creatorId->{
+				String message = String.format(CURRENT_HELPER_LEFT_NOTIFICATION,id);
+				addNotificationToFeed(creatorId,message);
+			});
 			
 			log.info(String.format(DELETE_OK,tokenId));
 			return Response.ok().build();
