@@ -930,7 +930,7 @@ public class HelpResource {
 					return Response.status(Status.FORBIDDEN).build();
 				}
 			}
-
+			
 			QueryResults<Entity> helperList = txn.run(helperQuery);
 			List<Key> helperKeys = new LinkedList<>();
 
@@ -939,7 +939,7 @@ public class HelpResource {
 				helperKeys.add(accountKeyFactory.newKey(datastoreId));
 				helperKeys.add(datastore.newKeyFactory().setKind(USER_STATS_KIND).addAncestor(PathElement.of(ACCOUNT_KIND,datastoreId)).newKey(datastoreId));
 			});
-
+			
 			Key[] keyArray = new Key[helperKeys.size()];
 			helperKeys.toArray(keyArray);
 
@@ -947,13 +947,12 @@ public class HelpResource {
 			txn.commit();
 
 			List<HelperStats> statsList = new LinkedList<>();	
-
+			
 			while(helperStats.hasNext()) {
 				Entity account = helperStats.next();
 				Entity stats = helperStats.next();
 				statsList.add(new HelperStats(account,stats));
 			}
-
 			log.info(String.format(LIST_HELPERS_OK,helpEntity.getString(HELP_NAME_PROPERTY),helpId,tokenId));
 			return Response.ok(g.toJson(statsList)).build();
 		} catch(DatastoreException e) {
@@ -1050,7 +1049,7 @@ public class HelpResource {
 			}
 
 			Entity helper = Entity.newBuilder(helperKey)
-					.set(HELPER_ID_PROPERTY,user)
+					.set(HELPER_ID_PROPERTY,accountKey.getId())
 					.set(HELPER_CURRENT_PROPERTY, false)
 					.build();
 
