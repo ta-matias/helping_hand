@@ -375,7 +375,13 @@ public class AccountUtils {
 				QueryResults<Entity> helperList = txn.run(helperQuery);
 				
 				memberList.forEachRemaining(membership->toDelete.add(membership));
-				participantList.forEachRemaining(participation->toDelete.add(participation));
+				participantList.forEachRemaining(participation->{
+					Key eventKey = participation.getParent();
+					Entity eventEntity = txn.get(eventKey);
+					if(eventEntity.getBoolean(EVENT_STATUS_PROPERTY)) {
+						toDelete.add(participation);
+					}
+				});
 				followList.forEachRemaining(follow->toDelete.add(follow));
 				
 				helperList.forEachRemaining(helper->{
