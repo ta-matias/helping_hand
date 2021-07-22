@@ -93,7 +93,7 @@ public class BackOfficeResource {
 	private static final String UPDATE_TOKEN_ROLE_OK = "Successfulty to updated current role of token (%d) to [%s]";
 	private static final String UPDATE_TOKEN_ROLE_BAD_DATA_ERROR = "Update current token role attempt failed due to bad inputs";
 	private static final String UPDATE_TOKEN_ROLE_UPDATE_ERROR = "Update current token role attempt failed while changing account's role";
-	private static final String SU_CHANGE_ERROR ="Error in AccessControlManager: There was an attempt to change role of SuperUser [%s]";
+	private static final String SYSADMIN_CHANGE_ERROR ="Error in AccessControlManager: There was an attempt to change role of Sysadmin [%s]";
 	private static final String INSTITUTION_CHANGE_ERROR ="Error in AccessControlManager: There was an attempt to change role of an Institution [%s]";
 
 	private static final String LIST_ROLE_START = "Attempting to get [%s] accounts with token (%d)";
@@ -148,9 +148,9 @@ public class BackOfficeResource {
 	public static final String REPORT_TEXT_PROPERTY = "text";
 	
 	private static final String SECRET_PASSWORD_PARAM = "secretPassword";
-	private static final String SU_ID_KEY = "SU_ID";
-	private static final String SU_PASSWORD_KEY = "SU_PASSWORD";
-	private static final String CREATE_SU_PASSWORD_KEY = "CREATE_SU_PASSWORD";
+	private static final String SYSADMIN_ID_KEY = "SYSADMIN_ID";
+	private static final String SYSADMIN_PASSWORD_KEY = "SYSADMIN_PASSWORD";
+	private static final String CREATE_SYSADMIN_PASSWORD_KEY = "CREATE_SYSADMIN_PASSWORD";
 
 	// Paths
 	public static final String PATH = "/restricted";
@@ -163,7 +163,7 @@ public class BackOfficeResource {
 	private static final String LIST_REPORTS_PATH = "/listReports"; // GET
 	private static final String RESPOND_REPORT_PATH = "/respondReport"; // PUT
 	private static final String DELETE_REPORT_PATH = "/deleteReport"; // DELETE
-	private static final String CREATE_SYSADMIN_PATH = "/createSysadmin";
+	private static final String CREATE_SYSADMIN_PATH = "/createSysadmin";//POST
 
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private static final Logger log = Logger.getLogger(BackOfficeResource.class.getName());
@@ -241,7 +241,7 @@ public class BackOfficeResource {
 			
 			if(accountRole.equals(Role.SYSADMIN)) {
 				txn.rollback();
-				log.severe(String.format(SU_CHANGE_ERROR, id));
+				log.severe(String.format(SYSADMIN_CHANGE_ERROR, id));
 				return Response.status(Status.FORBIDDEN).build();
 			}
 			
@@ -768,9 +768,9 @@ public class BackOfficeResource {
 		
 		
 		KeyFactory secretKeyFactory = datastore.newKeyFactory().setKind(APP_SECRET_KIND);
-		Key suIdKey = secretKeyFactory.newKey(SU_ID_KEY);
-		Key suPasswordKey = secretKeyFactory.newKey(SU_PASSWORD_KEY);
-		Key createSuPasswordKey = secretKeyFactory.newKey(CREATE_SU_PASSWORD_KEY);
+		Key suIdKey = secretKeyFactory.newKey(SYSADMIN_ID_KEY);
+		Key suPasswordKey = secretKeyFactory.newKey(SYSADMIN_PASSWORD_KEY);
+		Key createSuPasswordKey = secretKeyFactory.newKey(CREATE_SYSADMIN_PASSWORD_KEY);
 		
 		Key accountKey = datastore.allocateId(datastore.newKeyFactory().setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());

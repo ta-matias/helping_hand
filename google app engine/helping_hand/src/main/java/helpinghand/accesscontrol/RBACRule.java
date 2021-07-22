@@ -75,7 +75,7 @@ public enum RBACRule {
 	LIST_REPORTS("GET_restricted_listReports", new Role[] {GBO}),// list all reports
 	RESPOND_REPORT("PUT_restricted_respondReport", new Role[] {GBO}),// respond to a report
 	DELETE_REPORT("DELETE_restricted_deleteReport", new Role[] {GBO}),// delete a report
-	CREATE_SU("POST_restricted_createSU",new Role[] {ALL}),//create SU
+	CREATE_SYSADMIN("POST_restricted_createSysadmin",new Role[] {ALL}),//create SYSADMIN
 	
 	//EventResource
 	CREATE_EVENT("POST_event", new Role[] {INSTITUTION}), // create an event
