@@ -112,6 +112,7 @@ public class HelpResource {
 	private static final String OFFER_HELP_START  = "Attempting to offer to help in (%d) with token (%d)";
 	private static final String OFFER_HELP_OK = "Successfuly offered to help in [%s](%d) with token (%d)";
 	private static final String OFFER_HELP_BAD_DATA_ERROR  = "Offer help attempt failed due to bad inputs";
+	private static final String SELF_HELP_ERROR = "A user [%s] tried to help itself";
 
 	private static final String LEAVE_HELP_START  = "Attempting to leave help (%d) with token (%d)";
 	private static final String LEAVE_HELP_OK = "Successfuly left help for [%s](%d) with token (%d)";
@@ -1009,6 +1010,7 @@ public class HelpResource {
 				return Response.status(Status.NOT_FOUND).build();
 			}
 
+			
 			Entity tokenEntity = txn.get(tokenKey);
 
 			if(tokenEntity == null) {
@@ -1018,6 +1020,11 @@ public class HelpResource {
 			}
 
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
+			if(helpEntity.getString(HELP_CREATOR_PROPERTY).equals(user)) {
+				txn.rollback();
+				log.warning(String.format(SELF_HELP_ERROR, user));
+				return Response.status(Status.FORBIDDEN).build();
+			}
 
 			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
 

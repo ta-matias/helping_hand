@@ -96,6 +96,7 @@ public class EventResource {
 	private static final String JOIN_EVENT_OK = "Successfuly joined event [%s](%d) with token (%d)";
 	private static final String JOIN_EVENT_BAD_DATA_ERROR  = "Join event attempt failed due to bad inputs";
 	private static final String JOIN_EVENT_CONFLICT_ERROR  = "User [%s] already joined event (%d)";
+	private static final String OWN_EVENT_ERROR ="User [%s] tried to join its own event";
 
 	private static final String LEAVE_EVENT_START  = "Attempting to leave event (%d) with token (%d)";
 	private static final String LEAVE_EVENT_OK = "Successfuly left event [%s](%d) with token (%d)";
@@ -629,7 +630,14 @@ public class EventResource {
 			}
 
 			String user = tokenEntity.getString(TOKEN_OWNER_PROPERTY);
-
+			
+			if(user.equals(eventEntity.getString(EVENT_CREATOR_PROPERTY))) {
+				txn.rollback();
+				log.warning(String.format(OWN_EVENT_ERROR, user));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			
 			Query<Key> accountQuery = Query.newKeyQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, user)).build();
 
 			QueryResults<Key> accountList = txn.run(accountQuery);

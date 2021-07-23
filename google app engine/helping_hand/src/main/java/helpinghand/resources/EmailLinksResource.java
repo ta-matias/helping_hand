@@ -18,6 +18,7 @@ import static helpinghand.util.GeneralUtils.OUR_REST_URL;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.logging.Logger;
 
 import javax.ws.rs.GET;
@@ -82,8 +83,10 @@ public class EmailLinksResource {
 	public static final String DATASTORE_ID_PARAM = "id";
 	public static final String EMAIL_PARAM = "email";
 	
-	public static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
-	public static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
+	private static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
+	private static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
+	private static final String LINK_VERIFICATION_URL_FORMAT = OUR_REST_URL.substring(0, OUR_REST_URL.length()-5)+"confirmation?request=%s";
+	private static final String ENCRYPTION_KEY_FOR_URL = "12345";
 	
 	private static final long SECRET_DURATION = 1;//1h
 	
@@ -275,11 +278,15 @@ public class EmailLinksResource {
 			
 			String secret = Long.toString(emailSecretKey.getId());
 			
-			String verificationUrl = String.format(EMAIL_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId),email);
+			String requestUrl = String.format(EMAIL_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId),email);
+			String encryptedUrl = Base64.getEncoder().encodeToString(requestUrl.getBytes());
+			String verificationUrl = String.format(LINK_VERIFICATION_URL_FORMAT,encryptedUrl);
+			
 			
 			Email from  = new Email(OUR_EMAIL);
 			Email to = new Email(email);
-			Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,verificationUrl));
+			//Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,verificationUrl));
+			Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,requestUrl));
 			Mail mail = new Mail(from,EMAIL_VERIFICATION_SUBJECT,to,content);
 			
 			SendGrid sg = new SendGrid(apiKey.getString(APP_SECRET_VALUE_PROPERTY));
@@ -341,11 +348,14 @@ public class EmailLinksResource {
 			
 			String secret = Long.toString(accountSecretKey.getId());
 			
-			String verificationUrl = String.format(ACCOUNT_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId));
+			String requestUrl = String.format(EMAIL_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId),email);
+			String encryptedUrl = Base64.getEncoder().encodeToString(requestUrl.getBytes());
+			String verificationUrl = String.format(LINK_VERIFICATION_URL_FORMAT,encryptedUrl);
 			
 			Email from  = new Email(OUR_EMAIL);
 			Email to = new Email(email);
-			Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,verificationUrl));
+			//Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,verificationUrl));
+			Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,requestUrl));
 			Mail mail = new Mail(from,ACCOUNT_VERIFICATION_SUBJECT,to,content);
 			
 			SendGrid sg = new SendGrid(apiKey.getString(APP_SECRET_VALUE_PROPERTY));
