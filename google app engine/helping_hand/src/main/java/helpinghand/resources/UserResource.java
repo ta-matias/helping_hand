@@ -27,6 +27,8 @@ import com.google.datastore.v1.TransactionOptions.ReadOnly;
 
 import helpinghand.accesscontrol.Role;
 import helpinghand.util.account.*;
+import helpinghand.util.event.EventData;
+import helpinghand.util.help.HelpData;
 import helpinghand.util.user.*;
 
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
@@ -35,10 +37,19 @@ import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERT
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ROLE_PROPERTY;
 import static helpinghand.util.GeneralUtils.badString;
 import static helpinghand.util.GeneralUtils.TOKEN_NOT_FOUND_ERROR;
+import static helpinghand.util.GeneralUtils.TOKEN_OWNER_ERROR;
 import static helpinghand.util.GeneralUtils.TOKEN_ACCESS_INSUFFICIENT_ERROR;
 import static helpinghand.util.GeneralUtils.AVATAR_0;
 import static helpinghand.resources.EmailLinksResource.sendAccountVerification;
+import static helpinghand.resources.HelpResource.HELPER_KIND;
+import static helpinghand.resources.HelpResource.HELPER_ID_PROPERTY;
+import static helpinghand.resources.EventResource.PARTICIPANT_KIND;
+import static helpinghand.resources.EventResource.PARTICIPANT_ID_PROPERTY;
+import static helpinghand.resources.EventResource.EVENT_STATUS_PROPERTY;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Logger;
 /**
  * @author PogChamp Software
@@ -65,12 +76,20 @@ public class UserResource extends AccountUtils {
 	private static final String ADD_RATING_BAD_DATA_ERROR = "Add rating failed due to bad input";
 
 	private static final String FOLLOW_START = "Attempting to follow account [%s] with token (%d)";
-	private static final String FOLLOW_OK = "Successfuly followed account [%s] with token (%d)[%s]";
+	private static final String FOLLOW_OK = "Successfuly followed account [%s] with token (%d)";
 	private static final String FOLLOW_BAD_DATA_ERROR = "Follow attempt failed due to bad inputs";
 
 	private static final String UNFOLLOW_START = "Attempting to unfollow account [%s] with token (%d)";
-	private static final String UNFOLLOW_OK = "Successfuly unfollowed account [%s] with token (%d)[%s]";
+	private static final String UNFOLLOW_OK = "Successfuly unfollowed account [%s] with token (%d)";
 	private static final String UNFOLLOW_BAD_DATA_ERROR = "Unfollow attempt failed due to bad inputs";
+	
+	private static final String HELPING_LIST_START = "Attempting to get help requests where [%s] is helping with token (%d)";
+	private static final String HELPING_LIST_OK = "Successfuly got help requests where [%s] is helping with token (%d)";
+	private static final String HELPING_LIST_BAD_DATA_ERROR = "Get help requests where user is helping attempt failed due to bad inputs";
+	
+	private static final String PARTICIPATING_LIST_START = "Attempting to get events where [%s] is participating with token (%d)";
+	private static final String PARTICIPATING_LIST_OK = "Successfuly got events where [%s] is participating with token (%d)";
+	private static final String PARTICIPATING_LIST_BAD_DATA_ERROR = "Get events where user is participating attempt failed due to bad inputs";
 
 	public static final String USER_ID_PARAM = "userId";
 
@@ -106,6 +125,8 @@ public class UserResource extends AccountUtils {
 	private static final String GET_STATS_PATH = "/{" + USER_ID_PARAM + "}/stats";//GET
 	private static final String FOLLOW_PATH = "/{" + USER_ID_PARAM + "}/follow";//POST
 	private static final String UNFOLLOW_PATH = "/{" + USER_ID_PARAM + "}/follow";//DELETE
+	private static final String GET_HELPING_PATH = "/{" + USER_ID_PARAM + "}/helping";//GET
+	private static final String GET_PARTICIPATING_PATH = "/{" + USER_ID_PARAM + "}/participating";//GET
 	
 	private static final Logger log = Logger.getLogger(UserResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
@@ -212,14 +233,14 @@ public class UserResource extends AccountUtils {
 			
 			txn.add(account,accountInfo,userProfile,accountFeed,userStats);
 			
-			txn.commit();
-			log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
-			return Response.ok().build();
-			/*if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
-				
+			if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {				
+				txn.commit();
+				log.info(String.format(CREATE_OK, data.id, Role.USER.name()));
+				return Response.ok().build();
 			}
+			
 			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();*/
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			
 			
 		} catch(DatastoreException e) {
@@ -330,8 +351,8 @@ public class UserResource extends AccountUtils {
 	@PUT
 	@Path(UPDATE_EMAIL_PATH)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response updateEmail(@PathParam(USER_ID_PARAM)String id, @QueryParam(EMAIL_PARAM) String email, @QueryParam(TOKEN_ID_PARAM)String token) {
-		return super.updateEmail(id,email, token);
+	public Response updateEmail(@PathParam(USER_ID_PARAM)String id, EmailContainer container, @QueryParam(TOKEN_ID_PARAM)String token) {
+		return super.updateEmail(id,container.email, token);
 	}
 
 	/**
@@ -853,7 +874,7 @@ public class UserResource extends AccountUtils {
 
 			txn.add(follower);
 			txn.commit();
-			log.info(String.format(FOLLOW_OK,id,tokenId,user));
+			log.info(String.format(FOLLOW_OK,id,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -966,7 +987,7 @@ public class UserResource extends AccountUtils {
 
 			txn.delete(followerKey);
 			txn.commit();
-			log.info(String.format(UNFOLLOW_OK,id,tokenId,user));
+			log.info(String.format(UNFOLLOW_OK,id,tokenId));
 			return Response.ok().build();
 		} catch(DatastoreException e) {
 			txn.rollback();
@@ -981,7 +1002,158 @@ public class UserResource extends AccountUtils {
 		}
 
 	}
-
+	
+	@GET
+	@Path(GET_HELPING_PATH)
+	public Response getHelping(@PathParam(USER_ID_PARAM) String id , @QueryParam(TOKEN_ID_PARAM) String token) {
+		if(badString(id) || badString(token) ) {
+			log.warning(HELPING_LIST_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(HELPING_LIST_START, id, tokenId));
+		
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+			Entity tokenEntity = txn.get(tokenKey);
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity accountEntity = accountList.next();
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			if(!accountEntity.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) &&  !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Query<Key> helpingQuery = Query.newKeyQueryBuilder().setKind(HELPER_KIND).setFilter(PropertyFilter.eq(HELPER_ID_PROPERTY, accountEntity.getKey().getId())).build();
+			QueryResults<Key> helpingList = txn.run(helpingQuery);
+			
+			List<Key> helpKeyList = new LinkedList<>();
+			
+			helpingList.forEachRemaining(helpingKey->helpKeyList.add(helpingKey.getParent()));
+			Key[] helpKeyArray = new Key[helpKeyList.size()];
+			helpKeyList.toArray(helpKeyArray);
+			
+			Iterator<Entity> helpEntities= txn.get(helpKeyArray);
+			txn.commit();
+			
+			List<HelpData> data = new LinkedList<>();
+			helpEntities.forEachRemaining(help->data.add(new HelpData(help)));
+			log.info(String.format(HELPING_LIST_OK, id,tokenId));
+			
+			return Response.ok(g.toJson(data)).build();
+			
+			
+		}catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+		
+	}
+	
+	@GET
+	@Path(GET_PARTICIPATING_PATH)
+	public Response getParticipating(@PathParam(USER_ID_PARAM)String id , @QueryParam(TOKEN_ID_PARAM)String token) {
+		if(badString(id) || badString(token) ) {
+			log.warning(PARTICIPATING_LIST_BAD_DATA_ERROR);
+			return Response.status(Status.BAD_REQUEST).build();
+		}
+		
+		long tokenId = Long.parseLong(token);
+		log.info(String.format(PARTICIPATING_LIST_START, id, tokenId));
+		
+		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
+		Key tokenKey = tokenKeyFactory.newKey(tokenId);
+		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
+		try {
+			Entity tokenEntity = txn.get(tokenKey);
+			if(tokenEntity == null) {
+				txn.rollback();
+				log.severe(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			QueryResults<Entity> accountList = txn.run(accountQuery);
+			if(!accountList.hasNext()) {
+				txn.rollback();
+				log.warning(String.format(ACCOUNT_NOT_FOUND_ERROR, id));
+				return Response.status(Status.NOT_FOUND).build();
+			}
+			Entity accountEntity = accountList.next();
+			if(accountList.hasNext()) {
+				txn.rollback();
+				log.severe(String.format(ACCOUNT_ID_CONFLICT_ERROR, id));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			if(!accountEntity.getBoolean(ACCOUNT_VISIBILITY_PROPERTY) &&  !tokenEntity.getString(TOKEN_OWNER_PROPERTY).equals(id)) {
+				txn.rollback();
+				log.warning(String.format(TOKEN_OWNER_ERROR, tokenId,id));
+				return Response.status(Status.FORBIDDEN).build();
+			}
+			
+			Query<Key> participationQuery = Query.newKeyQueryBuilder().setKind(PARTICIPANT_KIND).setFilter(PropertyFilter.eq(PARTICIPANT_ID_PROPERTY, accountEntity.getKey().getId())).build();
+			QueryResults<Key> participationList = txn.run(participationQuery);
+			
+			List<Key> eventKeyList = new LinkedList<>();
+			
+			participationList.forEachRemaining(participationKey->eventKeyList.add(participationKey.getParent()));
+			Key[] eventKeyArray = new Key[eventKeyList.size()];
+			eventKeyList.toArray(eventKeyArray);
+			
+			Iterator<Entity> eventEntities= txn.get(eventKeyArray);
+			txn.commit();
+			
+			List<EventData> data = new LinkedList<>();
+			eventEntities.forEachRemaining(event->{
+				if(event.getBoolean(EVENT_STATUS_PROPERTY)) {
+					data.add(new EventData(event));
+				}
+			});
+			log.info(String.format(PARTICIPATING_LIST_OK, id,tokenId));
+			
+			return Response.ok(g.toJson(data)).build();
+			
+			
+		}catch(DatastoreException e) {
+			txn.rollback();
+			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if(txn.isActive()) {
+				txn.rollback();
+				log.severe(TRANSACTION_ACTIVE_ERROR);
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+	
+	
+	
 	/**
 	 * Adds rating to stats.
 	 * @param datatstoreId - The user identification to update his stats.

@@ -213,12 +213,13 @@ public class InstitutionResource extends AccountUtils {
 
 			txn.add(account,accountInfo,accountFeed,institutionProfile);
 			log.info(String.format(CREATE_OK, data.id, Role.INSTITUTION.name()));
-			txn.commit();
-			return Response.ok().build();
-			/*if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
+			
+			if(sendAccountVerification(accountKey.getId(),data.id,data.email)) {
+				txn.commit();
+				return Response.ok().build();
 			}
 			txn.rollback();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();*/
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
@@ -325,8 +326,9 @@ public class InstitutionResource extends AccountUtils {
 	 */
 	@PUT
 	@Path(UPDATE_EMAIL_PATH)
-	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, @QueryParam(EMAIL_PARAM) String email, @QueryParam(TOKEN_ID_PARAM) String token) {
-		return super.updateEmail(id, email, token);
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response updateEmail(@PathParam(INSTITUTION_ID_PARAM) String id, EmailContainer container, @QueryParam(TOKEN_ID_PARAM) String token) {
+		return super.updateEmail(id, container.email, token);
 	}
 	
 	/**

@@ -83,14 +83,15 @@ public class RouteResource {
 	private static final String LIST_ROUTES_OK = "Successfuly listed routes with token (%d)";
 	private static final String LIST_ROUTES_BAD_DATA_ERROR = "List routes attempt failed due to bad inputs";
 	
+	/*
 	private static final String START_ROUTE_START = "Attempting to start route (%d) with token (%d)";
-	private static final String START_ROUTE_OK = "Successfuly started route (%d) with token (%d)";
+	private static final String START_ROUTE_OK = "Successfully started route (%d) with token (%d)";
 	private static final String START_ROUTE_BAD_DATA_ERROR = "Start route attempt failed due to bad inputs";
 	
 	private static final String END_ROUTE_START = "Attempting to end route (%d) with token (%d)";
-	private static final String END_ROUTE_OK = "Successfuly ended route (%d) with token (%d)";
+	private static final String END_ROUTE_OK = "Successfully ended route (%d) with token (%d)";
 	private static final String END_ROUTE_BAD_DATA_ERROR = "End route attempt failed due to bad inputs";
-	
+	*/
 	private static final String ROUTE_ID_PARAM = "routeId";
 	public static final String ROUTE_KIND = "Route";
 	public static final String ROUTE_CREATOR_PROPERTY = "creator";
@@ -107,14 +108,14 @@ public class RouteResource {
 	private static final String DELETE_PATH = "/{"+ROUTE_ID_PARAM+"}";//DELETE
 	private static final String GET_PATH = "/{"+ROUTE_ID_PARAM+"}/get";//GET
 	private static final String LIST_PATH = "";//GET
-	private static final String START_PATH = "/{"+ROUTE_ID_PARAM+"}/start";//PUT
-	private static final String END_PATH = "/{"+ROUTE_ID_PARAM+"}/end";//PUT
+	//private static final String START_PATH = "/{"+ROUTE_ID_PARAM+"}/start";//PUT
+	//private static final String END_PATH = "/{"+ROUTE_ID_PARAM+"}/end";//PUT
 	
 	private static final Logger log  = Logger.getLogger(RouteResource.class.getName());
 	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 	private final Gson g = new Gson();
 	private static final KeyFactory tokenKeyFactory = datastore.newKeyFactory().setKind(TOKEN_KIND);
-	private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
+	//private static final KeyFactory accountKeyFactory = datastore.newKeyFactory().setKind(ACCOUNT_KIND);
 	private static final KeyFactory routeKeyFactory = datastore.newKeyFactory().setKind(ROUTE_KIND);
 	
 	public RouteResource() {}
@@ -496,28 +497,17 @@ public class RouteResource {
 		
 	}
 	
-	/**
-	 * 
-	 * @param route
-	 * @param token
-	 * @return
-	 */
+	/*
 	@PUT
 	@Path(START_PATH)
 	public Response startRoute(@PathParam(ROUTE_ID_PARAM)String route,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return null;
 	}
 	
-	/**
-	 * 
-	 * @param route
-	 * @param token
-	 * @return
-	 */
 	@PUT
 	@Path(END_PATH)
 	public Response endRoute(@PathParam(ROUTE_ID_PARAM)String route,@QueryParam(TOKEN_ID_PARAM)String token) {
 		return null;
 	}
-	
+	*/
 }
