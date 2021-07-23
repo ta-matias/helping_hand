@@ -39,6 +39,7 @@ import static helpinghand.util.GeneralUtils.APP_SECRET_KIND;
 import static helpinghand.util.GeneralUtils.APP_SECRET_VALUE_PROPERTY;
 import static helpinghand.util.GeneralUtils.AVATAR_0;
 import static helpinghand.util.GeneralUtils.OUR_EMAIL;
+import static helpinghand.util.GeneralUtils.NOTIFICATION_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_NOT_FOUND_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_ID_CONFLICT_ERROR;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
@@ -683,7 +684,8 @@ public class BackOfficeResource {
 			String date =formatter.format(now);
 			String message = String.format(RESPOND_REPORT_NOTIFICATION,tokenEntity.getString(TOKEN_OWNER_PROPERTY),date,data.message);
 			if(!addNotificationToFeed(accountKey.getId(),message)) {
-				
+				log.warning(String.format(NOTIFICATION_ERROR, accountKey.getId()));
+				return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 			}
 			
 			log.info(String.format(RESPOND_REPORT_OK,reportId,tokenId));
