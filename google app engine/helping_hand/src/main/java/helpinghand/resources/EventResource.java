@@ -813,7 +813,7 @@ public class EventResource {
 
 		log.info(String.format(LIST_EVENTS_START,tokenId));
 
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind(EVENT_KIND).build();
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(EVENT_KIND).setFilter(PropertyFilter.eq(EVENT_STATUS_PROPERTY, true)).build();
 
 		Transaction txn = datastore.newTransaction(TransactionOptions.newBuilder().setReadOnly(ReadOnly.newBuilder().build()).build());
 

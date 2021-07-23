@@ -1,6 +1,5 @@
 package helpinghand.resources;
 
-import static helpinghand.resources.EmailLinksResource.PATH;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_KIND;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_STATUS_PROPERTY;
 import static helpinghand.util.account.AccountUtils.ACCOUNT_EMAIL_PROPERTY;
@@ -45,7 +44,7 @@ import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
 
 
-@Path(PATH)
+@Path(EmailLinksResource.PATH)
 @Produces(MediaType.APPLICATION_JSON+";charset=utf-8")
 public class EmailLinksResource {
 	

@@ -1,7 +1,5 @@
 package helpinghand.resources;
 
-import static helpinghand.resources.CronResource.PATH;
-
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -47,7 +45,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreException;
 
-@Path(PATH)
+@Path(CronResource.PATH)
 @Produces(MediaType.APPLICATION_JSON+ ";charset=utf-8")
 public class CronResource {
 	public static final String PATH = "/cron";

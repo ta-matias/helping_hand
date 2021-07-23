@@ -34,7 +34,6 @@ import com.google.gson.Gson;
 
 import helpinghand.util.route.*;
 
-import static helpinghand.resources.RouteResource.BASE_PATH;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_ID_PARAM;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_KIND;
 import static helpinghand.accesscontrol.AccessControlManager.TOKEN_OWNER_PROPERTY;
@@ -53,7 +52,7 @@ import static helpinghand.util.GeneralUtils.badString;
  * @author PogChamp Software
  *
  */
-@Path(BASE_PATH)
+@Path(RouteResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class RouteResource {
 	

@@ -626,7 +626,8 @@ public class BackOfficeResource {
 	 * @param report - The report identification to be responded.
 	 * @return 200, if the report was successfully responded to.
 	 * 		   400, if the data is invalid.
-	 * 		   404, if the report does not exist.
+	 * 		   403, if the token does not exist.
+	 * 		   404, if the report does not exist or the account does not exist.
 	 * 		   500, otherwise.
 	 */
 	@PUT
@@ -661,8 +662,8 @@ public class BackOfficeResource {
 			
 			if(tokenEntity == null) {
 				txn.rollback();
-				log.warning(String.format(TOKEN_NOT_FOUND_ERROR, reportId));
-				return Response.status(Status.NOT_FOUND).build();
+				log.warning(String.format(TOKEN_NOT_FOUND_ERROR, tokenId));
+				return Response.status(Status.FORBIDDEN).build();
 			}
 			String creator = reportEntity.getString(REPORT_CREATOR_PROPERTY);
 			
@@ -764,6 +765,15 @@ public class BackOfficeResource {
 		
 	}
 	
+	/**
+	 * Creates a new administrator account.
+	 * @param secret - The secret password of the administrator.
+	 * @return 200, if the registration was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the secret password is wrong.
+	 * 		   409, if the account with the id/email already exists.
+	 * 		   500, otherwise.
+	 */
 	@POST
 	@Path(CREATE_SYSADMIN_PATH)
 	public Response createSysadmin(@QueryParam(SECRET_PASSWORD_PARAM)String secret) {
