@@ -383,7 +383,7 @@ public class EmailLinksResource {
 			
 			String secret = Long.toString(accountSecretKey.getId());
 			
-			String requestUrl = String.format(EMAIL_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId),email);
+			String requestUrl = String.format(ACCOUNT_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId));
 			String encryptedUrl = Base64.getEncoder().encodeToString(requestUrl.getBytes());
 			String verificationUrl = String.format(LINK_VERIFICATION_URL_FORMAT,encryptedUrl);
 			
