@@ -976,7 +976,7 @@ public class HelpResource {
 	 * @param token - The token of the user who wants to join to the help request.
 	 * @return 200, if the operation was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token does not exist.
+	 * 		   403, if the token does not exist or the user tried to help itself.
 	 * 		   404, if the help request does not exist or the user does not exist.
 	 * 		   409, if the user has already offered to help.
 	 * 		   500, otherwise.

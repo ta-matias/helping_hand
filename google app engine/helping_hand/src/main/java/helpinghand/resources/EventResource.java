@@ -581,7 +581,7 @@ public class EventResource {
 	 * @param token - The token of the user who is going to join to the event.
 	 * @return 200, if the user has successfully joined the event.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the event already ended or the token does not exist.
+	 * 		   403, if the event already ended or the token does not exist or the user tried to join its own event.
 	 * 		   404, if the event does not exist or the user does not exist.
 	 * 		   409, if the user has already joined to the event.
 	 * 		   500, otherwise.

@@ -86,7 +86,6 @@ public class EmailLinksResource {
 	private static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
 	private static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
 	private static final String LINK_VERIFICATION_URL_FORMAT = OUR_REST_URL.substring(0, OUR_REST_URL.length()-5)+"confirmation?request=%s";
-	private static final String ENCRYPTION_KEY_FOR_URL = "12345";
 	
 	private static final long SECRET_DURATION = 1;//1h
 	
@@ -99,7 +98,17 @@ public class EmailLinksResource {
 	
 	public EmailLinksResource() {}
 	
-	
+	/**
+	 * Confirms the email update.
+	 * @param secret - The identification of the secret.
+	 * @param datastoreIdString - The identification of the account.
+	 * @param email - The email of the account.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the secret does not exist or the secret does not belong to the account.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(CONFIRM_EMAIL_UPDATE_PATH)
 	public Response confirmEmailUpdate(@QueryParam(SECRET_PARAM)String secret, 
@@ -172,6 +181,16 @@ public class EmailLinksResource {
 		
 	}
 	
+	/**
+	 * Confirms the account creation.
+	 * @param secret - The identification of the secret.
+	 * @param datastoreIdString - The identification of the account.
+	 * @return 200, if the operation was successful.
+	 * 		   400, if the data is invalid.
+	 * 		   403, if the secret does not exist or the secret does not belong to the account.
+	 * 		   404, if the account does not exist.
+	 * 		   500, otherwise.
+	 */
 	@GET
 	@Path(CONFIRM_ACCOUNT_CREATION_PATH)
 	public Response confirmAccountCreation(@QueryParam(SECRET_PARAM)String secret, 
@@ -253,6 +272,14 @@ public class EmailLinksResource {
 		
 	}
 	
+	/**
+	 * Sends the email verification after updating the email.
+	 * @param datastoreId - The identification of the secret account.
+	 * @param id - The identification of the account.
+	 * @param email - The email of the account.
+	 * @return true, if the email verification was successfully sent to the account.
+	 * 		   false, otherwise.
+	 */
 	public static boolean sendEmailVerification(long datastoreId,String id,String email) {
 		
 		Key emailSecretKey = datastore.allocateId(emailSecretKeyFactory.newKey());
@@ -323,6 +350,14 @@ public class EmailLinksResource {
 		}
 	}
 	
+	/**
+	 * Sends email verification after the creation of the account.
+	 * @param datastoreId - The identification of the secret account. 
+	 * @param id - The identification of the account.
+	 * @param email - The email of the account.
+	 * @return true, if the account verification was successfully sent.
+	 * 		   false, otherwise.
+	 */
 	public static boolean sendAccountVerification(long datastoreId,String id, String email) {
 		
 		Key accountSecretKey = datastore.allocateId(accountSecretKeyFactory.newKey());
