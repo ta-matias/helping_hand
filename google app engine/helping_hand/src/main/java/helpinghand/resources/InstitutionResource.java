@@ -150,7 +150,7 @@ public class InstitutionResource extends AccountUtils {
 			return Response.status(Status.BAD_REQUEST).build();
 		}
 
-		log.info(String.format(CREATE_START,data.email,Role.INSTITUTION.name()));
+		log.info(String.format(CREATE_START,data.id,Role.INSTITUTION.name()));
 
 		Key accountKey = datastore.allocateId(accountKeyFactory.setKind(ACCOUNT_KIND).newKey());
 		Key accountInfoKey = datastore.newKeyFactory().addAncestor(PathElement.of(ACCOUNT_KIND, accountKey.getId())).setKind(ACCOUNT_INFO_KIND).newKey(accountKey.getId());
