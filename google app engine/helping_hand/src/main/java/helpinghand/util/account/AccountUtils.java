@@ -875,7 +875,7 @@ public class AccountUtils {
 
 		long tokenId = Long.parseLong(token);
 		
-		boolean statusBoolean = Boolean.getBoolean(status);
+		boolean statusBoolean = Boolean.parseBoolean(status);
 
 		log.info(String.format(UPDATE_STATUS_START,tokenId));
 
