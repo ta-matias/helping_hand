@@ -91,6 +91,7 @@ public class BackOfficeResource {
 	private static final String UPDATE_ACCOUNT_ROLE_START = "Attempting to update role of user [%s] to [%s]";
 	private static final String UPDATE_ACCOUNT_ROLE_OK = "Successfulty to updated role of user [%s] to [%s]";
 	private static final String UPDATE_ACCOUNT_ROLE_BAD_DATA_ERROR = "Update role attempt failed due to bad inputs";
+	private static final String ROLE_CHANGED_NOTIFICATION = "A role da sua conta foi alterada para %s";
 
 	private static final String UPDATE_TOKEN_ROLE_START = "Attempting to update current role of token (%d) to [%s]";
 	private static final String UPDATE_TOKEN_ROLE_OK = "Successfulty to updated current role of token (%d) to [%s]";
@@ -277,9 +278,11 @@ public class BackOfficeResource {
 			txn.delete(tokenKeyArray);
 			txn.commit();
 			
+			String message = String.format(ROLE_CHANGED_NOTIFICATION, targetRole.name());
+			addNotificationToFeed(newAccount.getKey().getId(),message);
 			
 			log.info(String.format(UPDATE_ACCOUNT_ROLE_OK ,id,targetRole.name()));
-			return Response.ok().build();
+			return Response.ok().build();				
 		} catch(DatastoreException e) {
 			txn.rollback();
 			log.severe(String.format(DATASTORE_EXCEPTION_ERROR,e.toString()));
