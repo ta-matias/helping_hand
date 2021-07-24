@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.logging.Logger;
 
-import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
@@ -59,7 +59,7 @@ public class EmailLinksResource {
 	private static final String CONFIRM_EMAIL_UPDATE_START = "Starting email update for account(%d) with secret(%d)";
 	private static final String CONFIRM_EMAIL_UPDATE_OK= "Email update successful";
 	private static final String CONFIRM_EMAIL_UPDATE_BAD_DATA_ERROR = "Email update confirmation failed due to bad inputs";
-	private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
+	private static final String EMAIL_VERIFICATION_SUBJECT = "Verificação de Email";
 	private static final String EMAIL_VERIFICATION_CONTENT = "%s, clique <a href = %s >aqui</a> para verificar este email e completar a alteração do seu email.";
 	
 	private static final String CONFIRM_ACCOUNT_CREATION_START = "Confirming creation of account(%d) with secret(%d)";
@@ -85,7 +85,7 @@ public class EmailLinksResource {
 	
 	private static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
 	private static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
-	private static final String LINK_VERIFICATION_URL_FORMAT = OUR_REST_URL.substring(0, OUR_REST_URL.length()-5)+"confirmation?request=%s";
+	private static final String LINK_VERIFICATION_URL_FORMAT = OUR_REST_URL.substring(0, OUR_REST_URL.length()-5)+"#/confirmation?request=%s";
 	
 	private static final long SECRET_DURATION = 1;//1h
 	
@@ -109,7 +109,7 @@ public class EmailLinksResource {
 	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
-	@GET
+	@PUT
 	@Path(CONFIRM_EMAIL_UPDATE_PATH)
 	public Response confirmEmailUpdate(@QueryParam(SECRET_PARAM)String secret, 
 			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString, @QueryParam(EMAIL_PARAM)String email) {
@@ -191,7 +191,7 @@ public class EmailLinksResource {
 	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
 	 */
-	@GET
+	@PUT
 	@Path(CONFIRM_ACCOUNT_CREATION_PATH)
 	public Response confirmAccountCreation(@QueryParam(SECRET_PARAM)String secret, 
 			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString) {
@@ -312,8 +312,8 @@ public class EmailLinksResource {
 			
 			Email from  = new Email(OUR_EMAIL);
 			Email to = new Email(email);
-			//Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,verificationUrl));
-			Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,requestUrl));
+			Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,verificationUrl));
+			//Content content = new Content("text/html",String.format(EMAIL_VERIFICATION_CONTENT, id,requestUrl));
 			Mail mail = new Mail(from,EMAIL_VERIFICATION_SUBJECT,to,content);
 			
 			SendGrid sg = new SendGrid(apiKey.getString(APP_SECRET_VALUE_PROPERTY));
@@ -389,8 +389,8 @@ public class EmailLinksResource {
 			
 			Email from  = new Email(OUR_EMAIL);
 			Email to = new Email(email);
-			//Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,verificationUrl));
-			Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,requestUrl));
+			Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,verificationUrl));
+			//Content content = new Content("text/html",String.format(ACCOUNT_VERIFICATION_CONTENT, id,requestUrl));
 			Mail mail = new Mail(from,ACCOUNT_VERIFICATION_SUBJECT,to,content);
 			
 			SendGrid sg = new SendGrid(apiKey.getString(APP_SECRET_VALUE_PROPERTY));
