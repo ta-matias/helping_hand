@@ -65,7 +65,7 @@ public class EmailLinksResource {
 	private static final String CONFIRM_ACCOUNT_CREATION_START = "Confirming creation of account(%d) with secret(%d)";
 	private static final String CONFIRM_ACCOUNT_CREATION_OK= "Account confirmation successful";
 	private static final String CONFIRM_ACCOUNT_CREATION_BAD_DATA_ERROR = "Account creation confirmation failed due to bad inputs";
-	private static final String ACCOUNT_VERIFICATION_SUBJECT = "Account creation verification";
+	private static final String ACCOUNT_VERIFICATION_SUBJECT = "Verificação de criação de conta";
 	private static final String ACCOUNT_VERIFICATION_CONTENT = "%s, clique <a href = %s >aqui</a> para verificar este email e completar a criaçao da sua conta.";
 	
 	private static final String CONFIRM_EMAIL_UPDATE_PATH = "/email";
@@ -85,7 +85,7 @@ public class EmailLinksResource {
 	
 	private static final String EMAIL_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_EMAIL_UPDATE_PATH+"?secret=%s&id=%s&email=%s";
 	private static final String ACCOUNT_VERIFICATION_URL_FORMAT = OUR_REST_URL+PATH+CONFIRM_ACCOUNT_CREATION_PATH+"?secret=%s&id=%s";
-	private static final String LINK_VERIFICATION_URL_FORMAT = OUR_REST_URL.substring(0, OUR_REST_URL.length()-5)+"#/confirmation?request=%s";
+	private static final String LINK_VERIFICATION_URL_FORMAT = OUR_REST_URL.substring(0, OUR_REST_URL.length()-4)+"#/confirmation?request=%s";
 	
 	private static final long SECRET_DURATION = 1;//1h
 	
@@ -112,8 +112,9 @@ public class EmailLinksResource {
 	@PUT
 	@Path(CONFIRM_EMAIL_UPDATE_PATH)
 	public Response confirmEmailUpdate(@QueryParam(SECRET_PARAM)String secret, 
-			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString, @QueryParam(EMAIL_PARAM)String email) {
+			@QueryParam(DATASTORE_ID_PARAM)String datastoreIdString, @QueryParam(EMAIL_PARAM)String base64email) {
 			
+		String email = new String(Base64.getUrlDecoder().decode(base64email));
 		if(badString(secret) || badString(datastoreIdString) || !email.matches(EMAIL_REGEX)) {
 			log.severe(CONFIRM_EMAIL_UPDATE_BAD_DATA_ERROR);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -304,9 +305,11 @@ public class EmailLinksResource {
 			}
 			
 			String secret = Long.toString(emailSecretKey.getId());
+			String base64email = Base64.getUrlEncoder().encodeToString(email.getBytes());
 			
-			String requestUrl = String.format(EMAIL_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId),email);
-			String encryptedUrl = Base64.getEncoder().encodeToString(requestUrl.getBytes());
+			
+			String requestUrl = String.format(EMAIL_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId),base64email);
+			String encryptedUrl = Base64.getUrlEncoder().encodeToString(requestUrl.getBytes());
 			String verificationUrl = String.format(LINK_VERIFICATION_URL_FORMAT,encryptedUrl);
 			
 			
@@ -384,7 +387,7 @@ public class EmailLinksResource {
 			String secret = Long.toString(accountSecretKey.getId());
 			
 			String requestUrl = String.format(ACCOUNT_VERIFICATION_URL_FORMAT, secret,Long.toString(datastoreId));
-			String encryptedUrl = Base64.getEncoder().encodeToString(requestUrl.getBytes());
+			String encryptedUrl = Base64.getUrlEncoder().encodeToString(requestUrl.getBytes());
 			String verificationUrl = String.format(LINK_VERIFICATION_URL_FORMAT,encryptedUrl);
 			
 			Email from  = new Email(OUR_EMAIL);

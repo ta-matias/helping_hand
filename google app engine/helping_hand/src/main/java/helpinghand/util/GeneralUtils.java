@@ -26,7 +26,7 @@ public class GeneralUtils {
 	public static final String EMAIL_SENDING_OK ="Successfuly sent email to [%s]";
 	public static final String EMAIL_SENDING_ERROR = "Error sending email to [%s]";
 	public static final String OUR_EMAIL = "pogchampsoftware@gmail.com";
-	public static final String OUR_REST_URL = "www.thehelpinghand.ew.r.appspot.com/rest";
+	public static final String OUR_REST_URL = "http://www.thehelpinghand.ew.r.appspot.com/rest";
 	
 	public static final String APP_SECRET_KIND = "Secret";
 	public static final String APP_SECRET_VALUE_PROPERTY = "value";
