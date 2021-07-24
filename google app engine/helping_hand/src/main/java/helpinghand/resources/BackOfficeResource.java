@@ -206,7 +206,7 @@ public class BackOfficeResource {
 		Key tokenKey = tokenKeyFactory.newKey(tokenId);
 		
 		Query<Entity> accountQuery = Query.newEntityQueryBuilder().setKind(ACCOUNT_KIND).setFilter(PropertyFilter.eq(ACCOUNT_ID_PROPERTY, id)).build();
-		
+		Query<Key> tokenQuery = Query.newKeyQueryBuilder().setKind(TOKEN_KIND).setFilter(PropertyFilter.eq(TOKEN_OWNER_PROPERTY, id)).build();
 		Transaction txn = datastore.newTransaction();
 		
 		try {
@@ -265,9 +265,18 @@ public class BackOfficeResource {
 			Entity newAccount = Entity.newBuilder(oldAccount)
 					.set("role", targetRole.name())
 					.build();
-
+				
+			QueryResults<Key> tokenList = txn.run(tokenQuery);
+			
+			List<Key> tokenKeyList = new LinkedList<>();
+			tokenList.forEachRemaining(key->tokenKeyList.add(key));
+			Key[] tokenKeyArray = new Key[tokenKeyList.size()];
+			tokenKeyList.toArray(tokenKeyArray);
+			
 			txn.update(newAccount);
+			txn.delete(tokenKeyArray);
 			txn.commit();
+			
 			
 			log.info(String.format(UPDATE_ACCOUNT_ROLE_OK ,id,targetRole.name()));
 			return Response.ok().build();
