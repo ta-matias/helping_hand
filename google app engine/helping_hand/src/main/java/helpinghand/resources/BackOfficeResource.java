@@ -185,7 +185,7 @@ public class BackOfficeResource {
 	 * @param token - The token of the account that is performing this operation.
 	 * @return 200, if the update was successful.
 	 * 		   400, if the data is invalid.
-	 * 		   403, if the token cannot alter higher or same level account or the token cannot change the role to a higher level
+	 * 		   403, if the token cannot alter higher or same level account or the token cannot change the role to a higher level or there was an attempt to change the role of Sysadmin or there was an attempt to change the role of an institution.
 	 * 		   or the token does not exist or there was an attempt to change the role of SuperUser.
 	 * 		   404, if the account does not exist.
 	 * 		   500, otherwise.
