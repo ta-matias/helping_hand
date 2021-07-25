@@ -65,4 +65,24 @@
     <string name="hour">Hora</string>
     <string name="location">Localização</string>
     <string name="conditions">Condições</string>
+    <string name="public_profile">Público</string>
+    <string name="private_profile">Privado</string>
+    <string name="list">Lista</string>
+    <string name="name_event">Nome</string>
+    <string name="creator">Criador</string>
+    <string name="help">Ajudas</string>
+    <string name="create_help">Criar Pedido</string>
+    <string name="offer_help">Oferecer Ajuda</string>
+    <string name="mine_help">Minhas</string>
+    <string name="help_name">Nome do Pedido</string>
+    <string name="expire_date">EXPIRE_DATE</string>
+    <string name="help_creator">Criador</string>
+    <string name="id">Id</string>
+    <string name="conclude">Concluir</string>
+    <string name="cancel">Cancelar</string>
+    <string name="my_helps">Minhas ajudas</string>
+    <string name="choose_helper">Escolher ajuda</string>
+    <string name="rating">Rating</string>
+    <string name="reliability">Riabilidade</string>
+    <string name="choose">Escolher</string>
 </resources>

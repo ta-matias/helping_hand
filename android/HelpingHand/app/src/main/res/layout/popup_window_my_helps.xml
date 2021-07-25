@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/popup_window_help_layout"
+    android:background="#29918A"
+    >
+
+    <TextView
+        android:id="@+id/help_popup_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:text="@string/name_event"
+        android:textSize="20sp"
+        android:shadowColor="#000000"
+        android:textStyle="bold"
+        android:shadowDx="1.5"
+        android:shadowDy="1.5"
+        android:shadowRadius="7.5"
+        android:textColor="@color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <TextView
+        android:id="@+id/help_popup_start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:text="@string/start"
+        android:textSize="20sp"
+        android:shadowColor="#000000"
+        android:shadowDx="1.5"
+        android:shadowDy="1.5"
+        android:shadowRadius="7.5"
+        android:textColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_name"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+    <TextView
+        android:id="@+id/help_popup_loc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:text="@string/location"
+        android:textSize="20sp"
+        android:shadowColor="#000000"
+        android:shadowDx="1.5"
+        android:shadowDy="1.5"
+        android:shadowRadius="7.5"
+        android:textColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_start"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+    <Button
+        android:id="@+id/help_popup_finish"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:text="@string/conclude"
+        android:backgroundTint="#15E84E"
+        android:textColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@id/help_popup_loc"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+    <Button
+        android:id="@+id/choose_helper"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/choose_helper"
+        android:textColor="@color/white"
+        android:textSize="10sp"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:backgroundTint="@color/purple_200"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_loc"
+        />
+
+    <Button
+        android:id="@+id/help_popup_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:text="@string/cancel"
+        android:textColor="@color/white"
+        android:backgroundTint="#E32727"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/choose_helper"
+        />
+
+
+
+    <ImageButton
+        android:id="@+id/rate_1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/rating_1"
+        android:backgroundTint="@color/black"
+        android:onClick="rating"
+        android:visibility="gone"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_cancel"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+    <ImageButton
+        android:id="@+id/rate_2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/rating_2"
+        android:backgroundTint="@color/black"
+        android:onClick="rating"
+        android:visibility="gone"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_cancel"
+        app:layout_constraintStart_toEndOf="@id/rate_1"
+        />
+
+    <ImageButton
+        android:id="@+id/rate_3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/rating_3"
+        android:backgroundTint="@color/black"
+        android:onClick="rating"
+        android:visibility="gone"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_cancel"
+        app:layout_constraintStart_toEndOf="@id/rate_2"
+        />
+
+    <ImageButton
+        android:id="@+id/rate_4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/rating_4"
+        android:backgroundTint="@color/black"
+        android:onClick="rating"
+        android:visibility="gone"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_cancel"
+        app:layout_constraintStart_toEndOf="@id/rate_3"
+        />
+
+    <ImageButton
+        android:id="@+id/rate_5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/rating_5"
+        android:backgroundTint="@color/black"
+        android:onClick="rating"
+        android:visibility="gone"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_cancel"
+        app:layout_constraintStart_toEndOf="@id/rate_4"
+        />
+    <ScrollView
+        app:layout_constraintTop_toBottomOf="@+id/help_popup_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+
+    <ListView
+        android:id="@+id/pop_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:scrollX="@dimen/activity_horizontal_margin"
+        />
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

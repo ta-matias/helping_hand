@@ -203,7 +203,6 @@ public class LoginActivity extends AppCompatActivity {
                     et_username.setVisibility(View.VISIBLE);
                     et_password.setVisibility(View.VISIBLE);
                     btn_sign_in.setVisibility(View.VISIBLE);
-                    btn_sign_in.setEnabled(false);
                 }
             }
 

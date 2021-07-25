@@ -3,6 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#29918A"
     >
 
     <LinearLayout
@@ -25,6 +26,12 @@
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:textSize="20sp"
             android:visibility="invisible"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             />
 
         <EditText
@@ -34,6 +41,8 @@
             android:inputType="textNoSuggestions"
             android:hint="@string/name"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:textColorHint="@color/white"
+            android:textColor="@color/white"
             android:visibility="invisible"
             android:imeOptions="actionNext"
             />
@@ -46,6 +55,12 @@
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             />
 
         <EditText
@@ -56,6 +71,8 @@
             android:hint="@string/username"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
+            android:textColorHint="@color/white"
+            android:textColor="@color/white"
             android:imeOptions="actionNext"
             />
 
@@ -67,6 +84,12 @@
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             />
 
         <EditText
@@ -78,6 +101,8 @@
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
             android:imeOptions="actionNext"
+            android:textColorHint="@color/white"
+            android:textColor="@color/white"
             />
 
         <TextView
@@ -88,6 +113,12 @@
             android:text="@string/prompt_email"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             />
 
         <EditText
@@ -99,6 +130,8 @@
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
             android:imeOptions="actionNext"
+            android:textColorHint="@color/white"
+            android:textColor="@color/white"
             />
 
         <TextView
@@ -114,6 +147,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/prompt_password"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
@@ -128,6 +167,8 @@
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
             android:imeOptions="actionNext"
+            android:textColorHint="@color/white"
+            android:textColor="@color/white"
             />
             <TextView
                 android:id="@+id/et_pass_info"
@@ -142,6 +183,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/prompt_confirm_password"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
@@ -155,6 +202,8 @@
             android:inputType="textPassword"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:visibility="invisible"
+            android:textColorHint="@color/white"
+            android:textColor="@color/white"
             />
 
         <TextView
@@ -169,7 +218,9 @@
             android:id="@+id/btn_register"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:backgroundTint="@color/black"
             android:text="@string/register"
+            android:textColor="@color/white"
             android:layout_gravity="center_horizontal"
             android:visibility="invisible"
             />

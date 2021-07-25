@@ -7,6 +7,7 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -43,6 +44,8 @@ public class ChangePassActivity extends AppCompatActivity {
         EditText new_pass_et = findViewById(R.id.new_pass_et);
         EditText conf_et = findViewById(R.id.conf_et);
 
+        ImageButton back_btn = findViewById(R.id.cp_back_btn);
+
         Button conf_btn = findViewById(R.id.conf_btn);
 
         ChangePass changePass = new ChangePass();
@@ -64,12 +67,22 @@ public class ChangePassActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<Void> call, Response<Void> response) {
                         if(response.code() == 400){// bad request
+                            Toast.makeText(ChangePassActivity.this,
+                                    "Bad request check if data is correct.",
+                                    Toast.LENGTH_SHORT).show();
 
                         }else if(response.code() == 404){//Not found
+                            Toast.makeText(ChangePassActivity.this,
+                                    "Given user not found", Toast.LENGTH_SHORT).show();
 
                         }else if(response.code() == 403){//Forbbiden
+                            Toast.makeText(ChangePassActivity.this,
+                                    "That operation is not permitted",
+                                    Toast.LENGTH_SHORT).show();
 
                         }else if(response.code() == 500){//Server error
+                            Toast.makeText(ChangePassActivity.this,
+                                    "Internal Server Error", Toast.LENGTH_SHORT).show();
                             
                         }else if(response.isSuccessful()){ //response is successfull
                             Toast.makeText(ChangePassActivity.this,
@@ -88,6 +101,15 @@ public class ChangePassActivity extends AppCompatActivity {
                     }
                 });
 
+            }
+        });
+
+        back_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent back = new Intent(ChangePassActivity.this, ProfileActivity.class);
+                startActivity(back);
+                finish();
             }
         });
 

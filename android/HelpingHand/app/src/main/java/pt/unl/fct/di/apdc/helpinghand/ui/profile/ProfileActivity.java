@@ -1,18 +1,27 @@
 package pt.unl.fct.di.apdc.helpinghand.ui.profile;
 
-import android.accounts.Account;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
+
+import java.util.logging.Logger;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
+import pt.unl.fct.di.apdc.helpinghand.data.model.Account;
 import pt.unl.fct.di.apdc.helpinghand.data.model.AccountInfo;
+import pt.unl.fct.di.apdc.helpinghand.data.model.ChangeVisibility;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandProvider;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandService;
 import pt.unl.fct.di.apdc.helpinghand.ui.loading.StartUserActivity;
@@ -39,6 +48,10 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView inst_init_txt;
     private TextView inst_stat_txt;
 
+    SwitchCompat visibility;
+
+    Account account = new Account();
+
     private HelpingHandProvider mProvider;
     private HelpingHandService mService;
     private AppPreferenceTools mPreferences;
@@ -59,7 +72,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         //TODO: (possibly change to a fragment to add a bar for navigation at the bottom)
 
-
+        username_txt.setText(mPreferences.getUsername());
 
         setClickListeners();
     }
@@ -86,7 +99,11 @@ public class ProfileActivity extends AppCompatActivity {
 
         inst_stat_txt = findViewById(R.id.inst_status_txt);
 
+        visibility = findViewById(R.id.inst_visibility_stc);
+
         change_pass_btn = findViewById(R.id.inst_change_pass_btn);
+
+        zip_txt = findViewById(R.id.inst_zip_txt);
 
         update_btn = findViewById(R.id.inst_update_btn);
 
@@ -113,9 +130,88 @@ public class ProfileActivity extends AppCompatActivity {
 
             }
         });
+
+        Call<Account> accountCall = mService.getInstAccount(mPreferences.getUsername(),
+                mPreferences.getAccessToken());
+
+        accountCall.enqueue(new Callback<Account>() {
+            @Override
+            public void onResponse(Call<Account> call, Response<Account> response) {
+                if(response.isSuccessful()){
+                    Account account = response.body();
+                    username_txt.setText(account.id);
+                    email_txt.setText(account.email);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Account> call, Throwable t) {
+
+            }
+        });
+
+
+        visibility.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+                if (isChecked != account.visibility) {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(ProfileActivity.this);
+
+                    builder.setTitle("Tem a certeza que pretende alterar a visibilidade do perfil?");
+
+                    builder.setNegativeButton("Não", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                            visibility.setChecked(account.visibility);
+                        }
+                    });
+
+                    builder.setPositiveButton("Sim", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                            Logger.getAnonymousLogger().info(Boolean.toString(isChecked) + " " + Boolean.toString(account.visibility));
+                            account.visibility = isChecked;
+
+                            Call<Void> call = mService.updateInstVisibility(mPreferences.getUsername(),
+                                    Boolean.toString(isChecked), mPreferences.getAccessToken());
+                            call.enqueue(new Callback<Void>() {
+                                @Override
+                                public void onResponse(Call<Void> call, Response<Void> response) {
+                                    if (response.isSuccessful()) {
+                                        dialog.cancel();
+                                    } else if (response.code() == 400) {
+                                        Toast.makeText(ProfileActivity.this, "Bad request try again.", Toast.LENGTH_SHORT).show();
+                                    } else if (response.code() == 404) {
+                                        Toast.makeText(ProfileActivity.this, "User not found.", Toast.LENGTH_SHORT).show();
+                                    } else if (response.code() == 500) {
+                                        Toast.makeText(ProfileActivity.this, "Something went wrong", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<Void> call, Throwable t) {
+
+                                }
+                            });
+
+                        }
+                    });
+
+                    AlertDialog alert = builder.create();
+                    alert.show();
+
+                }
+            }
+        });
     }
 
     private void userProfile() {
+
+
 
         setContentView(R.layout.activity_profile_user);
 
@@ -139,6 +235,10 @@ public class ProfileActivity extends AppCompatActivity {
 
         delete_acc_btn = findViewById(R.id.delete_user_acc_btn);
 
+        visibility = findViewById(R.id.user_visibility_stc);
+
+
+
         Call<AccountInfo> call = mService.getUserInfo(mPreferences.getUsername(),
                 mPreferences.getAccessToken());
 
@@ -158,6 +258,96 @@ public class ProfileActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<AccountInfo> call, Throwable t) {
 
+                AlertDialog.Builder builder = new AlertDialog.Builder(ProfileActivity.this);
+
+                builder.setTitle("Ocorreu um erro com a operação tente novamente.");
+
+                builder.setNeutralButton("Ok!", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                AlertDialog alert = builder.create();
+                alert.show();
+
+            }
+        });
+
+        Call<Account> accountCall = mService.getUserAccount(mPreferences.getUsername(),
+                mPreferences.getAccessToken());
+
+        accountCall.enqueue(new Callback<Account>() {
+            @Override
+            public void onResponse(Call<Account> call, Response<Account> response) {
+                if(response.isSuccessful()){
+                    account = response.body();
+                    username_txt.setText(account.id);
+                    email_txt.setText(account.email);
+                    visibility.setChecked(account.visibility);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Account> call, Throwable t) {
+
+            }
+        });
+
+        visibility.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(isChecked != account.visibility) {
+
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(ProfileActivity.this);
+
+                    builder.setTitle("Tem a certeza que pretende alterar a visibilidade do perfil?");
+
+                    builder.setNegativeButton("Não", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                            visibility.setChecked(account.visibility);
+                        }
+                    });
+
+                    builder.setPositiveButton("Sim", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                            Logger.getAnonymousLogger().info(Boolean.toString(isChecked) + " " + Boolean.toString(account.visibility));
+                            account.visibility = isChecked;
+
+                            Call<Void> call = mService.updateUserVisibility(mPreferences.getUsername(),
+                                    Boolean.toString(isChecked), mPreferences.getAccessToken());
+                            call.enqueue(new Callback<Void>() {
+                                @Override
+                                public void onResponse(Call<Void> call, Response<Void> response) {
+                                    if (response.isSuccessful()) {
+                                        dialog.cancel();
+                                    } else if (response.code() == 400) {
+                                        Toast.makeText(ProfileActivity.this, "Bad request try again.", Toast.LENGTH_SHORT).show();
+                                    } else if (response.code() == 404) {
+                                        Toast.makeText(ProfileActivity.this, "User not found.", Toast.LENGTH_SHORT).show();
+                                    } else if (response.code() == 500) {
+                                        Toast.makeText(ProfileActivity.this, "Something went wrong", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<Void> call, Throwable t) {
+
+                                }
+                            });
+
+                        }
+                    });
+
+                    AlertDialog alert = builder.create();
+                    alert.show();
+                }
             }
         });
 

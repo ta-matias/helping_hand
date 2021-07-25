@@ -9,12 +9,14 @@ import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.text.ParseException;
 import java.util.logging.Logger;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandProvider;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandService;
 import pt.unl.fct.di.apdc.helpinghand.ui.events.EventsActivity;
+import pt.unl.fct.di.apdc.helpinghand.ui.help.HelpActivity;
 import pt.unl.fct.di.apdc.helpinghand.ui.loading.StartUserActivity;
 import pt.unl.fct.di.apdc.helpinghand.ui.maps.MapsActivity;
 import pt.unl.fct.di.apdc.helpinghand.ui.profile.ProfileActivity;
@@ -50,7 +52,7 @@ public class HomePageActivity extends AppCompatActivity {
 
     }
 
-    public void onClick(View v){
+    public void onClick(View v) throws ParseException {
         Intent i;
         switch(v.getId()) {
             //Profile Button
@@ -65,8 +67,8 @@ public class HomePageActivity extends AppCompatActivity {
                 break;
 
             //Map button
-            case R.id.home_maps:
-                i = new Intent(HomePageActivity.this, MapsActivity.class);
+            case R.id.home_help:
+                i = new Intent(HomePageActivity.this, HelpActivity.class);
                 startActivity(i);
                 break;
 
@@ -92,7 +94,7 @@ public class HomePageActivity extends AppCompatActivity {
                             mPreferences.removeAllPrefs();
                             Intent i = new Intent(HomePageActivity.this, StartUserActivity.class);
                             startActivity(i);
-
+                            finish();
                         }
                     });
                     builder.setNeutralButton("Não", new DialogInterface.OnClickListener() {

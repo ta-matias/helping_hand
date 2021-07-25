@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
+import java.text.ParseException;
 
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
@@ -36,12 +37,14 @@ public class HelpingHandProvider {
                 String originalPath = original.url().url().getPath();
                 if(originalPath.endsWith("refreshToken"))
                     return chain.proceed(original);
-                else{
+                else {
                     Request.Builder requestBuilder = original.newBuilder();
-                    requestBuilder.addHeader("Accept","application/json");
-                    if(mAppPreferenceTools.isAuthorized())
+                    requestBuilder.addHeader("Accept", "application/json");
+
+                    if (mAppPreferenceTools.isAuthorized())
                         requestBuilder.addHeader("Authorization", "bearer" +
                                 mAppPreferenceTools.getAccessToken());
+
                     requestBuilder.method(original.method(), original.body());
                     Request request = requestBuilder.build();
                     return chain.proceed(request);

@@ -1,5 +1,7 @@
 package pt.unl.fct.di.apdc.helpinghand.ui.register;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
@@ -182,20 +184,40 @@ public class RegisterActivity extends AppCompatActivity {
                     LOG.info("Trying to register user with username: " + username + ", email: " + email);
                     UserRegisterModel userRegisterModel = new UserRegisterModel(username, email, password, confirmPassword);
                     Call<Void> call = service.createUser(userRegisterModel);
-
+                    AlertDialog.Builder builder = new AlertDialog.Builder(
+                            RegisterActivity.this);
                     call.enqueue(new Callback<Void>() {
                         @Override
                         public void onResponse(Call<Void> call, Response<Void> response) {
                             if(response.isSuccessful()){
                                 LOG.info(response.message());
-                                startActivity(new Intent(getBaseContext(), StartUserActivity.class));
-                                finish();
+
+                                builder.setTitle("Registo efetuado com sucesso.");
+                                builder.setNeutralButton("OK", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                        startActivity(new Intent(getBaseContext(), StartUserActivity.class));
+                                        finish();
+
+                                    }
+                                });
+
+                                AlertDialog alertDialog = builder.create();
+                                alertDialog.show();
+
                             }
-                            else{
-                                ErrorModel model = ErrorUtils.parseError(response);
-                                Toast.makeText(getBaseContext(), "Error type is "
-                                        + model.type + ", description " + model.description,
-                                        Toast.LENGTH_LONG).show();
+                            else if(response.code() == 409){
+                                builder.setTitle("Um utilizador com esse nome ou com esse email já existe");
+                                builder.setNeutralButton("Compreendi!", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+
+                                AlertDialog alertDialog = builder.create();
+                                alertDialog.show();
                             }
                         }
 
@@ -211,19 +233,40 @@ public class RegisterActivity extends AppCompatActivity {
                     InstitutionRegisterModel institutionRegisterModel = new InstitutionRegisterModel(name, username, initials, email, password, confirmPassword);
                     Call<Void> call = service.createInstitution(institutionRegisterModel);
 
+                    AlertDialog.Builder builder = new AlertDialog.Builder(
+                            RegisterActivity.this);
+
                     call.enqueue(new Callback<Void>() {
                         @Override
                         public void onResponse(Call<Void> call, Response<Void> response) {
                            if(response.isSuccessful()){
                                LOG.info("Institution registered");
-                               startActivity(new Intent(getBaseContext(), StartUserActivity.class));
-                               finish();
+
+                               builder.setTitle("Registo efetuado com sucesso.");
+                               builder.setNeutralButton("OK", new DialogInterface.OnClickListener() {
+                                   @Override
+                                   public void onClick(DialogInterface dialog, int which) {
+                                       dialog.cancel();
+                                       startActivity(new Intent(getBaseContext(), StartUserActivity.class));
+                                       finish();
+                                   }
+                               });
+
+                               AlertDialog alertDialog = builder.create();
+                               alertDialog.show();
+
                            }
-                           else{
-                               ErrorModel model = ErrorUtils.parseError(response);
-                               Toast.makeText(getBaseContext(), "Error type is "
-                                               + model.type + ", description " + model.description,
-                                       Toast.LENGTH_LONG).show();
+                           else if(response.code() == 409){
+                               builder.setTitle("Um utilizador com esse nome ou com esse email já existe");
+                               builder.setNeutralButton("Compreendi!", new DialogInterface.OnClickListener() {
+                                   @Override
+                                   public void onClick(DialogInterface dialog, int which) {
+                                       dialog.cancel();
+                                   }
+                               });
+
+                               AlertDialog alertDialog = builder.create();
+                               alertDialog.show();
                            }
                         }
 

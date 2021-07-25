@@ -4,6 +4,12 @@ package pt.unl.fct.di.apdc.helpinghand.utility;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
+import java.util.Date;
+
 import pt.unl.fct.di.apdc.helpinghand.R;
 import pt.unl.fct.di.apdc.helpinghand.data.model.UpdateUserModel;
 import pt.unl.fct.di.apdc.helpinghand.data.model.UserAuthenticated;
@@ -32,9 +38,9 @@ public class AppPreferenceTools {
                 .putString(this.mContext.getString(R.string.user_username), userAuthenticated.getUsername())
                 .putString(this.mContext.getString(R.string.token_id), userAuthenticated.getTokenID().getTokenId())
                 .putString(this.mContext.getString(R.string.role), userAuthenticated.getRole())
-                .putString(this.mContext.getString(R.string.creation_date), userAuthenticated.getExpires())
+                .putString(this.mContext.getString(R.string.expire_date), userAuthenticated.getExpires())
                 .putString(this.mContext.getString(R.string.refresh_token), userAuthenticated.getTokenID().getRefresh_token())
-                .commit();
+                .apply();
     }
 
     public void saveUserInfo(UserAuthenticated userAuthenticated){
@@ -44,20 +50,20 @@ public class AppPreferenceTools {
                 .apply();
     }
 
-    public void updateUserInfo(String userId, String token_id, String role, String creationDate,
+    public void updateUserInfo(String userId, String token_id, String role, String expired_date,
                                String refresh_token, UpdateUserModel updateUserModel){
         mPreferences.edit()
                 .putString(this.mContext.getString(R.string.user_username), userId)
                 .putString(this.mContext.getString(R.string.token_id), token_id)
                 .putString(this.mContext.getString(R.string.role), role)
-                .putString(this.mContext.getString(R.string.creation_date), creationDate)
+                .putString(this.mContext.getString(R.string.expire_date), expired_date)
                 .putString(this.mContext.getString(R.string.refresh_token), refresh_token)
                 .putString(this.mContext.getString(R.string.phone), updateUserModel.phone)
                 .putString(this.mContext.getString(R.string.address), updateUserModel.address1)
                 .putString(this.mContext.getString(R.string.address2), updateUserModel.address2)
                 .putString(this.mContext.getString(R.string.city), updateUserModel.city)
                 .putString(this.mContext.getString(R.string.zipcode), updateUserModel.zipcode)
-                .commit();
+                .apply();
     }
 
     /**
@@ -67,8 +73,18 @@ public class AppPreferenceTools {
         return mPreferences.getString(this.mContext.getString(R.string.token_id), STRING_PREF_UNAVAILABLE);
     }
 
-    public boolean isAuthorized(){
-        return !getAccessToken().equals(STRING_PREF_UNAVAILABLE);
+    public boolean isAuthorized()  {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+        Date current = calendar.getTime();
+        Date expireDate = new Date();
+        try {
+            expireDate = sdf.parse(getExpireDate());
+        }
+        catch (ParseException e){
+
+        }
+        return !getAccessToken().equals(STRING_PREF_UNAVAILABLE) && expireDate.after(current);
     }
 
 
@@ -91,12 +107,12 @@ public class AppPreferenceTools {
     }
 
     /**
-     * getter for creation date of the acess token
+     * getter for creation date of the access token
      *
-     * @return string with creation date ( TODO: possibly change to Date format )
+     * @return string with expire date
      */
-    public String getCreationDate(){
-        return mPreferences.getString(this.mContext.getString(R.string.creation_date), STRING_PREF_UNAVAILABLE);
+    public String getExpireDate(){
+        return mPreferences.getString(this.mContext.getString(R.string.expire_date), STRING_PREF_UNAVAILABLE);
     }
 
     public String getRefreshToken(){

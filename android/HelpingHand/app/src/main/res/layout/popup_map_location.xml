@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    android:id="@+id/pop_map_layout"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#29918A">
+
+    <androidx.cardview.widget.CardView
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#29918A"
+        >
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/confirm_btn_popup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:textColor="@color/white"
+                android:text="@string/confirm"
+                android:backgroundTint="@color/black"
+                />
+
+            <fragment
+                android:id="@+id/popup_map_window"
+                android:layout_width="match_parent"
+                android:layout_height="500dp"
+                class="com.google.android.gms.maps.SupportMapFragment"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+</RelativeLayout>

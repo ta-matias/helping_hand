@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#29918A"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/parent">
 
@@ -17,6 +18,12 @@
             android:layout_height="wrap_content"
             android:text="@string/bem_vindo"
             android:textAlignment="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="50sp"
             android:layout_marginTop="@android:dimen/app_icon_size"
             />
@@ -26,6 +33,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="50sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textAlignment="center"
             android:layout_marginTop="@android:dimen/app_icon_size"
             />
@@ -45,6 +58,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
+                android:backgroundTint="@color/black"
                 android:layout_rowWeight="1"
                 android:layout_margin="@dimen/activity_horizontal_margin"
                 android:padding="12dp"
@@ -68,9 +82,15 @@
                         android:layout_width="80dp"
                         android:layout_height="wrap_content"
                         android:text="@string/profile"
+                        android:shadowColor="#000000"
+                        android:shadowDx="1.5"
+                        android:shadowDy="1.5"
+                        android:shadowRadius="7.5"
+                        android:textAllCaps="true"
+                        android:textColor="@android:color/white"
                         android:textAlignment="center"
                         android:layout_gravity="center"
-                        android:textSize="25sp"
+                        android:textSize="20sp"
                         />
 
                 </LinearLayout>
@@ -86,6 +106,7 @@
                 android:layout_rowWeight="1"
                 android:layout_margin="@dimen/activity_horizontal_margin"
                 android:padding="12dp"
+                android:backgroundTint="@color/black"
                 app:cardElevation="12dp"
                 app:cardCornerRadius="6dp"
                 android:onClick="onClick"
@@ -107,6 +128,12 @@
                         android:layout_height="wrap_content"
                         android:text="@string/search"
                         android:textAlignment="center"
+                        android:shadowColor="#000000"
+                        android:shadowDx="1.5"
+                        android:shadowDy="1.5"
+                        android:shadowRadius="7.5"
+                        android:textAllCaps="true"
+                        android:textColor="@android:color/white"
                         android:layout_gravity="center"
                         android:textSize="20sp"
                         />
@@ -117,11 +144,12 @@
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/home_maps"
+                android:id="@+id/home_help"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_rowWeight="1"
+                android:backgroundTint="@color/black"
                 android:layout_margin="@dimen/activity_horizontal_margin"
                 android:padding="12dp"
                 app:cardElevation="12dp"
@@ -138,15 +166,21 @@
                         android:layout_gravity="center"
                         android:layout_width="80dp"
                         android:layout_height="80dp"
-                        android:src="@drawable/ic_maps" />
+                        android:src= "@drawable/ic_help"/>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/maps"
+                        android:text="@string/help"
+                        android:shadowColor="#000000"
+                        android:shadowDx="1.5"
+                        android:shadowDy="1.5"
+                        android:shadowRadius="7.5"
+                        android:textAllCaps="true"
+                        android:textColor="@android:color/white"
                         android:textAlignment="center"
                         android:layout_gravity="center"
-                        android:textSize="25sp"
+                        android:textSize="20sp"
                         />
 
                 </LinearLayout>
@@ -162,6 +196,7 @@
                 android:layout_rowWeight="1"
                 android:layout_margin="@dimen/activity_horizontal_margin"
                 android:padding="12dp"
+                android:backgroundTint="@color/black"
                 app:cardElevation="12dp"
                 app:cardCornerRadius="6dp"
                 android:onClick="onClick"
@@ -183,9 +218,15 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/events"
+                        android:shadowColor="#000000"
+                        android:shadowDx="1.5"
+                        android:shadowDy="1.5"
+                        android:shadowRadius="7.5"
+                        android:textAllCaps="true"
+                        android:textColor="@android:color/white"
                         android:textAlignment="center"
                         android:layout_gravity="center"
-                        android:textSize="25sp"
+                        android:textSize="20sp"
                         />
 
                 </LinearLayout>
@@ -199,6 +240,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="12dp"
+            android:backgroundTint="@color/black"
             android:layout_gravity="end"
             android:layout_marginTop="60dp"
             android:layout_marginRight="@dimen/activity_horizontal_margin"
@@ -221,6 +263,12 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:shadowColor="#000000"
+                    android:shadowDx="1.5"
+                    android:shadowDy="1.5"
+                    android:shadowRadius="7.5"
+                    android:textAllCaps="true"
+                    android:textColor="@android:color/white"
                     android:text="@string/logout"/>
 
             </LinearLayout>

@@ -7,12 +7,12 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import pt.unl.fct.di.apdc.helpinghand.R;
-import pt.unl.fct.di.apdc.helpinghand.data.model.UpdateInstModel;
 import pt.unl.fct.di.apdc.helpinghand.data.model.UpdateUserModel;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandProvider;
 import pt.unl.fct.di.apdc.helpinghand.network.HelpingHandService;
@@ -35,6 +35,8 @@ public class UpdateProfileActivity extends AppCompatActivity {
     HelpingHandService mService;
     HelpingHandProvider mProvider;
     UpdateUserModel userInfo;
+
+    ImageButton back_btn;
 
 
     public void onCreate(Bundle savedInstance) {
@@ -171,7 +173,7 @@ public class UpdateProfileActivity extends AppCompatActivity {
                                     "Update made successfully", Toast.LENGTH_LONG).show();
                             mPreferences.updateUserInfo(mPreferences.getUsername(),
                                     mPreferences.getAccessToken(), mPreferences.getRole(),
-                                    mPreferences.getCreationDate(), mPreferences.getRefreshToken(),
+                                    mPreferences.getExpireDate(), mPreferences.getRefreshToken(),
                                     userInfo);
 
                             Intent profileUpdated = new Intent(UpdateProfileActivity.this, ProfileActivity.class);
@@ -199,11 +201,22 @@ public class UpdateProfileActivity extends AppCompatActivity {
                 });
             }
         });
+
+        back_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent back = new Intent(UpdateProfileActivity.this, ProfileActivity.class);
+                startActivity(back);
+                finish();
+            }
+        });
     }
 
 
     private void updateAccount() {
         setContentView(R.layout.activity_update_user_info);
+
+        back_btn = findViewById(R.id.up_back_btn);
 
         update_phone_et = findViewById(R.id.update_phone_et);
         update_address1_et = findViewById(R.id.update_address1_et);

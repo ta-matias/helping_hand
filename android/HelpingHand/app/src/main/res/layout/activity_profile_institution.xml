@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="#29918A">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,6 +14,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/inst_id_txt"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
@@ -20,6 +28,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:id="@+id/inst_id_txt"
             />
@@ -28,6 +42,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/prompt_email"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
@@ -36,6 +56,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:id="@+id/inst_email_txt"
             />
@@ -44,6 +70,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/institution_name"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
@@ -53,6 +85,12 @@
             android:layout_height="wrap_content"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:id="@+id/inst_name_txt"
             />
 
@@ -61,6 +99,12 @@
             android:layout_height="wrap_content"
             android:text="@string/initials"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
         
@@ -69,6 +113,12 @@
             android:layout_height="wrap_content"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:id="@+id/inst_init_txt"
             />
         
@@ -77,6 +127,12 @@
             android:layout_height="wrap_content"
             android:text="@string/address"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
 
@@ -85,6 +141,12 @@
             android:layout_height="wrap_content"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:id="@+id/inst_addr_txt"
             />
 
@@ -93,6 +155,12 @@
             android:layout_height="wrap_content"
             android:text="@string/address2"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
 
@@ -100,6 +168,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:id="@+id/inst_addr2_txt"
             />
@@ -108,6 +182,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/city"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
@@ -116,6 +196,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:id="@+id/inst_city_txt"
             />
@@ -125,6 +211,12 @@
             android:layout_height="wrap_content"
             android:text="@string/phone"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             />
 
@@ -139,39 +231,151 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/status"
+            android:text="@string/zipcode"
             android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:layout_marginLeft="@dimen/activity_horizontal_margin"
+            android:layout_marginRight="@dimen/activity_horizontal_margin"
+            />
+
+        <TextView
+            android:id="@+id/inst_zip_txt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:layout_marginLeft="@dimen/activity_horizontal_margin"
+            android:layout_marginRight="@dimen/activity_horizontal_margin"
             />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="@string/status"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            />
+
+
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1.5"
+            android:shadowDy="1.5"
+            android:shadowRadius="7.5"
+            android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:layout_marginTop="@dimen/activity_horizontal_margin"
             android:id="@+id/inst_status_txt"
             />
 
-        <RelativeLayout
-            android:layout_width="wrap_content"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/activity_horizontal_margin"
+            android:layout_marginLeft="@dimen/activity_horizontal_margin"
+            android:layout_marginRight="@dimen/activity_horizontal_margin"
+            >
+
+            <TextView
+                android:id="@+id/private_txt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/private_profile"
+                android:shadowColor="#000000"
+                android:shadowDx="1.5"
+                android:shadowDy="1.5"
+                android:shadowRadius="7.5"
+                android:textAllCaps="true"
+                android:textColor="@android:color/white"
+                android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                />
+
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/inst_visibility_stc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textOn="@string/public_profile"
+                android:textOff="@string/private_profile"
+                android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                app:layout_constraintLeft_toRightOf="@+id/private_txt"
+                app:layout_constraintTop_toTopOf="parent"
+                />
+
+            <TextView
+                android:id="@+id/public_txt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/public_profile"
+                android:shadowColor="#000000"
+                android:shadowDx="1.5"
+                android:shadowDy="1.5"
+                android:shadowRadius="7.5"
+                android:textAllCaps="true"
+                android:textColor="@android:color/white"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintLeft_toRightOf="@+id/inst_visibility_stc"
+                />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/activity_horizontal_margin">
 
             <Button
                 android:id="@+id/inst_update_btn"
-                android:layout_height="50dp"
+                android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
                 android:text="@string/update_user"
+                android:backgroundTint="@color/black"
                 android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                android:textSize="10sp"
+                android:textColor="@color/white"
                 android:layout_marginRight="@dimen/activity_horizontal_margin"
-                />
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent"/>
 
             <Button
                 android:id="@+id/inst_change_pass_btn"
                 android:layout_width="wrap_content"
-                android:layout_height="50dp"
+                android:layout_height="wrap_content"
                 android:text="@string/change_password"
-                android:layout_toRightOf="@+id/inst_update_btn"
+                android:textSize="10sp"
+                android:textColor="@color/white"
+                android:backgroundTint="@color/black"
+                android:layout_marginRight="@dimen/activity_horizontal_margin"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
                 />
 
             <Button
@@ -179,11 +383,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="50dp"
                 android:layout_centerInParent="true"
-                android:layout_marginTop="100dp"
                 android:text="@string/delete_account"
                 android:backgroundTint="#FF0000"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:textColor="@color/white"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/inst_change_pass_btn"
                 />
-        </RelativeLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </LinearLayout>
 
