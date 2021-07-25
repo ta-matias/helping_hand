@@ -27,9 +27,9 @@ public enum RBACRule {
 	m9LOGIN_USER("POST_user_login", new Role[] {ALL}), //login as a user
 	m10LOGOUT_USER("DELETE_user_logout", new Role[] {USER,GBO,SYSADMIN}), //logout as a user
 	m11DELETE_USER("DELETE_user", new Role[] {USER,GBO,SYSADMIN}), //delete a user account
-	m12GET_USER("GET_user_account", new Role[] {USER,INSTITUTION,GBO}), //get user account
-	m13GET_USER_INFO("GET_user_info", new Role[] {USER,INSTITUTION,GBO}), //get a user's account info
-	m14GET_USER_PROFILE("GET_user_profile", new Role[] {USER,INSTITUTION,GBO}), //get a user's profile
+	m12GET_USER("GET_user_account", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), //get user account
+	m13GET_USER_INFO("GET_user_info", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), //get a user's account info
+	m14GET_USER_PROFILE("GET_user_profile", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), //get a user's profile
 	
 	//Should Have
 	s1GET_ALL_INSTITUTIONS("GET_institution", new Role[] {USER,INSTITUTION,GBO}), // list all institution accounts (role INSTITUTION)
@@ -43,17 +43,17 @@ public enum RBACRule {
 	s9GET_INSTITUTION_HELP("GET_institution_help",new Role[] {USER,INSTITUTION,GBO}), // lists all help requests created by the institution
 	s10GET_INSTITUTION_ROUTES("GET_institution_routes",new Role[] {USER,INSTITUTION,GBO}), // lists all routes created by the institution
 	s11GET_ALL_USERS("GET_user", new Role[] {USER,INSTITUTION,GBO}), //list all user accounts (role USER)
-	s12UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO}),//update user's password
-	s13UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,INSTITUTION,GBO}), // update a user's email
+	s12UPDATE_USER_PASSWORD("PUT_user_password", new Role[] {USER,GBO,SYSADMIN}),//update user's password
+	s13UPDATE_USER_EMAIL("PUT_user_email", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), // update a user's email
 	s14UPDATE_USER_AVATAR("PUT_user_avatar", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), // update a user's avatar
 	s15UPDATE_USER_STATUS("PUT_user_status", new Role[] {USER,GBO,SYSADMIN}), //update a user's status
-	s16UPDATE_USER_VISIBILITY("PUT_user_visibility", new Role[] {USER,GBO}), // update a user's visibility
-	s17UPDATE_USER_INFO("PUT_user_info", new Role[] {USER,GBO}), // update a user's account info
-	s18UPDATE_USER_PROFILE("PUT_user_profile", new Role[] {USER,GBO}), // update a user's profile
+	s16UPDATE_USER_VISIBILITY("PUT_user_visibility", new Role[] {USER,GBO,SYSADMIN}), // update a user's visibility
+	s17UPDATE_USER_INFO("PUT_user_info", new Role[] {USER,GBO,SYSADMIN}), // update a user's account info
+	s18UPDATE_USER_PROFILE("PUT_user_profile", new Role[] {USER,GBO,SYSADMIN}), // update a user's profile
 	s19GET_USER_HELP("GET_user_help",new Role[] {USER,INSTITUTION,GBO}),  // list all help requests created by the user
 	s20GET_HELPING("GET_user_helping",new Role[] {USER,GBO,SYSADMIN}),//list all help requests where user is offering to help
 	s21GET_USER_ROUTES("GET_user_routes",new Role[] {USER,INSTITUTION,GBO}),  // list all routes created by the user 
-	s22GET_ALL_HELP("GET_help", new Role[] {USER,INSTITUTION,GBO}), // list all helps
+	s22GET_ALL_HELP("GET_help", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), // list all helps
 	s23GET_HELP("GET_help_get", new Role[] {USER,INSTITUTION}), // update the help's data
 	s24CREATE_HELP("POST_help", new Role[] {USER,INSTITUTION}), // create a help
 	s25CANCEL_HELP("DELETE_help", new Role[] {USER,INSTITUTION,GBO}), // cancel a help
@@ -94,7 +94,7 @@ public enum RBACRule {
 	h8GET_USER_FEED("GET_user_feed", new Role[] {USER,INSTITUTION}), // get all user feeds
 	h9UPDATE_USER_FEED("PUT_user_feed", new Role[] {USER,INSTITUTION}), // update a user feed
 	h10GET_USER_STATS("GET_user_stats",new Role[] {USER,INSTITUTION}), // get user's stats
-	h11GET_ALL_EVENTS("GET_event", new Role[] {USER,INSTITUTION,GBO}), // list all events
+	h11GET_ALL_EVENTS("GET_event", new Role[] {USER,INSTITUTION,GBO,SYSADMIN}), // list all events
 	h12CREATE_EVENT("POST_event", new Role[] {INSTITUTION}), // create an event
 	h13CANCEL_EVENT("DELETE_event", new Role[] {INSTITUTION,GBO}), // cancel an event
 	h14END_EVENT("PUT_event_end", new Role[] {INSTITUTION}), // finish an event
