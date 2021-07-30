@@ -68,7 +68,7 @@ import static helpinghand.resources.UserResource.addRatingToStats;
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class HelpResource {
 
-	public static final String CURRENT_HELPER_LEFT_NOTIFICATION = "O ajudante escolhido, [%s], deixou de oferecer ajuda num dos seus pedidos";
+	public static final String CURRENT_HELPER_LEFT_NOTIFICATION = "O ajudante escolhido, %s, deixou de oferecer ajuda no seu pedido '%s'";
 	private static final String HELP_CANCELED_NOTIFICATION = "O pedido de ajuda '%s' foi cancelado";
 	private static final String HELP_CREATED_NOTIFICATION = "Pedido de ajuda '%s' criado por '%s'";
 	private static final String CHOSEN_HELPER_NOTIFICATION = "'%s' escolheu-o para o ajudar no pedido '%s', deixar de oferecer ajuda agora irá afetar a sua fiabilidade";
@@ -1184,7 +1184,7 @@ public class HelpResource {
 			}
 
 			if(helperEntity.getBoolean(HELPER_CURRENT_PROPERTY)) {
-				if(!addNotificationToFeed(creatorKey.getId(),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user))) {
+				if(!addNotificationToFeed(creatorKey.getId(),String.format(CURRENT_HELPER_LEFT_NOTIFICATION, user,helpEntity.getString(HELP_NAME_PROPERTY)))) {
 					txn.rollback();
 					log.severe(String.format(NOTIFICATION_ERROR, creatorKey.getId()));
 					return Response.status(Status.INTERNAL_SERVER_ERROR).build();

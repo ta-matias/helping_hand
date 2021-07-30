@@ -429,8 +429,15 @@ public class BackOfficeResource {
 			});
 
 			List<DailyStat> data = new LinkedList<>();
-			map.keySet().forEach(key-> data.add(new DailyStat(key.toString().substring(0,10),map.get(key))));
-
+			Set<Instant> keySet = map.keySet();
+			Instant[] array = new Instant[keySet.size()];
+			keySet.toArray(array);
+			Arrays.sort(array);
+			for(Instant key:array) {
+				data.add(new DailyStat(key.toString().substring(0,10),map.get(key)));
+			}	
+			
+			
 			log.info(String.format(DAILY_STATS_OK, start, end, tokenId));
 			return Response.ok(g.toJson(data)).build();
 		} catch (DatastoreException e) {

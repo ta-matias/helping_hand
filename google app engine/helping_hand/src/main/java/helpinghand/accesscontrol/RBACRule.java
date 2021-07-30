@@ -78,8 +78,8 @@ public enum RBACRule {
 	c6GET_USERS_ROLE("GET_restricted_listRole", new Role[] {GBO}), // get all accounts of a certain role
 	c7GET_DAILY_STATS("GET_restricted_dailyUsers", new Role[] {GBO}),// get number of accounts created between 2 dates
 	c8CREATE_SYSADMIN("POST_restricted_createSysadmin",new Role[] {ALL}),//create SYSADMIN
-	c9CONFIRM_EMAIL_UPDATE("GET_links_email",new Role[] {ALL}),
-	c10CONFIRM_ACCOUNT_CREATION("GET_links_account",new Role[] {ALL}),
+	c9CONFIRM_EMAIL_UPDATE("PUT_links_email",new Role[] {ALL}),
+	c10CONFIRM_ACCOUNT_CREATION("PUT_links_account",new Role[] {ALL}),
 	c11SWEEP_TOKENS("GET_cron_tokens",new Role[] {ALL}),
 	c12SWEEP_SECRETS("GET_cron_secrets",new Role[] {ALL}),
 	

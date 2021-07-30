@@ -29,6 +29,7 @@
 		<include path="/**.ico" expiration="1m" /> <!-- 1 minute, normal is 12h or more -->
 		<include path="/**.cur" expiration="1m" /> <!-- 1 minute, normal is 12h or more -->
 		<include path="/**.map" expiration="1m" /> <!-- 1 minute, normal is 12h or more -->
+		<include path="/**.json" expiration="1m" /> <!-- 1 minute, normal is 12h or more -->
 	</static-files>
 
 </appengine-web-app>
