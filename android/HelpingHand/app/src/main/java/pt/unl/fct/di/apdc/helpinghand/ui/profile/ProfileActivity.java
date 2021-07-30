@@ -65,7 +65,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         mPreferences = mProvider.getmAppPreferenceTools();
 
-        if(mPreferences.getRole().equals("Utilizador"))
+        if(mPreferences.getRole().equals("USER"))
             userProfile();
         else
             instProfile();
@@ -386,7 +386,7 @@ public class ProfileActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         Call<Void> call = null;
-                        if(mPreferences.getRole().equals("Utilizador"))
+                        if(mPreferences.getRole().equals("USER"))
                             call = mService.deleteUser(mPreferences.getUsername(),
                                     mPreferences.getAccessToken());
                         else

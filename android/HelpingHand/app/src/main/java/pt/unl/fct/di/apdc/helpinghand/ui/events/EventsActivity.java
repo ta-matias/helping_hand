@@ -99,7 +99,7 @@ public class EventsActivity extends AppCompatActivity {
     }
 
     private void setupViews(){
-        if(preferences.getRole().equals("Utilizador")){
+        if(preferences.getRole().equals("USER")){
             create_event_btn.setVisibility(View.GONE);
             join_event_btn.setVisibility(View.VISIBLE);
             mine_events_btn.setVisibility(View.GONE);

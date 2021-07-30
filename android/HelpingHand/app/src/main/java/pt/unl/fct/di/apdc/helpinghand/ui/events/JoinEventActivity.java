@@ -162,7 +162,7 @@ public class JoinEventActivity extends AppCompatActivity implements OnMapReadyCa
 
                             Button joinBtn = layout.findViewById(R.id.join_adapter_btn);
 
-                            if (mPreferences.getRole().equals("Utilizador")) {
+                            if (mPreferences.getRole().equals("USER")) {
                                 joinBtn.setOnClickListener(new View.OnClickListener() {
                                     @Override
                                     public void onClick(View v) {

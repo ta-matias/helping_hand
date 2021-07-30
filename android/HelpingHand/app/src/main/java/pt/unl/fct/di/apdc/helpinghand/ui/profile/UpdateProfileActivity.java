@@ -156,7 +156,7 @@ public class UpdateProfileActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Call<Void> call = null;
-                if(mPreferences.getRole().equals("Utilizador")){
+                if(mPreferences.getRole().equals("USER")){
                     call = mService.updateUserInfo(mPreferences.getUsername(), userInfo,
                             mPreferences.getAccessToken());
                 }else{

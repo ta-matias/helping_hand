@@ -155,7 +155,7 @@ public class LoginActivity extends AppCompatActivity {
                             UserAuthenticated user = new UserAuthenticated(clientId,
                                     new TokenModel(info.token, info.expires,
                                             info.token),
-                                    userType);
+                                    info.role);
                             mPreferences.saveAuthenticatedInfo(user);
 
                             Intent home = new Intent(LoginActivity.this, HomePageActivity.class);

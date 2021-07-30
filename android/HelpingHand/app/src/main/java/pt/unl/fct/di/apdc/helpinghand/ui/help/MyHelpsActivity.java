@@ -75,7 +75,7 @@ public class MyHelpsActivity extends AppCompatActivity {
         });
 
         Call<List<HelpData>> call = null;
-        if(preferenceTools.getRole().equals("Utilizador")){
+        if(preferenceTools.getRole().equals("USER")){
             call = service.getUserHelps(preferenceTools.getUsername(), preferenceTools.getAccessToken());
         }else {
             call = service.getInstHelps(preferenceTools.getUsername(), preferenceTools.getAccessToken());

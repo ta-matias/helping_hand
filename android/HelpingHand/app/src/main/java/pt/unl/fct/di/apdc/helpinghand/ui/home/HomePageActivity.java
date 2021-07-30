@@ -71,16 +71,7 @@ public class HomePageActivity extends AppCompatActivity {
                 i = new Intent(HomePageActivity.this, HelpActivity.class);
                 startActivity(i);
                 break;
-
-            //Search button
-            case R.id.home_search:
-                if(mPreferences.getRole().equals("Utilizador")){
-
-                }else{
-
-                }
-                break;
-
+                
             //Logout Button
             case R.id.btn_logout:
                 if(mPreferences.isAuthorized()){
